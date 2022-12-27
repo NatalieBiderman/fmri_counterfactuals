@@ -1,0 +1,1236 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Columbia University Psychology Experiment</title>
+    <script src="jspsych-6.0.5/jspsych.js"></script>
+    <script src="Tools/Functions.js"></script>
+    <script src="Tools/Stimuli_list.js"></script>
+    <script src="Tools/Instructions_stimuli_list.js"></script>
+    <script src="Tools/Experimental_parameters.js"></script>
+    <script src="Tools/Create_data_structures.js"></script>
+    <script src="jspsych-6.0.5/plugins/jspsych-html-keyboard-response.js"></script>
+    <script src="jspsych-6.0.5/plugins/jspsych-instructions.js"></script>
+    <script src="jspsych-6.0.5/plugins/jspsych-image-keyboard-response.js"></script>
+    <script src="jspsych-6.0.5/plugins/jspsych-survey-text.js"></script>
+    <script src="jspsych-6.0.5/plugins/jspsych-survey-likert.js"></script>
+    <script src="jspsych-6.0.5/plugins/jspsych-survey-multi-choice.js"></script>
+    <script src="jspsych-6.0.5/plugins/jspsych-html-slider-response.js"></script>
+    <script src="jspsych-6.0.5/plugins/jspsych-fullscreen.js"></script>
+    <script src="jspsych-6.0.5/plugins/jspsych-html-button-response.js"></script>
+    <link href="jspsych-6.0.5/css/jspsych.css" rel="stylesheet" type="text/css"></link>
+    <link href="Tools/myCSSstyle.css" rel="stylesheet" type="text/css"></link>
+    <style> </style>
+  </head>
+  <body> </body>
+  <script>
+
+  // create a subject id
+  var subID = makeid(5);
+
+  // prepare pre-loaded images
+  images = JSON.parse(JSON.stringify(Stimuli))
+  for (i = 0; i < images.length; i++){
+    images[i] = "Stimuli/Experimental_stims" + "/" + images[i][0] + "/" + images[i][1];
+  }
+  images = images.concat(Instructions_stimuli);
+
+  // ============================= Enter fullscreen ==============================
+
+  var fullscreen = {
+    type: 'fullscreen',
+    fullscreen_mode: true,
+    message: '<p>Welcome to our study!<br>' +
+             'Our study requires your undivided attention throughout the entire experiment.</br>'+
+             'Please note that exiting full screen mode, responding randomly, or responding to fewer than 90% of trials will cause your HIT to be rejected.<br></br>'+
+              'To switch to full screen and start the experiment, please press the button below.</p>',
+    on_finish: function(){
+      // add columns to data
+      jsPsych.data.addProperties({
+        warning: 0,
+        missed_checkup: 0,
+        PID: subID }) // generate a random 5-char ID, because we can't save MTurk worker id.
+    }, // function on_finish
+    data: {category: 'full_screen', start_time: timeStamp()}
+  }
+  timeline.push(fullscreen)
+
+// =========================== Define general trials ===========================
+
+  // Fixation for ITI
+  var fixation_trial = {
+        type: 'html-keyboard-response',
+        stimulus: fixation_stim,
+        choices: jsPsych.NO_KEYS,
+        trial_duration: timing_ITI,
+        data: {category: 'fixation'}
+  }
+
+  // respond faster (for reward learning and final decisions)
+  var respond_faster_trial = {
+        type: 'html-keyboard-response',
+        data: {category: "respond_faster"},
+        stimulus: '<div style="font-size: 120%">Please respond more quickly</div>',
+        choices: jsPsych.NO_KEYS,
+        trial_duration: timing_warning,
+        on_finish: function(data){
+          data.warning = 1
+        } // on_finish
+    } // respond faster trial
+
+  // repeat instructions screen
+  var missed_instruction_checkup = {
+        type: 'html-keyboard-response',
+        data: {category: 'missed_instruction_checkup'},
+        stimulus: "Sorry, you missed one or more questions.</br></br>"+
+                  "Please press the 'N' key to repeat the instructions.",
+        choices: keys_go_next,
+        response_ends_trial: true,
+        on_finish: function(data){
+          data.missed_checkup = 1
+        } // on_finish
+      } // missed_instruction_checkup
+
+  // If participants pass the comprehension check, they can start the phase
+  var start_phase = {
+        type: 'html-keyboard-response',
+        data: {category: 'start_phase'},
+        stimulus: "Great, you're ready to start the experiment.</br></br>"+
+                  "Please press the 'N' key to begin.",
+        choices: keys_go_next,
+        response_ends_trial: true
+  } // start_phase
+
+  // block is over
+ var block_over_trial = {
+       type: 'html-keyboard-response',
+       data: {category: 'block_over'},
+       stimulus: "The current block is over.</br></br>"+
+                 "Please press the 'N' key to begin a new block.",
+       choices: keys_go_next,
+       response_ends_trial: true};
+
+ // start_quiz
+ var start_quiz = {
+      type: 'html-keyboard-response',
+      data: {category: 'start_quiz'},
+      stimulus: "We will now present you a short quiz to make sure you understood the instructions.</br></br>"+
+                "Please press the 'N' key to begin a new block.",
+      choices: keys_go_next,
+      response_ends_trial: true}
+
+// =============================== Rating phase ================================
+
+// Two types of trials are used in the rating phase:
+// 1. instructions + quiz, if one or more answers are incorrect, we loop the instructions and quiz again.
+// 2. rating of each object in a continuous scale.
+
+  // Rating instructions
+  var rating_instructions = {
+        type: 'instructions',
+        pages: [
+            "<div><img class='instructions' src='Stimuli/Instructions/Rating.png'</img></div>",
+            "<div><img class='instructions' src='Stimuli/Instructions/start_quiz.png'</img></div>"],
+        data: {category: "rating_instructions"},
+        show_clickable_nav: true
+      };
+
+  // activate function to present a looping quiz (loops until you get all answers correctly)
+  repeat_rating_instructions = present_quiz_instructions(rating_instructions, 'rating_comprehension_check', quiz_qs.rating, quiz_answers.rating)
+
+  // push the repeated quiz and also present next screens after they get it correctly.
+  timeline.push(repeat_rating_instructions,start_phase)
+
+// -----------------------------------------------------------------------------
+
+// Ratings trial
+for (t = 0; t < n_ratings; t++){
+  // var rating_trial = [];
+  var rating_trial = {
+    type: 'html-slider-response',
+    data: {category: 'rating',
+           stimulus_id: Ratings[t].index,
+           stimulus: Ratings[t].stimulus,
+           painting: Ratings[t].stimulus,
+           index: t},
+    stimulus: '<img class="object" src="{0}/{1}" />',
+    labels: ['Not at all', 'Very much'],
+    prompt: '<p>How much do you like this painting?</p>',
+    response_ends_trial: true,
+    on_start: function(trial){
+      trial.stimulus = String.format(trial.stimulus, image_folder, trial.data.stimulus);
+    },
+    on_finish: function(data){
+      // add trial data to ratings Array
+      var curr_ind = jsPsych.data.get().last(1).values()[0].index;
+      Ratings[curr_ind].response = jsPsych.data.get().last(1).values()[0].response;
+      // create deliberation array after last rating trial
+      if (jsPsych.data.get().last(1).values()[0].index == [n_ratings - 1]){
+        Deliberation = create_deliberation_mat(Ratings);
+        block_change = find_block_change(Deliberation.map(a => a.block));
+        if (!block_change) { // block_change empty, when deliberation does not repeat
+          final_del = 0;
+          practice_del = [];
+        } else {
+          final_del = JSON.parse(JSON.stringify(block_change)).pop();
+          practice_del = block_change.slice(0,-1); // we remove the last transition block to keep only practice deliberation prompts
+        }
+      } // if
+    } // on_finish
+  } // rating_trial
+  timeline.push(rating_trial);
+} // for trials
+
+// ============================= Deliberation phase ============================
+
+// We use the following types of trials:
+// 1. instructions + quiz, if one or more answers are incorrect, we loop the instructions and quiz again
+// 2. fixation between decision trials
+// 3. decisions between pairs of objects, there is no time limit
+// 4. confirmation of choice
+// 5. explain choice trials, where we ask subs to write why they chose this
+// specific painting, to get them deliberating. These are a few random trials,
+// later removed from analyses.
+// At the last deliberation trial, we create matrices for the three other phases
+// of the experiment: Reward learning, Final decisions and Memory, because the
+// stimuli used in these phases are dependent upon the choices at deliberation.
+
+// Deliberatiion instructions
+var deliberation_instructions = {
+      type: 'instructions',
+      pages: ["<div><img class='instructions' src='Stimuli/Instructions/Deliberation1.png'</img></div>",
+              "<div><img class='instructions' src='Stimuli/Instructions/Deliberation2.png'</img></div>",
+              "<div><img class='instructions' src='Stimuli/Instructions/Deliberation3.png'</img></div>",
+              "<div><img class='instructions' src='Stimuli/Instructions/start_quiz.png'</img></div>"],
+      data: {category: "deliberation_instructions"},
+      show_clickable_nav: true
+    };
+
+// activate function to present a looping quiz (loops until you get all answers correctly)
+repeat_deliberation_instructions = present_quiz_instructions(deliberation_instructions, 'deliberation_comprehension_check', quiz_qs.deliberation, quiz_answers.deliberation)
+
+// after passing the quiz, present the bext screens
+timeline.push(repeat_deliberation_instructions,start_phase)
+
+// -----------------------------------------------------------------------------
+
+  // define several variables to be built at the end of deliberation trials
+  var Memory_mat = []; var clean_Deliberation = []; var Reward_learning = [];
+  var Final_decisions = []; var Final_ratings = [];
+
+  // Make sure participants know this is a "practice" block
+  var first_del_practice = {
+        type: 'html-keyboard-response',
+        data: {category: 'first_deliberation_block'},
+        stimulus: "You will now start your first practice round of choosing between paintings.<br></br>"+
+                  "Please press the 'N' key to begin.",
+        choices: keys_go_next,
+        response_ends_trial: true
+  } // first_del_practice
+  timeline.push(first_del_practice)
+
+// -------------------------- deliberation trial -------------------------------
+
+  // Delibeartion trial
+  for (t = 0; t < n_deliberation_trials; t++) {
+
+    deliberation_trial = {
+      type: 'html-keyboard-response',
+      data: {category: 'deliberation',
+             index: t},
+      stimulus: decisions_stims,
+      choices: keys_decision,
+      response_ends_trial: true,
+      trial_duration: max_deliberation_time,
+      on_start: function(trial){
+        // decide which stimuli to present
+        trial.data.stimulus_left = Deliberation[trial.data.index].stimulus_left;
+        trial.data.stimulus_right = Deliberation[trial.data.index].stimulus_right;
+        trial.stimulus = String.format(trial.stimulus, propmt_decision ,image_folder + "/" + Stimuli[trial.data.stimulus_left][1], image_folder + "/" + Stimuli[trial.data.stimulus_right][1]);
+      },
+      on_finish: function(data){
+        // ----------- save relevant data in each trial -----------
+        // find current index
+        var curr_ind = jsPsych.data.get().last(1).values()[0].index;
+        // add several columns from Deliberation matrix to data
+        data.explain_trial = Deliberation[curr_ind].explain_trial;
+        data.reward_type = Deliberation[curr_ind].reward_type;
+        data.rating_left = Deliberation[curr_ind].rating_left;
+        data.rating_right = Deliberation[curr_ind].rating_right;
+        data.painting_left = Deliberation[curr_ind].painting_left;
+        data.painting_right = Deliberation[curr_ind].painting_right;
+        data.block = Deliberation[curr_ind].block;
+        // register choices and save relevant columns to data and deliberation matrix
+        if(data.key_press == jsPsych.pluginAPI.convertKeyCharacterToKeyCode(keys_decision[0])) { // 'f' (left) was chosen
+          data.left_chosen = 1;
+          data.chosen_obj = Deliberation[curr_ind].stimulus_left;
+          data.unchosen_obj = Deliberation[curr_ind].stimulus_right;
+          Deliberation[curr_ind].left_chosen = 1;
+          Deliberation[curr_ind].chosen_obj = Deliberation[curr_ind].stimulus_left;
+          Deliberation[curr_ind].unchosen_obj = Deliberation[curr_ind].stimulus_right;
+        } else if (data.key_press == jsPsych.pluginAPI.convertKeyCharacterToKeyCode(keys_decision[1])){
+          data.left_chosen = 0;
+          data.chosen_obj = Deliberation[curr_ind].stimulus_right;
+          data.unchosen_obj = Deliberation[curr_ind].stimulus_left;
+          Deliberation[curr_ind].chosen_obj = Deliberation[curr_ind].stimulus_right;
+          Deliberation[curr_ind].unchosen_obj = Deliberation[curr_ind].stimulus_left;
+          Deliberation[curr_ind].left_chosen = 0;
+        } // else
+
+        // ----------- create matrices in last deliberation trial -----------
+        if (curr_ind == n_deliberation_trials-1 & !isNaN(jsPsych.data.get().filter({category: 'deliberation'}).last(1).values()[0].left_chosen)){ // we reduce 1 because the index starts with 0
+          // use only the last block of deliberation matrix
+          clean_Deliberation = Deliberation.filter(function(a){return a.block==(n_rep_deliberation+1)})
+          // Reward learning
+          Reward_learning = create_reward_learning_mat(clean_Deliberation);
+          // final decisions
+          Final_decisions = create_final_decisions_mat(clean_Deliberation, Ratings);
+          // memory test
+          Memory_mat = create_memory_mat(clean_Deliberation);
+          // final_ratings
+          Final_ratings = create_final_ratings_mat(clean_Deliberation, Ratings);
+          // outcome evaluation
+          Outcome_evaluation = create_outcome_evaluation_mat(Final_ratings);
+        } // if curr_ind
+      } // on_finish
+    } // deliberation_trial
+
+// ------------------------------- confirmation --------------------------------
+
+    confirmation_trial = {
+      type: 'html-keyboard-response',
+      data: {category: 'choice_confirmation',
+             index: t},
+      stimulus: choice_confirm_stims,
+      choices: jsPsych.NO_KEYS,
+      trial_duration: timing_confirmation,
+      response_ends_trial: true,
+      on_start: function(trial){
+        // decide which stimuli to present
+        trial.data.stimulus_left = Deliberation[trial.data.index].stimulus_left;
+        trial.data.stimulus_right = Deliberation[trial.data.index].stimulus_right;
+        // we decide which css object to include according to the decision of the subject. for the chosen object we use the class "object confirm"
+        if (Deliberation[trial.data.index].left_chosen==1){
+          trial.stimulus = String.format(trial.stimulus, propmt_decision, "object confirm" ,image_folder + "/" + Stimuli[trial.data.stimulus_left][1], "object", image_folder + "/" + Stimuli[trial.data.stimulus_right][1]);
+        } else {
+          trial.stimulus = String.format(trial.stimulus, propmt_decision, "object" ,image_folder + "/" + Stimuli[trial.data.stimulus_left][1], "object confirm", image_folder + "/" + Stimuli[trial.data.stimulus_right][1]);
+        }
+      }
+    }
+
+    // present confirmation only if there was a response
+    var if_confirmation = {
+      timeline: [confirmation_trial],
+      conditional_function: function(){
+        if (jsPsych.data.get().filter({category: 'deliberation'}).last(1).values()[0].key_press){
+          return true;
+        } else {
+          return false;
+        } // else
+      } // conditional function
+    } // if_confirmation
+
+// ------------------------- too fast or no response ---------------------------
+
+var deliberation_too_fast = {
+    type: 'html-keyboard-response',
+    data: {category: "deliberation_too_fast", index: t},
+    stimulus: '<div style="font-size: 120%">Please consider these decisions carefully.</div>',
+    choices: jsPsych.NO_KEYS,
+    trial_duration: timing_warning,
+    on_finish: function(data){
+      data.warning = 1
+    } // on_finish
+  } // deliberation_too_fast
+
+  // present deliberation_too_fast only for very fast responses
+  var if_deliberation_too_fast = {
+    timeline: [deliberation_too_fast],
+    conditional_function: function(data){
+      if (jsPsych.data.get().filter({category: 'deliberation'}).last(1).values()[0].rt < min_deliberation_time & !isNaN(jsPsych.data.get().filter({category: 'deliberation'}).last(1).values()[0].left_chosen)){
+        return true;
+      } else {
+        return false;
+      } // else
+    } // conditional function
+  } // if_confirmation
+  //timeline.push(if_deliberation_too_fast)
+
+  var deliberation_too_slow = {
+      type: 'html-keyboard-response',
+      data: {category: "deliberation_too_slow", index: t},
+      stimulus: '<div style="font-size: 120%">10 seconds are up. Hurry up to make you choice.</div>',
+      choices: jsPsych.NO_KEYS,
+      trial_duration: timing_warning,
+      on_finish: function(data){
+        data.warning = 1;
+        //data.deliberation_no_response = 1;
+      } // on_finish
+    } // deliberation_too_slow
+
+    // present deliberation_too_slow only for no responses
+    var if_deliberation_too_slow = {
+      timeline: [deliberation_too_slow],
+      conditional_function: function(data){
+        if (isNaN(jsPsych.data.get().filter({category: 'deliberation'}).last(1).values()[0].left_chosen)){
+          return true;
+        } else {
+          return false;
+        } // else
+      } // conditional function
+    } // if_confirmation
+    //timeline.push(if_deliberation_too_fast)
+
+// ----------------------------- explain choice --------------------------------
+
+    var explain_choice_trial = {
+      type: 'survey-text',
+      data: {category: "explain_trial",
+            index: t},
+      questions: [{prompt: "Why did you choose to buy this painting?", rows: 10, columns: 40}],
+      preamble: choice_confirm_stims,
+      on_start: function(trial){
+        // decide which stimuli to present
+        trial.data.stimulus_left = Deliberation[trial.data.index].stimulus_left;
+        trial.data.stimulus_right = Deliberation[trial.data.index].stimulus_right;
+        // we insert the relevant strings to place holders of the stimuli (we leave the prompt empty)
+        if (Deliberation[trial.data.index].left_chosen==1){
+          trial.preamble = String.format(trial.preamble, "", "object confirm" ,image_folder + "/" + Stimuli[trial.data.stimulus_left][1], "object", image_folder + "/" + Stimuli[trial.data.stimulus_right][1]);
+        } else {
+          trial.preamble = String.format(trial.preamble, "", "object" ,image_folder + "/" + Stimuli[trial.data.stimulus_left][1], "object confirm", image_folder + "/" + Stimuli[trial.data.stimulus_right][1]);
+        }
+      }, // on started
+      on_finish: function(data){
+        data.explain_response = data.responses; // move response to survey to another column (to identify what it means)
+      }
+    }; // explain choice trial
+
+    // present explain choice only in relevant trials
+    var if_explain_choice = {
+      timeline: [explain_choice_trial],
+      conditional_function: function(){
+        // filter the data to get only deliberation trials, and see if the last trial was an explain trial.
+        if (jsPsych.data.get().filter({category: 'deliberation'}).last(1).values()[0].explain_trial==1 & !isNaN(jsPsych.data.get().filter({category: 'deliberation'}).last(1).values()[0].left_chosen)){
+          return true;
+        } else {
+          return false;
+        }
+      } // conditional function
+    } // if explain choice
+    //timeline.push(if_explain_choice)
+
+// --------------------------- end deliberation block --------------------------
+
+      var practice_deliberation_again = {
+        type: 'html-keyboard-response',
+        data: {category: "practice_deliberation_again"},
+        stimulus: "Now you will have another chance to practice your decisions.<br></br>"+
+                  "Please press the 'N' key to begin.",
+        choices: keys_go_next,
+        response_ends_trial: true
+      }
+
+      var if_practice_deliberation_again = {
+        timeline: [practice_deliberation_again],
+        conditional_function: function(){
+          var curr_ind = jsPsych.data.get().filter({category: 'deliberation'}).last(1).values()[0].index;
+          // if this is the last trial in the block
+          if (practice_del.includes(curr_ind) & !isNaN(jsPsych.data.get().filter({category: 'deliberation'}).last(1).values()[0].left_chosen)) {
+            return true;
+          } else {
+            return false;
+          }
+        } // conditional_function
+      } // if_practice_deliberation_again
+      //timeline.push(if_practice_deliberation_again)
+
+      var start_critical_deliberation_block = {
+        type: 'html-keyboard-response',
+        data: {category: "start_critical_deliberation_block"},
+        stimulus: "The practice of decisions has ended. Now we will need your final decisions.<br></br>"+
+                  "Please press the 'N' key to begin.",
+        choices: keys_go_next,
+        response_ends_trial: true
+      }
+
+      var if_final_deliberation_block = {
+        timeline: [start_critical_deliberation_block],
+        conditional_function: function(){
+          var curr_ind = jsPsych.data.get().filter({category: 'deliberation'}).last(1).values()[0].index;
+          // if this is the last trial in the block
+          if (final_del == curr_ind & !isNaN(jsPsych.data.get().filter({category: 'deliberation'}).last(1).values()[0].left_chosen)) {
+            return true;
+          } else {
+            return false;
+          }
+        } // conditional_function
+      } // if_final_deliberation_block
+      //timeline.push(if_final_deliberation_block)
+
+// ----------------- repeat the entire trial for no responses ------------------
+
+      var repeat_deliberation_trial = {
+        timeline: [fixation_trial, deliberation_trial, if_confirmation, if_deliberation_too_fast, if_deliberation_too_slow, if_explain_choice, if_practice_deliberation_again, if_final_deliberation_block],
+        loop_function: function(){
+          if (isNaN(jsPsych.data.get().filter({category: 'deliberation'}).last(1).values()[0].left_chosen)){
+            return true;
+          } else {
+            return false;
+          } // else
+        } // loop_function function
+      } // repeat_deliberation_trial
+      timeline.push(repeat_deliberation_trial)
+  } // for deliberation trials
+
+
+// ============================ Reward learning phase ==========================
+
+// We use the following types of trials:
+// 1. instructions + quiz, if one or more answers are incorrect, we loop the instructions and quiz again.
+// 2. fixation between reward learning trials
+// 3. presentation of an object, during which subs are required to press the
+// space bar to see the outcome.
+// 4. presentation of outcome (positive or neutral), using colored
+// frame, colored outcome, and percentage of outcome (for gains around 20%).
+// During the presentation subject are asked to register what they see by
+// pressing a corresponding key their chosen outcome above the object.
+// 5. if subs do not register the outcome fast enough, they see a "respond
+// faster" screen.
+// 6. at the end of each block, a "block over" screen will be presented where
+// subs can rest before moving to the next block.
+
+  // Reward learning instructions
+  var reward_learning_instructions = {
+        type: 'instructions',
+        pages: ["<div><img class='instructions' src='Stimuli/Instructions/Reward_learning1.png'</img></div>",
+                "<div><img class='instructions' src='Stimuli/Instructions/Reward_learning2.png'</img></div>",
+                "<div><img class='instructions' src='Stimuli/Instructions/start_quiz.png'</img></div>"],
+        data: {category: "reward_learning_instructions"},
+        show_clickable_nav: true
+      };
+
+  // activate function to present a looping quiz (loops until you get all answers correctly)
+  repeat_reward_instructions = present_quiz_instructions(reward_learning_instructions, 'reward_comprehension_check', quiz_qs.reward, quiz_answers.reward)
+
+  // push the repeated quiz and also present next screens after they get it correctly.
+  timeline.push(repeat_reward_instructions,start_phase)
+
+// --------------------------- see the painting --------------------------------
+
+  for (t = 0; t < n_reward_trials; t++) {
+
+    var see_reward_trial = {
+        type: 'html-keyboard-response',
+        data: {category: 'see_reward',
+               index: t},
+        stimulus: see_reward_stim,
+        choices: keys_see_reward,
+        response_ends_trial: true,
+        on_start: function(trial){
+          trial.data.stimulus_id = Reward_learning[trial.data.index].stimulus;
+          trial.stimulus = String.format(trial.stimulus,prompt_see_reward, image_folder + "/" + Stimuli[trial.data.stimulus_id][1]); // full path
+        },
+        on_finish: function(data){
+          var curr_ind = jsPsych.data.get().last(1).values()[0].index;
+          // insert relevant columns to DATA
+          data.reward_type = Reward_learning[curr_ind].reward_type;
+          data.reward_amount = Reward_learning[curr_ind].reward_amount;
+          data.block = Reward_learning[curr_ind].block;
+          data.see_reward_rt = data.rt;
+        } // on_finish
+      } // see_reward_trial
+      timeline.push(fixation_trial,see_reward_trial)
+
+// ---------------------------- see the reward ---------------------------------
+
+      var reward_outcome_trial = {
+          type: 'html-keyboard-response',
+          data: {category: 'reward_outcome',
+                 index: t},
+          stimulus: reward_stim,
+          choices: keys_register_reward,
+          trial_duration: timing_reward_outcome,
+          response_ends_trial: false,
+          on_start: function(trial){
+            trial.data.stimulus_id = Reward_learning[trial.data.index].stimulus;
+            switch (Reward_learning[trial.data.index].reward_type){
+              case 1:
+              trial.stimulus = String.format(trial.stimulus,prompt_reward,'green','Gain of $', Reward_learning[trial.data.index].reward_amount,"object gain_frame", image_folder + "/" + Stimuli[trial.data.stimulus_id][1]);
+              break;
+              case -1:
+              trial.stimulus = String.format(trial.stimulus, prompt_reward,'red','$0', ' Earnings',"object loss_frame", image_folder + "/" + Stimuli[trial.data.stimulus_id][1]);
+              break;
+            } // switch
+          }, // on_start
+          on_finish: function(data){
+            data.register_reward_response = NaN; // first register the response as a NaN
+            var curr_ind = jsPsych.data.get().last(1).values()[0].index;
+            data.register_reward_rt = data.rt;
+            // update chosen reward in Reward_learning matrix per trial if a button was pressed
+            if (data.key_press == jsPsych.pluginAPI.convertKeyCharacterToKeyCode(keys_register_reward[0])) { // 'up' was chosen, i.e., gain
+                data.register_reward_response = 1;
+              } else if (data.key_press == jsPsych.pluginAPI.convertKeyCharacterToKeyCode(keys_register_reward[1])) { // 'down' was chosen, i.e., loss/neutral
+                data.register_reward_response = -1;
+              } // else if
+            } // on_finish
+          } // reward_outcome_trial
+          timeline.push(reward_outcome_trial)
+
+
+ // ------------------------------ respond faster ------------------------------
+
+       // present respond faster if a different key was pressed or no key was pressed
+       var if_respond_faster = {
+         timeline: [respond_faster_trial],
+         conditional_function: function(data){
+           var key_pressed = jsPsych.data.get().filter({category: 'reward_outcome'}).last(1).values()[0].key_press;
+           var key_pressed_str = jsPsych.pluginAPI.convertKeyCodeToKeyCharacter(key_pressed); // convert the numerical code to string
+           if (keys_register_reward.includes(key_pressed_str)){
+             return false;
+           } else {
+             return true;
+           }
+         } // conditional function
+       } // if respond faster
+      timeline.push(if_respond_faster)
+
+// ---------------------- present end block instructions -----------------------
+
+      var if_block_RL_over = {
+          timeline: [block_over_trial],
+          conditional_function: function(){
+            var curr_ind = jsPsych.data.get().filter({category: 'see_reward'}).last(1).values()[0].index;
+            // if this is not the last trial
+            if (curr_ind != n_reward_trials-1) {
+              // check if the current block will change from the block in the next trial
+                if (Reward_learning[curr_ind].block != Reward_learning[curr_ind+1].block){
+                  return true;
+                } else { return false; } // the next block is similar to the current one
+              } else { return false; } // this is the last trial
+            } // conditional_function
+        } // if_block_over
+        timeline.push(if_block_RL_over)
+
+  } // for reward learning trials
+
+  // -------------------- present percentage of earnings -----------------------
+
+ var deliberaiton_earnings = {
+     type: "html-keyboard-response",
+     choices: keys_go_next,
+     data: {category: 'deliberation_reward_tally'},
+     stimulus: "<p>Congratulations! We played out for real one of your decisions, and you earned extra ${0}<p><br>Press 'N' to continue</br>",
+     on_start: function(trial){
+       var reward = mu_reward * percent_Del_bonus; // get $1.5 for all subjects
+       trial.stimulus =  String.format(trial.stimulus, reward);
+       jsPsych.data.get().addToLast({deliberation_reward_tally: reward});
+      }
+    };
+   timeline.push(deliberaiton_earnings)
+
+// =========================== Final decisions phase ===========================
+
+// We use the following types of trials:
+// 1. instructions + quiz, if one or more answers are incorrect, we loop the instructions and quiz again.
+// 2. fixation between decision trials
+// 3. decisions between pairs of objects
+// 4. confirmation of choice
+// 5. respond faster screen if the decision was not made withitn the time limit
+// 6. end of block - a chance to rest
+
+  // Final decisions instructions
+  var final_decisions_instructions = {
+        type: 'instructions',
+        pages: ["<div><img class='instructions' src='Stimuli/Instructions/Final_decisions.png'</img></div>",
+                "<div><img class='instructions' src='Stimuli/Instructions/start_quiz.png'</img></div>"],
+        data: {category: "final_decisions_instructions"},
+        show_clickable_nav: true
+      };
+
+  // activate function to present a looping quiz (loops until you get all answers correctly)
+  repeat_final_decisions_instructions = present_quiz_instructions(final_decisions_instructions, 'final_decisions_comprehension_check', quiz_qs.final_decisions, quiz_answers.final_decisions)
+
+  // push the repeated quiz and also present next screens after they get it correctly.
+  timeline.push(repeat_final_decisions_instructions,start_phase)
+
+// -----------------------------------------------------------------------------
+
+  for (t = 0; t < n_trials_FD; t++) {
+
+   var final_decisions_trial = {
+      type: 'html-keyboard-response',
+      data: {category: 'final_decisions',
+             index: t},
+      stimulus: decisions_stims,
+      choices: keys_decision,
+      trial_duration: timing_FD,
+      response_ends_trial: true,
+      on_start: function(trial){
+        trial.data.stimulus_left = Final_decisions[trial.data.index].stimulus_left;
+        trial.data.stimulus_right = Final_decisions[trial.data.index].stimulus_right;
+        trial.stimulus = String.format(trial.stimulus, propmt_decision, image_folder + "/" + Stimuli[trial.data.stimulus_left][1], image_folder + "/" + Stimuli[trial.data.stimulus_right][1]);
+      },
+      on_finish: function(data){
+        // update data matrix per trial
+        var curr_ind = jsPsych.data.get().last(1).values()[0].index;
+        data.stimulus_left_deliberation_ind  = Final_decisions[curr_ind].stimulus_left_ind;
+        data.stimulus_right_deliberation_ind = Final_decisions[curr_ind].stimulus_right_ind;
+        data.painting_left                   = Final_decisions[curr_ind].painting_left;
+        data.painting_right                  = Final_decisions[curr_ind].painting_right;
+        data.rating_left                     = Final_decisions[curr_ind].rating_left;
+        data.rating_right                    = Final_decisions[curr_ind].rating_right;
+        data.chosen_trial                    = Final_decisions[curr_ind].chosen_trial;
+        data.gain_left                       = Final_decisions[curr_ind].gain_left;
+        data.block                           = Final_decisions[curr_ind].block;
+        if(data.key_press == jsPsych.pluginAPI.convertKeyCharacterToKeyCode(keys_decision[0])) { // 'f' (left) was chosen
+          data.left_chosen = 1;
+          Final_decisions[curr_ind].left_chosen = 1;
+          data.chosen_obj = Final_decisions[curr_ind].stimulus_left;
+          data.unchosen_obj = Final_decisions[curr_ind].stimulus_right;
+        }  else if (data.key_press == jsPsych.pluginAPI.convertKeyCharacterToKeyCode(keys_decision[1])){
+          data.left_chosen = 0;
+          Final_decisions[curr_ind].left_chosen = 0;
+          data.chosen_obj = Final_decisions[curr_ind].stimulus_right;
+          data.unchosen_obj = Final_decisions[curr_ind].stimulus_left;
+        } // else
+        if (!isNaN(data.left_chosen)){ // only for actual responses
+          // assess whether higher outcome was chosen
+          if (data.left_chosen == data.gain_left){
+            data.higher_outcome_chosen = 1;
+          } else {
+            data.higher_outcome_chosen = 0;
+          }
+        } // if isNaN
+      } // on_finish
+    } // trial final decisions
+
+// -----------------------------------------------------------------------------
+
+    confirmation_trial = {
+      type: 'html-keyboard-response',
+      data: {category: 'choice_confirmation',
+             index: t},
+      stimulus: choice_confirm_stims,
+      choices: jsPsych.NO_KEYS,
+      trial_duration: timing_confirmation,
+      response_ends_trial: true,
+      on_start: function(trial){
+        // decide which stimuli to present
+        trial.data.stimulus_left = Final_decisions[trial.data.index].stimulus_left;
+        trial.data.stimulus_right = Final_decisions[trial.data.index].stimulus_right;
+        // we decide which css object to include according to the decision of the subject. for the chosen object we use the class "object confirm"
+        if (Final_decisions[trial.data.index].left_chosen==1){
+          trial.stimulus = String.format(trial.stimulus, propmt_decision, "object confirm" ,image_folder + "/" + Stimuli[trial.data.stimulus_left][1], "object", image_folder + "/" + Stimuli[trial.data.stimulus_right][1]);
+        } else {
+          trial.stimulus = String.format(trial.stimulus, propmt_decision, "object" ,image_folder + "/" + Stimuli[trial.data.stimulus_left][1], "object confirm", image_folder + "/" + Stimuli[trial.data.stimulus_right][1]);
+        } // else
+      } // on_start
+    } // confirmation_trial
+
+      timeline.push(fixation_trial, final_decisions_trial)
+
+// -----------------------------------------------------------------------------
+
+      // present confirmation only if there was a response
+      var if_confirmation = {
+        timeline: [confirmation_trial],
+        conditional_function: function(){
+          if (jsPsych.data.get().filter({category: 'final_decisions'}).last(1).values()[0].key_press){
+            return true;
+          } else {
+            return false;
+          } // else
+        } // conditional function
+      } // if_confirmation
+
+      timeline.push(if_confirmation)
+
+// -----------------------------------------------------------------------------
+
+      // if there was no response, present "respond faster"
+      var if_respond_faster = {
+        timeline: [respond_faster_trial],
+        conditional_function: function(data){
+          if (jsPsych.data.get().filter({category: 'final_decisions'}).last(1).values()[0].key_press){
+            return false;
+          } else {
+            return true;
+          } // else
+        } // conditional function
+      } // if respond faster
+      timeline.push(if_respond_faster)
+
+  // -----------------------------------------------------------------------------
+
+      var if_block_FD_over = {
+          timeline: [block_over_trial],
+          conditional_function: function(){
+            var curr_ind = jsPsych.data.get().filter({category: 'final_decisions'}).last(1).values()[0].index;
+            // if this is not the last trial
+            if (curr_ind != n_trials_FD-1) {
+              // if so, check if the current block will change from the block in the next trial
+                if (Final_decisions[curr_ind].block != Final_decisions[curr_ind+1].block){
+                  return true;
+                } else { return false; } // the next block is similar to the current one
+              } else { return false; } // this is the last trial
+            } // conditional_function
+        } // if_block_over
+        timeline.push(if_block_FD_over)
+
+    } // final decisions loop
+
+// ============================= Memory test phase =============================
+
+// The phase includes the following trial types:
+// 1. instructions + quiz, if one or more answers are incorrect, we loop the instructions and quiz again.
+// 2. fixation between memory trials
+// 3. memory for pairs (two objects are presented and subjects decide whether they are old or new)
+// 4. presentation of pairs memory response (OLD or NEW in the center of the screen)
+// 5. if the pairs were identified as old: we ask which of the two paintings the subject had previously chosen
+// 6. confirmation of the chosen object.
+
+  // Final decisions instructions
+  var memory_test_instructions = {
+        type: 'instructions',
+        pages: ["<div><img class='instructions' src='Stimuli/Instructions/Memory_test.png'</img></div>",
+                "<div><img class='instructions' src='Stimuli/Instructions/start_quiz.png'</img></div>"],
+        data: {category: "memory_test_instructions"},
+        show_clickable_nav: true
+      };
+
+  // activate function to present a looping quiz (loops until you get all answers correctly)
+  repeat_memory_instructions = present_quiz_instructions(memory_test_instructions, 'memory_comprehension_check', quiz_qs.memory, quiz_answers.memory)
+
+  // push the repeated quiz and also present next screens after they get it correctly.
+  timeline.push(repeat_memory_instructions,start_phase)
+
+// -----------------------------------------------------------------------------
+
+  // Run over memory trials
+  for (t = 0; t < n_memory_trials; t++) {
+
+   var memory_pairs_trial = {
+      type: 'html-keyboard-response',
+      data: {category: 'memory_pairs',
+             index: t},
+      stimulus: decisions_stims,
+      choices: keys_memory_old_new,
+      response_ends_trial: true, // self paced
+      on_start: function(trial){
+        trial.data.stimulus_left = Memory_mat[trial.data.index].stimulus_left;
+        trial.data.stimulus_right = Memory_mat[trial.data.index].stimulus_right;
+        trial.stimulus = String.format(trial.stimulus, prompt_pair_memory, image_folder + "/" + Stimuli[trial.data.stimulus_left][1], image_folder + "/" + Stimuli[trial.data.stimulus_right][1]);
+      },
+      on_finish: function(data){
+        // update data matrix per trial
+        var curr_ind = jsPsych.data.get().last(1).values()[0].index;
+        data.old_pair = Memory_mat[curr_ind].old_pair;
+        data.chosen_object = Memory_mat[curr_ind].chosen_object;
+        data.rt_pairs = data.rt;
+        data.left_object_chosen = NaN;
+        data.rt_object = NaN;
+        if(data.key_press == jsPsych.pluginAPI.convertKeyCharacterToKeyCode(keys_memory_old_new[0])) { // 'f' (left) was chosen
+          data.old_response = 1;
+          Memory_mat[curr_ind].old_response = 1;
+        }  else if (data.key_press == jsPsych.pluginAPI.convertKeyCharacterToKeyCode(keys_memory_old_new[1])){
+          data.old_response = 0;
+          Memory_mat[curr_ind].old_response = 0;
+        } // else
+      } // on_finish
+    } // memory_pairs_trial
+
+// -----------------------------------------------------------------------------
+
+    memory_pairs_confirmation_trial = {
+      type: 'html-keyboard-response',
+      data: {category: 'memory_pairs_confirmation_trial',
+             index: t},
+      stimulus: '<p style="font-size:150%">{0}</p>',
+      choices: jsPsych.NO_KEYS,
+      trial_duration: timing_confirmation,
+      response_ends_trial: false,
+      on_start: function(trial){
+        // decide which text to present
+        if (Memory_mat[trial.data.index].old_response==1){
+          trial.stimulus = String.format(trial.stimulus, "INTACT");
+        } else if (Memory_mat[trial.data.index].old_response==0) {
+          trial.stimulus = String.format(trial.stimulus, "RECOMBINED");
+        } // else
+      } // on_start
+    } // memory_pairs_confirmation_trial
+
+      timeline.push(fixation_trial, memory_pairs_trial, memory_pairs_confirmation_trial)
+
+// -----------------------------------------------------------------------------
+
+      memory_chosen_object_trial = {
+        type: 'html-keyboard-response',
+        data: {category: 'memory_chosen_object',
+               index: t},
+      stimulus: decisions_stims,
+      choices: keys_decision,
+      response_ends_trial: true,
+      on_start: function(trial){
+        trial.data.stimulus_left = Memory_mat[trial.data.index].stimulus_left;
+        trial.data.stimulus_right = Memory_mat[trial.data.index].stimulus_right;
+        trial.stimulus = String.format(trial.stimulus, prompt_decision_memory, image_folder + "/" + Stimuli[trial.data.stimulus_left][1], image_folder + "/" + Stimuli[trial.data.stimulus_right][1]);
+      }, // on_start
+      on_finish: function(data){
+        data.rt_object = data.rt;
+        var curr_ind = jsPsych.data.get().last(1).values()[0].index;
+        // update data matrix per trial
+        if(data.key_press == jsPsych.pluginAPI.convertKeyCharacterToKeyCode(keys_decision[0])) { // 'f' (left) was chosen
+          data.left_object_chosen = 1;
+          Memory_mat[curr_ind].left_object_chosen = 1;
+        } else if (data.key_press == jsPsych.pluginAPI.convertKeyCharacterToKeyCode(keys_decision[1])){
+          data.left_object_chosen = 0;
+          Memory_mat[curr_ind].left_object_chosen = 0;
+        } // else
+      } // on_finish
+    } // memory_chosen_object_trial
+
+// -----------------------------------------------------------------------------
+
+    var memory_chosen_object_confirmation_trial = {
+      type: 'html-keyboard-response',
+      data: {category: 'memory_chosen_object_confirmation',
+             index: t},
+      stimulus: choice_confirm_stims,
+      choices: jsPsych.NO_KEYS,
+      trial_duration: timing_confirmation,
+      response_ends_trial: false,
+      on_start: function(trial){
+        // decide which stimuli to present
+        trial.data.stimulus_left = Memory_mat[trial.data.index].stimulus_left;
+        trial.data.stimulus_right = Memory_mat[trial.data.index].stimulus_right;
+        // we decide which css object to include according to the decision of the subject. for the chosen object we use the class "object confirm"
+        if (Memory_mat[trial.data.index].left_object_chosen==1){
+          trial.stimulus = String.format(trial.stimulus, prompt_decision_memory, "object confirm" ,image_folder + "/" + Stimuli[trial.data.stimulus_left][1], "object", image_folder + "/" + Stimuli[trial.data.stimulus_right][1]);
+        } else if (Memory_mat[trial.data.index].left_object_chosen==0) {
+          trial.stimulus = String.format(trial.stimulus, prompt_decision_memory, "object" ,image_folder + "/" + Stimuli[trial.data.stimulus_left][1], "object confirm", image_folder + "/" + Stimuli[trial.data.stimulus_right][1]);
+        } // else
+      } // on_start
+    } // memory_chosen_object_confirmation_trial
+
+      // present choice and confirmation only in trials where the pairs were identified as "old"
+      var if_old = {
+        timeline: [memory_chosen_object_trial, memory_chosen_object_confirmation_trial],
+        conditional_function: function(){
+          if (jsPsych.data.get().filter({category: 'memory_pairs'}).last(1).values()[0].old_response==1){
+            return true;
+          } else {
+            return false;
+          } // else
+        } // conditional function
+      } // if_old
+
+      timeline.push(if_old)
+
+    } // memory test loop
+
+
+        // ============================= Final ratings phase =============================
+
+        /// Two types of trials are used in the rating phase:
+        // 1. instructions + quiz, if one or more answers are incorrect, we loop the instructions and quiz again.
+        // 2. rating of each object in a continuous scale.
+
+          // Rating instructions
+          var final_ratings_instructions = {
+                type: 'instructions',
+                pages: [
+                    "<div><img class='instructions' src='Stimuli/Instructions/Final_ratings.png'</img></div>",
+                    "<div><img class='instructions' src='Stimuli/Instructions/start_quiz.png'</img></div>"],
+                data: {category: "final_ratings_instructions"},
+                show_clickable_nav: true
+              };
+
+          // activate function to present a looping quiz (loops until you get all answers correctly)
+          repeat_final_ratings_instructions = present_quiz_instructions(final_ratings_instructions, 'final_ratings_comprehension_check', quiz_qs.final_ratings, quiz_answers.final_ratings)
+
+          // push the repeated quiz and also present next screens after they get it correctly.
+          timeline.push(repeat_final_ratings_instructions,start_phase)
+
+        // -----------------------------------------------------------------------------
+
+        // Final ratings trial
+        for (t = 0; t < n_ratings; t++){
+          // var rating_trial = [];
+          var final_ratings_trial = {
+            type: 'html-slider-response',
+            data: {category: 'final_ratings',
+                   index: t},
+            stimulus: '<img class="object" src="{0}/{1}" />',
+            labels: ['Not at all', 'Very much'],
+            response_ends_trial: true,
+            prompt: '<p>How much do you like this painting?</p>',
+            on_start: function(trial){
+              trial.data.stimulus = Final_ratings[trial.data.index].painting;
+              trial.stimulus = String.format(trial.stimulus, image_folder, trial.data.stimulus);
+            },
+            on_finish: function(data){
+              data.new_rating = jsPsych.data.get().last(1).values()[0].response;
+              // add trial data to ratings Array
+              var curr_ind = jsPsych.data.get().last(1).values()[0].index;
+              Final_ratings[curr_ind].new_rating = jsPsych.data.get().last(1).values()[0].response;
+              data.stimulus_id = Final_ratings[curr_ind].stimulus;
+              data.painting = Final_ratings[curr_ind].painting;
+              data.chosen_obj = Final_ratings[curr_ind].chosen_obj;
+              data.deliberated_stim = Final_ratings[curr_ind].deliberated_stim;
+              data.initial_rating = Final_ratings[curr_ind].initial_rating;
+              data.reward_type = Final_ratings[curr_ind].reward_type;
+            } // on_finish
+          } // final_ratings_trial
+          timeline.push(final_ratings_trial);
+        } // for trials
+
+        // ============================= Outcome evaluation phase =============================
+
+        /// Two types of trials are used in the rating phase:
+        // 1. instructions + quiz, if one or more answers are incorrect, we loop the instructions and quiz again.
+        // 2. binary measure of outcomes.
+
+          // Rating instructions
+          var outcome_evaluation_instructions = {
+                type: 'instructions',
+                pages: [
+                    "<div><img class='instructions' src='Stimuli/Instructions/Outcome_evaluation.png'</img></div>",
+                    "<div><img class='instructions' src='Stimuli/Instructions/start_quiz.png'</img></div>"],
+                data: {category: "outcome_evaluation_instructions"},
+                show_clickable_nav: true
+              };
+
+          // activate function to present a looping quiz (loops until you get all answers correctly)
+          repeat_outcome_evaluation_instructions = present_quiz_instructions(outcome_evaluation_instructions, 'outcome_evaluation_comprehension_check', quiz_qs.outcome_evaluation, quiz_answers.outcome_evaluation)
+
+          // push the repeated quiz and also present next screens after they get it correctly.
+          timeline.push(repeat_outcome_evaluation_instructions,start_phase)
+
+        // -----------------------------------------------------------------------------
+
+        // outcome evaluation trial
+        for (t = 0; t < n_outcome_evaluation_trials; t++){
+          var outcome_evaluation_trial = {
+              type: 'html-keyboard-response',
+              data: {category: 'outcome_evaluation',
+                     index: t},
+              stimulus: see_reward_stim,
+              choices: keys_outcome_eval,
+              response_ends_trial: true,
+              on_start: function(trial){
+                trial.data.stimulus_id = Outcome_evaluation[trial.data.index].stimulus;
+                trial.stimulus = String.format(trial.stimulus, prompt_outcome_eval, image_folder + "/" + Stimuli[trial.data.stimulus_id][1]); // full path
+              },
+              on_finish: function(data){
+                var curr_ind = jsPsych.data.get().last(1).values()[0].index;
+                // insert relevant columns to DATA
+                data.painting = Outcome_evaluation[curr_ind].painting;
+                data.initial_rating = Outcome_evaluation[curr_ind].initial_rating;
+                data.chosen_obj = Outcome_evaluation[curr_ind].chosen_obj;
+                data.reward_type = Outcome_evaluation[curr_ind].reward_type;
+                data.outcome_eval_rt = data.rt;
+                if(data.key_press == jsPsych.pluginAPI.convertKeyCharacterToKeyCode(keys_outcome_eval[0])) { // 'up' (gain) was chosen
+                  data.outcome_eval_response = 1;
+                  Outcome_evaluation[curr_ind].outcome_eval_response = 1;
+                  data.outcome_eval_gain = 1;
+                }  else if (data.key_press == jsPsych.pluginAPI.convertKeyCharacterToKeyCode(keys_outcome_eval[1])){ // 'down' (no gain) was chosen
+                  data.outcome_eval_response = -1;
+                  Outcome_evaluation[curr_ind].outcome_eval_response = -1;
+                  data.outcome_eval_gain = 0;
+                } // else
+                if (data.reward_type == data.outcome_eval_response){
+                  data.outcome_eval_acc = 1;
+                } else {
+                  data.outcome_eval_acc = 0;
+                } // else
+              } // on_finish
+            } // outcome_evaluation_trial
+
+           outcome_evaluation_confirmation_trial = {
+              type: 'html-keyboard-response',
+              data: {category: 'outcome_evaluation_confirmation',
+                     index: t},
+              stimulus: '<p style="font-size:150%">{0}</p>',
+              choices: jsPsych.NO_KEYS,
+              trial_duration: timing_confirmation,
+              response_ends_trial: false,
+              on_start: function(trial){
+                // decide which text to present
+                if (Outcome_evaluation[trial.data.index].outcome_eval_response==1){
+                  trial.stimulus = String.format(trial.stimulus, "GAIN");
+                } else if (Outcome_evaluation[trial.data.index].outcome_eval_response==-1) {
+                  trial.stimulus = String.format(trial.stimulus, "NO GAIN");
+                } // else
+              } // on_start
+            } // memory_pairs_confirmation_trial
+
+              timeline.push(fixation_trial, outcome_evaluation_trial, outcome_evaluation_confirmation_trial)
+
+          // -----------------------------------------------------------------------------
+
+          // Confidence
+          var outcome_evaluation_confidence = {
+              type: 'survey-likert',
+              data: {category: 'outcome_evaluation_confidence',
+                     index: t},
+              preamble: '<img class="object" src="{0}/{1}" />',
+              questions: [{prompt: 'How confident you are in your response?',labels: ['1<br>Completely unsure', '2', '3', '4', '5', '6<br>Completely sure'], required: true}],
+              on_start: function(trial){
+                trial.data.preamble = Outcome_evaluation[trial.data.index].painting;
+                trial.preamble = String.format(trial.preamble, image_folder, trial.data.preamble);
+              },
+              on_finish: function(data){
+                // add trial data to ratings Array
+                var curr_ind = jsPsych.data.get().last(1).values()[0].index;
+                data.stimulus_id = Outcome_evaluation[curr_ind].stimulus;
+                var outcome_response = data.responses;
+                data.outcome_eval_confidence = Number(outcome_response.match(/\d/g)[1]) + 1; // we add 1 because the numbering is from 0 to 5, but the scale is shown as 1 to 6.
+                data.outcome_eval_confidence_rt = data.rt;
+              } // on_finish
+            } // outcome_evaluation_confidence
+            timeline.push(outcome_evaluation_confidence);
+
+          } // for trials
+
+// ============================= End experiment =============================
+
+// debreif
+  var debrief = [
+    // intro
+  { type: 'html-keyboard-response',
+    data: {category: 'debreif_intro'},
+    stimulus: "You have completed the main part of the study. We will now ask you a few short questions."+
+              "<br>Please answer them sincerely. Once again, we remind you that your answers are completely anonymous.</br>" +
+              "<br>Please press the 'N' key to begin.</br>",
+    choices: keys_go_next,
+    response_ends_trial: true},
+    // age
+  { type: 'survey-text',
+    questions: [{prompt: 'How old are you?', columns: 20, rows: 1}],
+    data: {category: 'debreif_age'}},
+    // gender
+  { type: 'survey-multi-choice',
+    questions: [{prompt: 'What is your gender?', options: ['Female','Male','Other'], required: true}],
+    data: {category: 'debreif_gender'}},
+    // dominant hand
+  { type: 'survey-multi-choice',
+    questions: [{prompt: 'What is your dominant hand?', options: ['Left','Right'], required: true}],
+    data: {category: 'debreif_dominant_hand'}},
+    // native language
+  { type: 'survey-multi-choice',
+    questions: [{prompt: 'Is English your native language?', options: ['Yes','No'], required: true}],
+    data: {category: 'debreif_native_language'}},
+    // fluency in english
+  { type: 'survey-likert',
+    questions: [{prompt: 'How fluent are you in reading and understanding English?',labels: ['1<br>Not at all', '2', '3', '4', '5<br>Very fluent'],required: true}],
+    data: {category: 'debreif_fluency'}},
+    // art expertise
+  { type: 'survey-multi-choice',
+    questions: [{prompt: 'How would you classify your experience with art?', options: ['Novice', 'Enthusiast', 'Artist', 'Art-historian'], required: true}],
+    data: {category: 'debreif_art_experience'}},
+    // art per week
+  { type: 'survey-text',
+    questions: [{prompt: 'How many hours do you spend per week looking at art?', columns: 20, rows: 1}],
+    data: {category: 'debreif_art_time_spent'}},
+    // clarity of instructions and strategies
+  { type: 'survey-text',
+    questions: [{prompt: 'Did you use any type of strategy in the final decisions phase (right before the memory questions)?', columns: 60, rows: 15}],
+    data: {category: 'debreif_strategy_FD'}},
+  { type: 'survey-text',
+    questions: [{prompt: 'In the same decisions phase, some of the pairs included paintings we did not show you their auction outcomes. How did you decide which one to choose in these pairs?', columns: 60, rows: 15}],
+    data: {category: 'debreif_strategy_unchosen'}},
+  { type: 'survey-text',
+    questions: [{prompt: 'Did you use any type of strategy in the decisions phase in the begining of the study where you had to choose which painting should go on auction?',columns: 60, rows: 15}],
+    data: {category: 'debreif_strategy_deliberation'}},
+  { type: 'survey-text',
+    questions: [{prompt: 'Was there anything in the instructions you found unclear?',columns: 60, rows: 15}],
+    data: {category: 'debreif_clear_instructions'}},
+  // coronavirus intro
+  { type: 'html-keyboard-response',
+      data: {category: 'coronavirus_intro'},
+      stimulus: "We will now ask you a few questions about the Coronavirus pandemic."+
+                "<br>Please answer them sincerely.</br>" +
+                "<br>Please press the 'N' key to begin.</br>",
+      choices: keys_go_next,
+      response_ends_trial: true},
+  // anxiety coronavirus
+  { type: 'survey-likert',
+    questions: [{prompt: 'How anxious do you feel about the Coronavirus pandemic?',labels: ['1<br>Not at all', '2', '3', '4', '5', '6<br>Very much'],required: true}],
+    data: {category: 'corona_anxiety'}},
+  // general cognitive performance
+  { type: 'survey-likert',
+    questions: [{prompt: 'Do you feel the Coronavirus pandemic has affected<br>your cognitive performance in general?<br>',labels: ['1<br>Not at all', '2', '3', '4', '5', '6<br>Very much'],required: true}],
+    data: {category: 'corona_general_performance'}},
+  // current task performance
+  { type: 'survey-likert',
+    questions: [{prompt: 'Do you feel the Coronavirus pandemic has affected<br>your performance during this experiment?<br>',labels: ['1<br>Not at all', '2', '3', '4', '5', '6<br>Very much'],required: true}],
+    data: {category: 'corona_task_performance'}},
+  // free text about corona effects
+  { type: 'survey-text',
+    questions: [{prompt: 'If you feel the Coronavirus pandemic has affected your cognitive performance in general or during this task, please describe how.', columns: 60, rows: 15}],
+    data: {category: 'corona_performance_text'}},
+
+    // compute extra rewards given to subjects
+  { type: "html-keyboard-response",
+    stimulus: function() {
+      var reward_FD = jsPsych.data.get().filter({category: 'final_decisions', chosen_trial: 1}).select('higher_outcome_chosen').sum() * reward_per_correct_reponse;
+      var reward_Delliberation = Number(jsPsych.data.get().filter({category: 'reward_outcome'}).last(1).values()[0].deliberation_reward_tally);
+      var total_reward = reward_FD + reward_Delliberation;
+      if (total_reward < 0 | total_reward == 0) {
+      var given_reward = 0;
+      var extra_reward = 'Unfortunately, you did not earn extra money in this study';
+    } else if (total_reward > max_extra | total_reward == max_extra){
+      var given_reward = max_extra;
+      var extra_reward = 'Congratulations! Your total extra earnings in the experiment are $' + given_reward;
+    } else if (total_reward < max_extra & total_reward > 0){
+      var given_reward = total_reward.toFixed(2);
+      var extra_reward = 'Congratulations! Your total extra earnings in the experiment are $' + given_reward;
+    }
+    jsPsych.data.get().addToLast({total_reward_tally: given_reward});
+      return '<p>Thank you for participating in this study!<br></br>' + extra_reward +
+             '<br>Your survey code is: ' + subID + '</br>' +
+             '<br>In order to receive payment, you must provide the above code on the survey link page on mturk.<br/>'+
+             '<br>Once you press the space bar, your results will be uploaded to the server, and the experiment will complete.<br/>'+
+             'This may take several minutes - do not refresh or close your browser during this time.<br></br>'+
+             'After your results will be uploaded the screen will turn grey, and you may submit your code.<br></br>'+
+             'Press the space bar to complete this experiment.</p>'
+    },
+    choices: [' '],
+    data: {category: 'final_reward_tally'}},
+  { type: 'html-keyboard-response',
+    stimulus: '<p>Data uploading... The screen will turn grey when all data are uploaded.</p>',
+    choices: jsPsych.NO_KEYS,
+    trial_duration: 6000,
+    data: {category: 'debreif_end'}
+  }];
+
+  timeline = timeline.concat(debrief);
+
+    // start the experiment
+    jsPsych.init({
+      timeline: timeline,
+      preload_images: images,
+      exclusions: {min_width: 1000,
+                  min_height: 700},
+      on_interaction_data_update: function(data){
+        data.PID = subID;
+      },
+      on_finish: function() {
+        var server = 1; // 0 for debuging and running the experiment locally, and 1 for running the experiment on the server.
+        // save Data
+        if (server==0) { // local
+          jsPsych.data.get().ignore('stimulus').localSave('csv','data.csv');
+          var interaction_data = jsPsych.data.getInteractionData();
+          // log data to console in json format
+          console.log(interaction_data.json());
+          //jsPsych.data.getInteractionData().localSave('csv','interaction_data.csv');
+        } else if (server==1) { // server
+          var subject = jsPsych.data.get().last(1).select('PID').values[0];
+          saveData('S_' + subject + '_' + timeStamp(), jsPsych.data.get().ignore('stimulus').csv());
+          saveData('Interactive_S_' + subject + '_' + timeStamp(), jsPsych.data.getInteractionData().csv())
+        } // else
+      } // on_finish
+    });
+
+</script>
+
+</html>
