@@ -1,0 +1,4073 @@
+---
+title: "Analysis code"
+subtitle: "fMRI version - counterfactuals task"
+author: "Natalie Biderman"
+date: "12/27/2022"
+output: 
+  html_document:
+    #css: Functions/style.css
+    toc: true
+    toc_float: true
+    code_folding: hide
+---
+
+
+```{css echo=FALSE}
+/* Define a margin before h2 and h3 elements */
+h2, h3, h4  {
+  margin-top: 2em;
+}
+
+``` 
+
+## Setup and load data
+
+```{r setup, echo=T, results='hide', message=FALSE, warning=FALSE}
+
+rm(list=ls(all=TRUE)) 
+
+knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE)
+
+# If packages are not installed, install. Then, load libraries. 
+list_of_packages <- c("ggplot2", "Rmisc", "cowplot", "reshape2", "gridExtra", "arm", "mosaic", "stringr", "tidyr", "dplyr", "bayesplot", "rstanarm", "latex2exp", "kableExtra", "tibble")
+
+new_packages <- list_of_packages[!(list_of_packages %in% installed.packages()[,"Package"])]
+if(length(new_packages)) install.packages(new_packages)
+lapply(list_of_packages, require, character.only = TRUE)
+
+# Load functions
+source("Tools/create_csv_from_js_data.R")
+source("Tools/create_interactive_csv_from_js_data.R")
+source("Tools/create_event_log.R")
+source("Tools/preprocess_js_data_counterfactuals.R")
+source("Tools/plotting.R")
+
+# Figure parameters
+fig_size = c(10,10)
+fig_type = "svg"  # "eps" # or png
+n_sem <- 1
+Save_plots <- 1
+point_size <- 4.5
+point_stroke <- 0.6
+line_size <- 1
+color_pallete <- "Dark2"
+
+# Bayesian model params
+options(mc.cores = parallel::detectCores())
+params <- list()
+params$iterations <- 4000
+params$chains <- 4
+params$warmup <- 2000
+params$adapt_delta <- 0.99
+
+# Do you want to run the models or load them?
+run_models = 0;
+
+# Do you want to preprocess data or load it? 
+preprocess_data = 1;
+
+processed_all_data_path = "Data/All_data";
+processed_clean_data_path = "Data/Clean_data";
+preprocessed_data_folder = processed_all_data_path;
+raw_data_path = "../Piloting/single_category/Data";
+individual_data_folder = sprintf("%s/Individual_data/",raw_data_path)
+
+# Load data 
+if (preprocess_data == 1){
+  preprocess_js_data_counterfactuals(raw_data_path,preprocessed_data_folder)
+} 
+
+df <- list(read.csv(paste0(preprocessed_data_folder,"/df_ratings.csv")),
+           read.csv(paste0(preprocessed_data_folder,"/df_deliberation.csv")), 
+           read.csv(paste0(preprocessed_data_folder,"/df_reward_learning.csv")),
+           read.csv(paste0(preprocessed_data_folder,"/df_final_decisions.csv")),
+           read.csv(paste0(preprocessed_data_folder,"/df_memory.csv")),
+           read.csv(paste0(preprocessed_data_folder,"/df_outcome_evaluation.csv")),
+           read.csv(paste0(preprocessed_data_folder,"/df_final_ratings.csv")),
+           read.csv(paste0(preprocessed_data_folder,"/df_debreif.csv")),
+           read.csv(paste0(preprocessed_data_folder,"/interaction.csv")),
+           read.csv(paste0(preprocessed_data_folder,"/Raw_data/raw_data.csv")))
+
+names(df) <- c("ratings", "deliberation", "reward_learning", "final_decisions", "memory", "outcome_evaluation", "final_ratings", "debreif", "interaction_data", "all_data")
+
+```
+
+# Create events onset and duration files 
+
+```{r}
+
+event_log <- df$events_log %>%
+  subset(block > 0 & event %in% c("choice", "feedback", "no_response", "no_response_prompt")) %>%
+  mutate(task_name = ifelse(task == "category_learning", "CAT", ifelse(task == "size", "SIZE", "RL")),
+         event_name = case_when(event == "choice" ~ 1,
+                                event == "feedback" ~ 2,
+                                event == "no_response" ~ 3,
+                                event == "no_response_prompt" ~ 4))
+
+subs <- unique(df$events_log$PID)
+
+for (sub in subs){
+  curr_sub <- event_log[event_log$PID == sub,]
+  tasks <- unique(curr_sub$task_name)
+  for (task in tasks){
+    curr_task <- curr_sub[curr_sub$task_name == task,]
+    blocks <- unique(curr_task$block)
+    for (block in blocks){
+      curr_block <- curr_task[curr_task$block == block,] 
+      events <- unique(curr_block$event_name)
+      for (event in events){
+        curr_event <- curr_block[curr_block$event_name == event,] %>%
+          dplyr::arrange(index) %>%
+          dplyr::select(onset_time_elapsed, duration_time_elapsed) %>%
+          mutate(relative_strength = 1)
+        file_name = sprintf("sub-CAT%.2d_ses-ShohamyCATlearning_task-%s_run-%d_ev-%.3d", sub, task, block, event)
+        write.table(curr_event, paste0(data_path,"/Events/",file_name,".tsv"), sep="\t", row.names=FALSE, col.names=FALSE)
+      }
+    }
+  }
+}
+
+```
+
+# Compute bonus money 
+
+```{r}
+
+# load raw data
+raw_df <- list(read.csv(paste0(data_path,"/Raw_data/raw_category_learning.csv")), 
+               read.csv(paste0(data_path,"/Raw_data/raw_size.csv")),
+               read.csv(paste0(data_path,"/Raw_data/raw_rl.csv")))
+names(raw_df) <- c("category_learning", "size", "rl")
+
+# ==============================================================================
+# compute bonus money 
+# ==============================================================================
+
+final_tally_category <- raw_df$category_learning %>% 
+  subset(!is.na(total_bonus_tally)) %>% 
+  dplyr::select(PID, total_bonus_tally) %>% 
+  dplyr::rename(category_learning = "total_bonus_tally")
+
+final_tally_size <- raw_df$size %>% 
+  subset(!is.na(size_final_tally)) %>% 
+  dplyr::select(PID, size_final_tally) %>% 
+  dplyr::rename(size = "size_final_tally")
+
+final_tally_rl <- raw_df$rl %>% 
+  subset(!is.na(total_bonus_tally)) %>% 
+  dplyr::select(PID, total_bonus_tally) %>% 
+  dplyr::rename(rl = "total_bonus_tally")
+
+bonus <- merge(merge(final_tally_category,final_tally_size, by="PID"),final_tally_rl, by="PID") %>%
+  mutate(total_bonus = category_learning + size + rl)
+
+write.csv(bonus %>% dplyr::select(PID, total_bonus), "Data/Bonus/bonus.csv")
+
+print(bonus)
+```
+
+# Save bonus for mturkers 
+
+```{r}
+
+# Create a bonus matrix so we could upload a csv of bonus money with worker IDs 
+# find workers that were not given bonus money yet
+subject_log <- read.csv("Data/Subject_log/subject_log.csv", stringsAsFactors = FALSE)
+if (exists("subject_log")){
+  worker_ID <- subject_log[subject_log$ApprovalStatus=="Pending",
+                        c("Actual.Completion.Code","AmazonIdentifier","AmountBonused")]
+  colnames(worker_ID) <- c("PID","Worker_ID","AmountBonused")
+  bonus$PID <- as.character(bonus$PID)
+  bonus <- left_join(worker_ID, bonus, by = "PID")
+  write.csv(bonus,"Data/Bonus/bonus.csv")
+}
+
+```
+
+# Run diagnostics for mturk participants 
+
+```{r}
+
+# ==============================================================================
+# aggregate warnings throughout the tasks
+# ==============================================================================
+
+warning_category <- raw_df$category_learning %>% 
+  group_by(PID) %>%
+  dplyr::summarize(no_response = sum(no_response, na.rm=1),
+         missed_instruction_checkup = sum(missed_checkup, na.rm=1),
+         category_memory_warning = sum(did_not_enter_response, na.rm=1),
+         task = "category_learning")
+
+warning_size <- raw_df$size %>% 
+  group_by(PID) %>%
+  dplyr::summarize(no_response = sum(no_response, na.rm=1),
+         missed_instruction_checkup = sum(missed_checkup, na.rm=1),
+         category_memory_warning = NaN,
+         task = "size")
+
+warning_rl <- raw_df$rl %>% 
+  group_by(PID) %>%
+  dplyr::summarize(no_response = sum(no_response, na.rm=1),
+         missed_instruction_checkup = sum(missed_checkup, na.rm=1),
+         category_memory_warning = NaN,
+         task = "rl")
+
+warning_task <- bind_rows(warning_category,warning_size,warning_rl) %>%
+  gather(no_response:category_memory_warning, key="event", value="n") %>%
+  subset(n > 0) %>%
+  add_column(ttype = "", .after = "task")
+
+# load interaction data 
+warning_int_data <- read.csv(paste0(data_path,"/df_interaction.csv")) %>%
+  group_by(PID, task, ttype, event) %>%
+  summarize(n = n()) 
+
+warning <- bind_rows(warning_task, warning_int_data) %>%
+  arrange(PID, task, event, ttype, n)
+
+# ==============================================================================
+# find outlier subs
+# ==============================================================================
+
+blur_focus_criterion = 10
+no_response_criterion = 25
+missed_instructions_criterion = 10
+
+warning <- warning %>%
+  mutate(outlier = ifelse(((event == "blur" | event == "focus") & n > blur_focus_criterion) | 
+                            (event == "no_response" & n > no_response_criterion) |
+                            (event == "missed_instructions_criterion" & n > missed_instructions_criterion), 1 ,0))
+
+outlier_subs <- as.numeric(unlist(unique(warning[warning$outlier==1, "PID"])))
+all_df <- df
+for (i in 1:length(df)){
+  df[[i]] <- df[[i]] %>% subset(!PID %in% outlier_subs)
+  write.csv(df[[i]], paste0(clean_data_path,"/df_",names(df)[i],".csv"))
+}
+
+
+```
+
+# Demographics 
+
+```{r, participants}
+
+# age and gender
+demographics <- df$debreif %>%
+  dplyr::summarise(n = n(),
+                   mean_age = mean(age, na.rm=1),
+                   sd_age = sd(age, na.rm=1),
+                   n_females = sum(gender=="Female"),
+                   n_males = sum(gender=="Male"),
+                   n_other = sum(gender=="Other")) %>%
+  mutate(age = sprintf("%.2f \u00b1 %.2f", mean_age, sd_age),
+         gender = sprintf("%.0f females, %.0f males, %.0f other", n_females, n_males, n_other)) %>%
+  dplyr::select(age, gender)
+print(demographics)
+
+```
+# Make sure experiment works ok
+
+```{r}
+
+# ------------------------------------------------------------------------------
+# 1. make sure repetition of exemplars happens only in old trials 
+# ------------------------------------------------------------------------------
+
+left_stims <- df$category_learning %>% subset(is_practice == 0 & no_response == 0) %>% dplyr::select(PID, left_category, left_exemplar, old_trial, repeated_trial) %>% dplyr::rename(category = "left_category", exemplar = "left_exemplar")
+right_stims <- df$category_learning %>% subset(is_practice == 0 & no_response == 0) %>% dplyr::select(PID, right_category, right_exemplar, old_trial, repeated_trial) %>% dplyr::rename(category = "right_category", exemplar = "right_exemplar")
+all_stims <- bind_rows(left_stims, right_stims)
+
+# if there is no repetition of trials, we get 15 exemplars per category shown for novel trials. 
+all_stims %>% 
+  group_by(PID, old_trial, category) %>%
+  dplyr::summarise(n = n())
+
+# no repetition of exemplars 
+all_stims %>% subset(repeated_trial==0) %>% group_by(PID, old_trial, category, exemplar) %>%
+  dplyr::summarise(n = n())
+
+# ------------------------------------------------------------------------------
+# 2. look at distribution of delta values 
+# ------------------------------------------------------------------------------
+
+ggplot(df$category_learning %>% subset(old_trial==0), aes(x=delta_cumulative_value)) + 
+  geom_histogram(binwidth=.9) 
+
+ggplot(df$category_learning %>% subset(old_trial==0), aes(x=delta_cumulative_value)) + 
+  geom_histogram() +
+  facet_wrap(.~PID)
+
+ggplot(df$category_learning %>% subset(old_trial==0), aes(x=left_category_value - right_category_value)) + 
+  geom_histogram(binwidth=.9) +
+  facet_wrap(.~PID)
+  
+# ------------------------------------------------------------------------------
+# 3. check how long each block takes (and make sure it is the same length for all participants and all blocks) - do this for category learning, size and rl 
+# ------------------------------------------------------------------------------
+
+block_duration <- df$events_log %>% 
+  fill(block) %>%
+  fill(index) %>%
+  group_by(PID, task, block) %>%
+  dplyr::summarise(length_duration = sum(duration),
+                   length_duration_time_elapsed = sum(duration_time_elapsed))
+# it seems the last trial of the last block in the category learning task doesn't include a feedback and iti. 
+
+# ------------------------------------------------------------------------------
+# 4. check how many trials each block includes in the category learning task
+# ------------------------------------------------------------------------------
+
+df$category_learning %>% group_by(PID, block) %>%
+  dplyr::summarize(n= n())
+
+# ------------------------------------------------------------------------------
+# 5. look at delta value for size and rl
+# ------------------------------------------------------------------------------
+
+ggplot(df$size, aes(x=delta_size)) + 
+  geom_histogram() +
+  facet_wrap(.~PID)
+
+ggplot(df$rl, aes(x=delta_cumulative_value)) + 
+  geom_histogram() +
+  facet_wrap(.~condition)
+
+prop_rl <- df$rl %>%
+  mutate(acc = ifelse(high_group_on_left == left_chosen, 1, 0)) %>%
+  group_by(PID, condition) %>%
+  dplyr::summarize(p_optimal = mean(acc, na.rm=1))
+
+# ------------------------------------------------------------------------------
+# 6. decide on suitable percentage of bonus money 
+# ------------------------------------------------------------------------------
+
+percentage <- 0.00055
+df$category_learning %>%
+  group_by(PID, block) %>% 
+  dplyr::summarize(chosen_earnings = sum(chosen_exemplar_value, na.rm=1) * percentage,
+                   max_earnings = sum(ifelse(left_exemplar_value>right_exemplar_value, left_exemplar_value, right_exemplar_value), na.rm=1) * percentage,
+                   min_earnings = sum(ifelse(left_exemplar_value<right_exemplar_value, left_exemplar_value, right_exemplar_value), na.rm=1) * percentage) 
+
+percentage <- 0.00075
+df$rl %>%
+  group_by(PID, block) %>% 
+  dplyr::summarize(chosen_earnings = sum(chosen_item_value, na.rm=1) * percentage,
+                   max_earnings = sum(ifelse(left_item_value>right_item_value, left_item_value, right_item_value), na.rm=1) * percentage,
+                   min_earnings = sum(ifelse(left_item_value<right_item_value, left_item_value, right_item_value), na.rm=1) * percentage) 
+
+# ------------------------------------------------------------------------------
+# 7. Check how many old trials appear in every block
+# ------------------------------------------------------------------------------
+
+test <- df$category_learning %>% 
+  mutate(within_cat_test = ifelse(left_category == right_category, 1, 0)) %>%
+  subset(repeated_trial == 0 & within_cat_test==1) %>%
+  group_by(PID, block) %>%
+  dplyr::summarize(n = n())
+
+test
+```
+
+
+# Behavioral analysis 
+
+## present category learning data
+
+```{r}
+
+color_adults_group <- "darkgoldenrod3"
+color_adults_subs <- "darkgoldenrod1"
+color_teens_group <- "cadetblue4"
+color_teens_subs <- "cadetblue3"
+
+df_plotting <- df$category_learning %>% subset(is_practice==0 & !is.na(left_chosen) & !is.na(delta_cumulative_value)) %>%
+  mutate(block = as.factor(block), PID = as.factor(PID))
+
+# adults and teens
+p1 <- ggplot(df_plotting, aes(y=left_chosen,x=delta_cumulative_value)) + 
+  stat_smooth(data = df_plotting %>% subset(group=="adults"), method="glm", method.args = list(family=binomial), se=FALSE, aes(group=PID), size = 0.4, fullrange = TRUE, color=color_adults_subs, size=0.1) +
+  stat_smooth(data = df_plotting %>% subset(group=="teens"), method="glm", method.args = list(family=binomial), se=FALSE, aes(group=PID), size = 0.4, fullrange = TRUE, color=color_teens_subs, size=0.1) +
+  stat_smooth(data = df_plotting %>% subset(group=="adults"), method="glm", method.args = list(family=binomial), color=color_adults_group, fill=color_adults_group) +
+  stat_smooth(data = df_plotting %>% subset(group=="teens"), method="glm", method.args = list(family=binomial), color=color_teens_group, fill=color_teens_group) +
+  geom_hline(yintercept=0.5, size=line_size, linetype="dashed") + 
+  geom_vline(xintercept=0, size=line_size, linetype="dashed") +
+  scale_y_continuous(expand=c(0,0), breaks=c(0,0.5,1), limits=c(0,1.025)) + 
+  scale_x_continuous(expand=c(0,0)) +
+  theme + point_plot_theme + 
+  theme(legend.position = "none") + 
+  labs(y="p(left chosen)", 
+       x="\u0394 Cumulative Value\n(left - right)",
+       title="Category learning by age group") 
+  #scale_fill_brewer(palette=color_pallete) + 
+  #scale_color_brewer(palette=color_pallete) 
+
+# adults only
+p1_adults <- ggplot(df_plotting %>% subset(group=="adults"), aes(y=left_chosen,x=delta_cumulative_value)) + 
+  stat_smooth(method="glm", method.args = list(family=binomial), se=FALSE, aes(group=PID), size = 0.4, fullrange = TRUE, size=0.1, color="lightgrey") +
+  stat_smooth(method="glm", method.args = list(family=binomial), color="black") +
+  geom_hline(yintercept=0.5, size=line_size, linetype="dashed") + 
+  geom_vline(xintercept=0, size=line_size, linetype="dashed") +
+  scale_y_continuous(expand=c(0,0), breaks=c(0,0.5,1), limits=c(0,1.025)) + 
+  scale_x_continuous(expand=c(0,0)) +
+  theme + point_plot_theme + 
+  theme(legend.position = "none") + 
+  labs(y="p(left chosen)", 
+       x="\u0394 Cumulative Value\n(left - right)",
+       title="Category learning by age group") 
+  #scale_fill_brewer(palette=color_pallete) + 
+  #scale_color_brewer(palette=color_pallete) 
+
+library(viridis)
+p2_age <- ggplot(df$category_learning %>% subset(is_practice==0 & !is.na(left_chosen) & !is.na(delta_cumulative_value)) %>%
+              mutate(block = as.factor(block), age = as.factor(age)), 
+            aes(y=left_chosen,x=delta_cumulative_value)) + 
+  stat_smooth(method="glm", method.args = list(family=binomial), aes(color=age), size = 0.4, se=FALSE,fullrange = TRUE) +
+  #stat_smooth(method="glm", method.args = list(family=binomial), color="black") +
+  geom_hline(yintercept=0.5, size=line_size, linetype="dashed") + 
+  geom_vline(xintercept=0, size=line_size, linetype="dashed") +
+  scale_y_continuous(expand=c(0,0), breaks=c(0,0.5,1), limits=c(0,1.025)) + 
+  scale_x_continuous(expand=c(0,0)) +
+  theme + point_plot_theme + 
+  scale_color_viridis(discrete = TRUE, option = "D") +
+  scale_fill_viridis(discrete = TRUE) +
+  #theme(legend.position = "none") + 
+  labs(y="p(left chosen)", 
+       x="\u0394 Cumulative Value\n(left - right)",
+       title="Category learning by age") 
+  #scale_color_brewer(palette=color_pallete) 
+
+# p <- plot_grid(p2_age,p3,
+#                ncol=2,
+#                axis="bt",
+#                align="v", 
+#                labels=c("a","b"), 
+#                label_size = 30, 
+#                label_fontfamily = "Helvetica")
+
+if (Save_plots == 1) {
+  ggsave(filename=sprintf("Plots/%s.%s","Figure1_adults",fig_type), 
+         plot=p1_adults, 
+         width=fig_size[1]-3,
+         height=fig_size[2]-3)
+   ggsave(filename=sprintf("Plots/%s.%s","Figure1_adults","png"), 
+         plot=p1_adults, 
+         width=fig_size[1]-3,
+         height=fig_size[2]-3)
+   }
+
+```
+
+![Figure1. Choices as a function of culmulative value and block](Plots/Figure1.svg) 
+
+## present old trials 
+
+```{r}
+
+exemplar_chosen = df$category_learning %>% 
+  subset(no_response == 0 & repeated_trial == 0) %>%
+  dplyr::select(c("PID", "block", "group","old_trial","pair_type","within_category","chosen_exemplar_value", "rt")) %>%
+  mutate(exemplar_value = chosen_exemplar_value,
+         chosen = 1) %>%
+  dplyr::select(-c("chosen_exemplar_value"))
+exemplar_unchosen = df$category_learning %>% 
+  subset(no_response == 0 & repeated_trial == 0) %>%
+  dplyr::select(c("PID", "block","group", "old_trial","pair_type","within_category","unchosen_exemplar_value", "rt")) %>%
+  mutate(exemplar_value = unchosen_exemplar_value,
+         chosen = 0,
+         rt=NA) %>%
+  dplyr::select(-c("unchosen_exemplar_value"))
+
+exemplar_combined = bind_rows(exemplar_chosen,exemplar_unchosen) %>% 
+  mutate(exemplar_choice = chosen,
+         exemplar_value_centered = (exemplar_value - mean(exemplar_value, na.rm=1))/sd(exemplar_value, na.rm=1))
+
+
+# within category trials
+old_df <- df$category_learning %>% 
+  subset(no_response == 0 & repeated_trial == 0 & within_category == 1) %>%
+  mutate(delta_exemplar_value = left_exemplar_value - right_exemplar_value,
+         high_exemplar_chosen = ifelse(chosen_exemplar_value > unchosen_exemplar_value, 1, 0),
+         high_exemplar_chosen = ifelse(delta_exemplar_value == 0, NaN, high_exemplar_chosen)) %>%
+  mutate(value_group = ifelse(pair_type=="20-20", 20, 
+                              ifelse(pair_type=="40-40", 40, 
+                                     ifelse(pair_type=="60-60", 60, 80))),
+         value_group_centered = (value_group - mean(value_group, na.rm=1))/sd(value_group, na.rm=1),
+         delta_exemplar_value_centered = (delta_exemplar_value - mean(delta_exemplar_value, na.rm=1))/sd(delta_exemplar_value, na.rm=1),
+         chosen_exemplar_value_centered = (chosen_exemplar_value - mean(chosen_exemplar_value, na.rm=1))/sd(chosen_exemplar_value, na.rm=1))
+
+# =====================================
+# accuracy across the four value groups 
+# =====================================
+
+acc_by_value_group <- old_df %>%
+  subset(!is.na(high_exemplar_chosen)) %>%
+  group_by(PID, group, value_group) %>%
+  dplyr::summarise(acc = mean(high_exemplar_chosen, na.rm=1)) 
+
+p1 <- ggplot(acc_by_value_group, aes(x=value_group, y=acc, color=group)) +
+  #geom_point(position=position_jitter(width=0.1), fill="white", shape=21, stroke=point_stroke, size=0.5, alpha=0.5) +
+  stat_summary(fun.data=mean_se, fun.args = list(mult=1), geom="pointrange", line_size=4, position=position_dodge(width=4)) +
+  geom_hline(yintercept=0.5, size=line_size, linetype="dashed") +
+  theme + 
+  theme(aspect.ratio=3/2) +
+  labs(x = "Value category group", 
+       y="p(select higher exemplar)",
+       title = "Within category trials") +
+  scale_fill_brewer(palette=color_pallete) + 
+  scale_color_brewer(palette=color_pallete)
+
+choice_by_exemplar_value <- exemplar_combined %>%
+  subset(within_category == 1) %>%
+  group_by(group, PID, exemplar_value) %>%
+  dplyr::summarise(choice_prob = mean(exemplar_choice, na.rm=1)) 
+
+# ===============================================
+# choosing an exemplar as a function of its value 
+# ===============================================
+
+p2 <- ggplot(choice_by_exemplar_value, aes(x=as.factor(exemplar_value), y=choice_prob, color=group)) +
+  #geom_point(position=position_jitter(width=0.1), fill="white", shape=19, stroke=point_stroke, size=1.2, alpha=0.8) +
+  stat_summary(fun.data=mean_se, fun.args = list(mult=1), geom="pointrange", size=1, position=position_dodge(width=0.5)) +
+  geom_hline(yintercept=0.5, size=line_size, linetype="dashed") +
+  theme + 
+  theme(aspect.ratio=3/2) +
+  labs(x = "Exemplar value", 
+       y="p(select exemplar)",
+       title = "Exemplar choice") +
+  scale_fill_brewer(palette=color_pallete) + 
+  scale_color_brewer(palette=color_pallete)
+
+p2_adults <- ggplot(choice_by_exemplar_value %>% subset(group=="adults"), aes(x=as.factor(exemplar_value), y=choice_prob)) +
+  #geom_point(position=position_jitter(width=0.1), fill="white", shape=19, stroke=point_stroke, size=1.2, alpha=0.8) +
+  stat_summary(fun.data=mean_se, fun.args = list(mult=1), geom="pointrange", size=1, position=position_dodge(width=0.5)) +
+  geom_hline(yintercept=0.5, size=line_size, linetype="dashed") +
+  theme + 
+  theme(aspect.ratio=3/2) +
+  labs(x = "Exemplar value", 
+       y="p(select exemplar)",
+       title = "Exemplar choice") +
+  scale_fill_brewer(palette=color_pallete) + 
+  scale_color_brewer(palette=color_pallete)
+
+# ======================
+# RT for exemplar choice 
+# ======================
+
+rt_by_exemplar_value <- exemplar_chosen %>%
+  subset(within_category == 1) %>%
+  group_by(PID) %>%
+  mutate(rt_zscored = zscore(rt)) %>%
+  group_by(group, PID, exemplar_value) %>%
+  dplyr::summarise(rt = mean(rt, na.rm=1),
+                   zscored_rt = mean(rt_zscored)) 
+
+p3 <- ggplot(rt_by_exemplar_value, aes(x=as.factor(exemplar_value), y=zscored_rt, color=group)) +
+  #geom_point(position=position_jitter(width=0.1), fill="white", shape=19, stroke=point_stroke, size=1.2, alpha=0.8) +
+  stat_summary(fun.data=mean_se, fun.args = list(mult=1), geom="pointrange", size=1, position=position_dodge(width=0.5)) +
+  geom_hline(yintercept=0, size=line_size, linetype="dashed") +
+  theme + 
+  theme(aspect.ratio=3/2) +
+  labs(x = "Exemplar value", 
+       y="RT (zscored)",
+       title = "RT") +
+  scale_fill_brewer(palette=color_pallete) + 
+  scale_color_brewer(palette=color_pallete)
+
+p3_adults <- ggplot(rt_by_exemplar_value %>% subset(group=="adults"), aes(x=as.factor(exemplar_value), y=zscored_rt)) +
+  #geom_point(position=position_jitter(width=0.1), fill="white", shape=19, stroke=point_stroke, size=1.2, alpha=0.8) +
+  stat_summary(fun.data=mean_se, fun.args = list(mult=1), geom="pointrange", size=1, position=position_dodge(width=0.5)) +
+  geom_hline(yintercept=0, size=line_size, linetype="dashed") +
+  theme + 
+  theme(aspect.ratio=3/2) +
+  labs(x = "Exemplar value", 
+       y="RT (zscored)",
+       title = "RT") +
+  scale_fill_brewer(palette=color_pallete) + 
+  scale_color_brewer(palette=color_pallete)
+
+# ====================
+# delta exemplar value
+# ====================
+
+df$category_learning <- df$category_learning %>%
+  mutate(delta_exemplar_value = left_exemplar_value - right_exemplar_value) 
+
+delta_exemplar_value <- df$category_learning %>%
+  subset(within_category == 1 & !is.nan(left_chosen)) %>%
+  group_by(group, PID, delta_exemplar_value) %>%
+  dplyr::summarise(left_chosen = mean(left_chosen, na.rm=1)) 
+
+p4 <- ggplot(delta_exemplar_value, aes(x=as.factor(delta_exemplar_value), y=left_chosen, color=group)) +
+  #geom_point(position=position_jitter(width=0.1), fill="white", shape=19, stroke=point_stroke, size=1.2, alpha=0.8) +
+  stat_summary(fun.data=mean_se, fun.args = list(mult=1), geom="pointrange", size=1, position=position_dodge(width=0.5)) +
+  #stat_smooth(data = df$category_learning %>% subset(within_category == 1), method="glm", method.args = list(family=binomial)) + 
+  geom_hline(yintercept=0.5, size=line_size, linetype="dashed") +
+  theme + 
+  theme(aspect.ratio=3/2) +
+  labs(x = "\u0394 Exemplar Value\n(left - right)", 
+       y="p(select left)",
+       title = "delta exemplar value") +
+  scale_fill_brewer(palette=color_pallete) + 
+  scale_color_brewer(palette=color_pallete)
+
+p4_adults <- ggplot(delta_exemplar_value %>% subset(group=="adults"), aes(x=as.factor(delta_exemplar_value), y=left_chosen)) +
+  #geom_point(position=position_jitter(width=0.1), fill="white", shape=19, stroke=point_stroke, size=1.2, alpha=0.8) +
+  stat_summary(fun.data=mean_se, fun.args = list(mult=1), geom="pointrange", size=1, position=position_dodge(width=0.5)) +
+  #stat_smooth(data = df$category_learning %>% subset(within_category == 1), method="glm", method.args = list(family=binomial)) + 
+  geom_hline(yintercept=0.5, size=line_size, linetype="dashed") +
+  theme + 
+  theme(aspect.ratio=3/2) +
+  labs(x = "\u0394 Exemplar Value\n(left - right)", 
+       y="p(select left)",
+       title = "delta exemplar value") +
+  scale_fill_brewer(palette=color_pallete) + 
+  scale_color_brewer(palette=color_pallete)
+
+
+p <- plot_grid(p4_adults,p2_adults,
+               ncol=2,
+               axis="bt",
+               align="v", 
+               labels=c("a","b"), 
+               label_size = 30, 
+               label_fontfamily = "Helvetica")
+
+
+if (Save_plots == 1) {
+  ggsave(filename=sprintf("Plots/%s.%s","Figure2_adults",fig_type), 
+         plot=p, 
+         width=fig_size[1]+3,
+         height=fig_size[2]-3)
+   ggsave(filename=sprintf("Plots/%s.%s","Figure2_adults","png"), 
+         plot=p, 
+         width=fig_size[1]+3,
+         height=fig_size[2]-3)
+   }
+
+```
+![Figure2. Choices in within-category old trials](Plots/Figure2.svg) 
+
+## present size data
+
+```{r}
+
+p1 <- ggplot(df$size %>% subset(!is.na(left_chosen) & !is.na(delta_size)) %>%
+              mutate(block = as.factor(block)), 
+            aes(y=left_chosen,x=delta_size, color = block)) + 
+  stat_smooth(method="glm", method.args = list(family=binomial)) +
+  geom_hline(yintercept=0.5, size=line_size, linetype="dashed") + 
+  geom_vline(xintercept=0, size=line_size, linetype="dashed") +
+  scale_y_continuous(expand=c(0,0), breaks=c(0,0.5,1), limits=c(0,1.025)) + 
+  scale_x_continuous(expand=c(0,0)) +
+  #scale_linetype_manual(values=c("longdash", "solid")) +
+  theme + point_plot_theme + 
+  theme(legend.position = c(0.8, 0.2)) + 
+  labs(y="p(left chosen)", 
+       x="\u0394 Size\n(left - right)",
+       title="Size judgement by block") +
+  scale_fill_brewer(palette=color_pallete) + 
+  scale_color_brewer(palette=color_pallete)
+
+p2 <- ggplot(df$size %>% subset(!is.na(left_chosen) & !is.na(delta_size)) %>%
+              mutate(PID = as.factor(PID)), 
+            aes(y=left_chosen,x=delta_size)) + 
+  stat_smooth(method="glm", method.args = list(family=binomial), se=FALSE, aes(color=PID), size = 0.4) +
+  stat_smooth(method="glm", method.args = list(family=binomial), color="black") +
+  geom_hline(yintercept=0.5, size=line_size, linetype="dashed") + 
+  geom_vline(xintercept=0, size=line_size, linetype="dashed") +
+  scale_y_continuous(expand=c(0,0), breaks=c(0,0.5,1), limits=c(0,1.025)) + 
+  scale_x_continuous(expand=c(0,0)) +
+  theme + point_plot_theme + 
+  #theme(legend.position = "none") + 
+  labs(y="p(left chosen)", 
+       x="\u0394 Size\n(left - right)",
+       title="Size judgement by subject")
+
+p2_age<- ggplot(df$size %>% subset(!is.na(left_chosen) & !is.na(delta_size)) %>%
+              mutate(age = as.factor(age)), 
+            aes(y=left_chosen,x=delta_size)) + 
+  stat_smooth(method="glm", method.args = list(family=binomial), se=FALSE, aes(color=age), size = 0.4) +
+  stat_smooth(method="glm", method.args = list(family=binomial), color="black") +
+  geom_hline(yintercept=0.5, size=line_size, linetype="dashed") + 
+  geom_vline(xintercept=0, size=line_size, linetype="dashed") +
+  scale_y_continuous(expand=c(0,0), breaks=c(0,0.5,1), limits=c(0,1.025)) + 
+  scale_x_continuous(expand=c(0,0)) +
+  theme + point_plot_theme + 
+  scale_color_viridis(discrete = TRUE, option = "D") +
+  scale_fill_viridis(discrete = TRUE) +
+  #theme(legend.position = "none") + 
+  labs(y="p(left chosen)", 
+       x="\u0394 Size\n(left - right)",
+       title="Size judgement by subject")
+
+
+p <- plot_grid(p1,p2,
+               ncol=2,
+               axis="bt",
+               align="v", 
+               labels=c("a","b"), 
+               label_size = 30, 
+               label_fontfamily = "Helvetica")
+
+
+if (Save_plots == 1) {
+  ggsave(filename=sprintf("Plots/%s.%s","Figure3",fig_type), 
+         plot=p, 
+         width=fig_size[1]+2,
+         height=fig_size[2]-3)
+   ggsave(filename=sprintf("Plots/%s.%s","Figure3","png"), 
+         plot=p, 
+         width=fig_size[1]+2,
+         height=fig_size[2]-3)
+   }
+
+```
+![Figure3. Size choices](Plots/Figure3.svg) 
+## present rl data
+
+```{r}
+
+p1 <- ggplot(df$rl %>% subset(!is.na(left_chosen) & !is.na(delta_cumulative_value)), 
+            aes(y=left_chosen,x=delta_cumulative_value,color=condition)) + 
+  stat_smooth(method="glm", method.args = list(family=binomial)) +
+  geom_hline(yintercept=0.5, size=line_size, linetype="dashed") + 
+  geom_vline(xintercept=0, size=line_size, linetype="dashed") +
+  scale_y_continuous(expand=c(0,0), breaks=c(0,0.5,1), limits=c(0,1.025)) + 
+  scale_x_continuous(expand=c(0,0)) +
+  #scale_linetype_manual(values=c("longdash", "solid")) +
+  theme + point_plot_theme + 
+  #theme(legend.position = c(0.8, 0.2)) + 
+  labs(y="p(left chosen)", 
+       x="\u0394 Cumulative value\n(left - right)",
+       title="RL choices by condition") +
+  scale_fill_brewer(palette=color_pallete) + 
+  scale_color_brewer(palette=color_pallete) 
+
+p2 <- ggplot(df$rl %>% subset(!is.na(left_chosen) & !is.na(delta_cumulative_value)) %>% mutate(PID = as.factor(PID)), 
+            aes(y=left_chosen,x=delta_cumulative_value)) + 
+  stat_smooth(method="glm", method.args = list(family=binomial), se=FALSE, aes(color=PID), size = 0.4) +
+  stat_smooth(method="glm", method.args = list(family=binomial), color="black") +
+  geom_hline(yintercept=0.5, size=line_size, linetype="dashed") + 
+  geom_vline(xintercept=0, size=line_size, linetype="dashed") +
+  scale_y_continuous(expand=c(0,0), breaks=c(0,0.5,1), limits=c(0,1.025)) + 
+  scale_x_continuous(expand=c(0,0)) +
+  theme + point_plot_theme + 
+  #theme(legend.position = "none") + 
+  labs(y="p(left chosen)", 
+       x="\u0394 Cumulative value\n(left - right)",
+       title="RL choices by subject") +
+  facet_wrap(.~condition)
+
+p2_age <- ggplot(df$rl %>% subset(!is.na(left_chosen) & !is.na(delta_cumulative_value)) %>% mutate(age = as.factor(age)), 
+            aes(y=left_chosen,x=delta_cumulative_value)) + 
+  stat_smooth(method="glm", method.args = list(family=binomial), se=FALSE, aes(color=age), size = 0.4) +
+  stat_smooth(method="glm", method.args = list(family=binomial), color="black") +
+  geom_hline(yintercept=0.5, size=line_size, linetype="dashed") + 
+  geom_vline(xintercept=0, size=line_size, linetype="dashed") +
+  scale_y_continuous(expand=c(0,0), breaks=c(0,0.5,1), limits=c(0,1.025)) + 
+  scale_x_continuous(expand=c(0,0)) +
+  theme + point_plot_theme + 
+  scale_color_viridis(discrete = TRUE, option = "D") +
+  scale_fill_viridis(discrete = TRUE) +
+  #theme(legend.position = "none") + 
+  labs(y="p(left chosen)", 
+       x="\u0394 Cumulative value\n(left - right)",
+       title="RL choices by subject") +
+  facet_wrap(.~condition)
+
+
+p <- plot_grid(p1,p2,
+               ncol=2,
+               axis="bt",
+               align="v", 
+               labels=c("a","b"), 
+               label_size = 30, 
+               label_fontfamily = "Helvetica",
+               rel_widths = c(0.5,1))
+
+
+if (Save_plots == 1) {
+  ggsave(filename=sprintf("Plots/%s.%s","Figure4",fig_type), 
+         plot=p, 
+         width=fig_size[1]+7,
+         height=fig_size[2]-4)
+   ggsave(filename=sprintf("Plots/%s.%s","Figure4","png"), 
+         plot=p, 
+         width=fig_size[1]+7,
+         height=fig_size[2]-4)
+   }
+
+```
+
+![Figure4. RL choices](Plots/Figure4.svg) 
+
+## present category memory
+
+```{r}
+
+cat_memory <- df$category_memory
+
+p1 <- ggplot(df$category_memory %>% mutate(PID = as.factor(PID)), 
+            aes(y=category_value_response,x=category_cumulative_value)) + 
+  stat_smooth(method="lm", se=FALSE, aes(color=PID), size = 0.4) +
+  stat_smooth(method="lm", color="black") +
+  #geom_hline(yintercept=0.5, size=line_size, linetype="dashed") + 
+  #geom_vline(xintercept=0, size=line_size, linetype="dashed") +
+  #scale_y_continuous(expand=c(0,0), breaks=c(0,0.5,1), limits=c(0,1.025)) + 
+  #scale_x_continuous(expand=c(0,0)) +
+  theme + point_plot_theme + 
+  #theme(legend.position = "none") + 
+  labs(y="Category value response", 
+       x="Cumulative category value",
+       title="Category memory") 
+
+if (Save_plots == 1) {
+  ggsave(filename=sprintf("Plots/%s.%s","Figure5",fig_type), 
+         plot=p1, 
+         width=fig_size[1],
+         height=fig_size[2])
+   ggsave(filename=sprintf("Plots/%s.%s","Figure5","png"), 
+         plot=p1, 
+         width=fig_size[1],
+         height=fig_size[2])
+   }
+```
+
+![Figure5. Category memory](Plots/Figure5.svg) 
+
+## modelling category learning decisions 
+
+```{r}
+
+model_df <- df$category_learning %>%
+  subset(is_practice == 0) %>%
+  mutate(block_center = (block - mean(block))/sd(block),
+         delta_cumulative_value_centered = (delta_cumulative_value - mean(delta_cumulative_value,na.rm=1))/sd(delta_cumulative_value,na.rm=1))
+
+if (run_models==1){
+
+  # novel trials by block
+  M_delta_val_block <- stan_glmer(data = subset(model_df, !is.na(delta_cumulative_value_centered) & old_trial==0),
+                                  left_chosen ~ delta_cumulative_value_centered*block_center +
+                                    (delta_cumulative_value_centered*block_center | PID),
+                                   family = binomial(link="logit"), 
+                                   adapt_delta = params$adapt_delta, 
+                                   iter = params$iterations, 
+                                   chains = params$chains, 
+                                   warmup = params$warmup,
+                                   seed = 12345)
+
+  save(list = "M_delta_val_block",
+       file = "Models/M_delta_val_block.RData")
+  
+  # novel trials only
+  M_delta_val <- stan_glmer(data = subset(model_df, !is.na(delta_cumulative_value_centered) & old_trial==0),
+                            left_chosen ~ delta_cumulative_value_centered + 
+                              (delta_cumulative_value_centered | PID),
+                               family = binomial(link="logit"), 
+                               adapt_delta = params$adapt_delta, 
+                               iter = params$iterations, 
+                               chains = params$chains, 
+                               warmup = params$warmup,
+                               seed = 12345)
+  save(list = "M_delta_val",
+         file = "Models/M_delta_val.RData")
+
+} else {
+  
+  load("Models/M_delta_val_block.RData")
+  load("Models/M_delta_val.RData")
+  
+}
+
+# Present summary coefs 
+present_sum_coefs <- function(M_draws){
+  summary_coefs <- as.data.frame(M_draws) %>%
+  gather(coef, value, colnames(M_draws)[!str_detect(colnames(M_draws), "PID")]) %>%
+  group_by(coef) %>%
+  dplyr::summarize(HDI95_low = posterior_interval(as.matrix(value), prob=0.95)[1],
+                   HDI95_high = posterior_interval(as.matrix(value), prob=0.95)[2],
+                   median = median(value)) %>%
+  mutate(sig = ifelse((median>0 & HDI95_low>0 & HDI95_high>0) | (median<0 & HDI95_low<0 & HDI95_high<0),"*",""),
+         value = sprintf("%.3f [%.3f, %.3f]%s",median, HDI95_low, HDI95_high, sig)) %>%
+  dplyr::select(coef, value) 
+  return(summary_coefs)
+}
+
+
+# compute summary coefs for model without blocks
+summary_delta_val <- present_sum_coefs(as.data.frame(M_delta_val))
+
+# compute summary coefs for model with blocks
+centered_blocks <- unique(model_df$block_center)
+model_draws_delta_val_block <- as.data.frame(M_delta_val_block)
+for (i in 1:length(centered_blocks)){
+  curr_block_draws <- cbind(model_draws_delta_val_block["delta_cumulative_value_centered"] + 
+                              model_draws_delta_val_block["delta_cumulative_value_centered:block_center"]*centered_blocks[i],
+                            model_draws_delta_val_block["(Intercept)"] +
+                              model_draws_delta_val_block["block_center"]*centered_blocks[i])
+  names(curr_block_draws) <- c(paste0("slope_block",i), paste0("intercept_block",i))
+  model_draws_delta_val_block <- cbind(model_draws_delta_val_block, curr_block_draws)
+}
+
+summary_delta_val_block <- present_sum_coefs(model_draws_delta_val_block)
+
+
+```
+
+## Plot category learning model coefs 
+
+```{r}
+
+create_plot_delta_val <- function(M, summary_coefs, df){
+
+  n_fake_samples = 1000
+  min_x = min(df$delta_cumulative_value_centered, na.rm=1)
+  max_x = max(df$delta_cumulative_value_centered, na.rm=1)
+  model_draws = as.data.frame(M) %>%
+    mutate(intercept_delta_val = `(Intercept)`,
+           slope_delta_val = delta_cumulative_value_centered)
+  conditions = c("delta_val")
+  conditions_col_names = c("delta_cumulative_value_centered")
+  is_logistic = 1
+  predicted_draws_M <- create_posterior_draws_lines(n_fake_samples, min_x, max_x, model_draws, conditions, conditions_col_names, is_logistic) 
+  predicted_draws_M <- predicted_draws_M %>%
+    mutate(delta_cumulative_value = x*sd(df$delta_cumulative_value, na.rm=1) + mean(df$delta_cumulative_value, na.rm=1))
+  
+  # model text
+  M_text <- summary_coefs[summary_coefs$coef %in% c("delta_cumulative_value_centered"),] %>%
+    mutate(x = -25,
+           y = 0.85,
+           text = sprintf("\u03b2 = %s", value)) %>%
+    dplyr::select(-c(coef,value))
+  
+  
+  # model fit
+  p <- ggplot(predicted_draws_M, aes(y=median,x=delta_cumulative_value)) +
+    geom_ribbon(aes(ymin=lower, ymax=upper), color=NA, alpha=0.4) + 
+    geom_line(aes(y=median), size=line_size*1.5) +  
+    geom_hline(yintercept=0.5, size=line_size, linetype="dashed") + 
+    geom_vline(xintercept=0, size=line_size, linetype="dashed") +
+    scale_y_continuous(expand=c(0,0), breaks=c(0,0.5,1), limits=c(0,1.025)) + 
+    scale_x_continuous(expand=c(0,0)) +
+    #scale_linetype_manual(values=c("longdash", "solid")) +
+    theme + point_plot_theme + 
+    theme(legend.position="none",
+          plot.title = element_text(margin=margin(0,0,30,0))) + 
+    geom_text(M_text,mapping=aes(x=x, y=y, label=text), size=7) +
+    labs(y="Predicted p(choose left)", 
+         x="\u0394 Cumulative Value\n(left - right)",
+         title="Category learning") +
+    scale_fill_brewer(palette=color_pallete) + 
+    scale_color_brewer(palette=color_pallete)
+  
+  return(p)
+  
+}
+
+p1 <- create_plot_delta_val(M_delta_val, summary_delta_val, model_df)
+
+create_plot_delta_val_block <- function(model_draws, summary_coefs, model_df, show_ribbon){
+  
+  n_fake_samples = 1000
+  min_x = min(model_df$delta_cumulative_value_centered, na.rm=1)
+  max_x = max(model_df$delta_cumulative_value_centered, na.rm=1)
+  conditions = c("block1", "block2", "block3", "block4", "block5", "block6")
+  conditions_col_names = c("block")
+  is_logistic = 1
+  predicted_draws_M <- create_posterior_draws_lines(n_fake_samples, min_x, max_x, model_draws, conditions, conditions_col_names, is_logistic) %>%
+    mutate(delta_cumulative_value = x*sd(model_df$delta_cumulative_value, na.rm=1) + mean(model_df$delta_cumulative_value, na.rm=1))
+  
+  # model text
+  coords <- data.frame(x = -25, y = c(0.95, 0.85, 0.75, 0.65, 0.55, 0.45), 
+                       block = c("block1", "block2", "block3", "block4", "block5", "block6"),
+                       coefs = c("B1", "B2", "B3", "B4", "B5", "B6"))
+  M_text <- summary_coefs[summary_coefs$coef %in% c("slope_block1", "slope_block2", "slope_block3", "slope_block4", "slope_block5", "slope_block6"),] %>%
+    bind_cols(coords) %>%
+    mutate(text = sprintf("\u03b2(%s) = %s", coefs, value)) %>%
+    dplyr::select(-c(coef,value,coefs))
+  
+  # model fit
+  p <- ggplot(predicted_draws_M, aes(y=median,x=delta_cumulative_value)) 
+  if (show_ribbon == 1){
+    p <- p + geom_ribbon(aes(ymin=lower, ymax=upper, fill=block), color=NA, alpha=0.4)
+  }
+  p <- p +
+    #geom_ribbon(aes(ymin=lower, ymax=upper, fill=block), color=NA, alpha=0.4) + 
+    geom_line(aes(y=median, color=block), size=line_size*1.5) +  
+    geom_hline(yintercept=0.5, size=line_size, linetype="dashed") + 
+    geom_vline(xintercept=0, size=line_size, linetype="dashed") +
+    scale_y_continuous(expand=c(0,0), breaks=c(0,0.5,1), limits=c(0,1.025)) + 
+    scale_x_continuous(expand=c(0,0)) +
+    #scale_linetype_manual(values=c("longdash", "solid")) +
+    theme + point_plot_theme + 
+    theme(legend.position="none",
+          plot.title = element_text(margin=margin(0,0,30,0))) + 
+    geom_text(M_text,mapping=aes(x=x, y=y, color=block, label=text), size=6) +
+    labs(y="Predicted p(select S+)", 
+         x="\u0394 Cumulative Value\n(left - right)",
+         title="Category learning by block") +
+    scale_fill_brewer(palette=color_pallete) + 
+    scale_color_brewer(palette=color_pallete)
+  
+  return(p)
+}
+
+p2 <- create_plot_delta_val_block(model_draws_delta_val_block, summary_delta_val_block, model_df, 0)
+
+p <- plot_grid(p1,p2,
+               ncol=2,
+               axis="bt",
+               align="v", 
+               labels=c("a","b"), 
+               label_size = 30, 
+               label_fontfamily = "Helvetica")
+
+
+if (Save_plots == 1) {
+  ggsave(filename=sprintf("Plots/%s.%s","Figure5",fig_type), 
+         plot=p, 
+         width=fig_size[1]+2,
+         height=fig_size[2]-3)
+   ggsave(filename=sprintf("Plots/%s.%s","Figure5","png"), 
+         plot=p, 
+         width=fig_size[1]+2,
+         height=fig_size[2]-3)
+   }
+
+```
+
+![Figure1. Choices as a function of culmulative value and block](Plots/Figure3.svg) 
+
+```{r}
+
+if (run_models==1){
+
+  # predict accuracy as a function of value group
+  M_within_cat_acc_by_val_group <- stan_glmer(data = subset(old_df, !is.na(high_exemplar_chosen)),
+                                              high_exemplar_chosen ~ value_group_centered +
+                                                (value_group_centered | PID),
+                                              family = binomial(link="logit"),
+                                              adapt_delta = params$adapt_delta,
+                                              iter = params$iterations,
+                                              chains = params$chains,
+                                              warmup = params$warmup,
+                                              seed = 12345)
+  
+  save(list = "M_within_cat_acc_by_val_group",
+       file = "Models/M_within_cat_acc_by_val_group.RData")
+  
+  # predict left choice by delta exemplar value
+  M_within_cat_delta_exemplar_val <- stan_glmer(data = subset(old_df, !is.na(delta_exemplar_value_centered)),
+                                                left_chosen ~ delta_exemplar_value_centered +
+                                                  (delta_exemplar_value_centered | PID),
+                                                family = binomial(link="logit"),
+                                                adapt_delta = params$adapt_delta,
+                                                iter = params$iterations,
+                                                chains = params$chains,
+                                                warmup = params$warmup,
+                                                seed = 12345)
+  
+  save(list = "M_within_cat_delta_exemplar_val",
+       file = "Models/M_within_cat_delta_exemplar_val.RData")
+  
+  # # predict rt by chosen exemplar value
+  # M_within_cat_rt_by_exemplar_val <- stan_glmer(data = subset(old_df_V3, !is.na(chosen_exemplar_value_centered)),
+  #                                               zscored_rt ~ chosen_exemplar_value_centered +
+  #                                                 (chosen_exemplar_value_centered | PID),
+  #                                               family = gaussian(),
+  #                                               adapt_delta = params$adapt_delta,
+  #                                               iter = params$iterations,
+  #                                               chains = params$chains,
+  #                                               warmup = params$warmup,
+  #                                               seed = 12345)
+  # 
+  # save(list = "M_within_cat_rt_by_exemplar_val",
+  #      file = "Models/M_within_cat_rt_by_exemplar_val.RData")
+  
+  # predict exemplar choice by its value 
+  M_within_cat_exemplar_choice_by_value <- stan_glmer(data = subset(exemplar_combined, within_category==1), 
+                                                      exemplar_choice ~ exemplar_value_centered + 
+                                                        (exemplar_value_centered | PID),
+                                                      family = binomial(link="logit"), 
+                                                      adapt_delta = params$adapt_delta, 
+                                                      iter = params$iterations, 
+                                                      chains = params$chains, 
+                                                      warmup = params$warmup,
+                                                      seed = 12345)
+  
+  save(list = "M_within_cat_exemplar_choice_by_value",
+       file = "Models/M_within_cat_exemplar_choice_by_value.RData")
+  
+} else {
+  load("Models/M_within_cat_acc_by_val_group.RData")
+  load("Models/M_within_cat_delta_exemplar_val.RData")
+  #load("Models/M_within_cat_rt_by_exemplar_val.RData")
+  load("Models/M_within_cat_exemplar_choice_by_value.RData")
+}
+
+summary_within_cat_acc_by_val_group <- present_sum_coefs(as.data.frame(M_within_cat_acc_by_val_group))
+summary_within_cat_delta_exemplar_val <- present_sum_coefs(as.data.frame(M_within_cat_delta_exemplar_val))
+#summary_within_cat_rt_by_exemplar_val <- present_sum_coefs(as.data.frame(M_within_cat_rt_by_exemplar_val))
+summary_within_cat_exemplar_choice_by_value <- present_sum_coefs(as.data.frame(M_within_cat_exemplar_choice_by_value))
+
+
+
+```
+
+## Show plots for within-category trials 
+
+```{r}
+
+# ====================
+# delta exemplar value
+# ====================
+
+delta_exemplar_val <- old_df_V3 %>%
+  group_by(PID, delta_exemplar_value) %>%
+  dplyr::summarise(left_chosen = mean(left_chosen, na.rm=1)) 
+
+
+# plot the model
+n_fake_samples = 1000
+min_x = min(old_df_V3$delta_exemplar_value_centered)
+max_x = max(old_df_V3$delta_exemplar_value_centered)
+model_draws = as.data.frame(M_within_cat_delta_exemplar_val) %>%
+  mutate(intercept_delta_val = `(Intercept)`,
+         slope_delta_val = delta_exemplar_value_centered)
+conditions = c("delta_val")
+conditions_col_names = c("delta_exemplar_value")
+is_logistic = 1
+predicted_draws_M_within_cat_delta_exemplar_val <- create_posterior_draws_lines(n_fake_samples, min_x, max_x, model_draws, conditions, conditions_col_names, is_logistic) %>%
+  mutate(delta_exemplar_value = x*sd(old_df_V3$delta_exemplar_value, na.rm=1) + mean(old_df_V3$delta_exemplar_value, na.rm=1))
+
+# model text
+M_text_within_cat_delta_exemplar_val <- summary_within_cat_delta_exemplar_val[summary_within_cat_delta_exemplar_val$coef %in% c("delta_exemplar_value_centered"),] %>%
+  mutate(x = -10,
+         y = 0.55,
+         text = sprintf("\u03b2 = %s", value)) %>%
+  dplyr::select(-c(coef,value))
+
+
+# model fit
+p2 <- ggplot(predicted_draws_M_within_cat_delta_exemplar_val, aes(y=median,x=delta_exemplar_value)) +
+  geom_ribbon(aes(ymin=lower, ymax=upper), color=NA, alpha=0.4) + 
+  geom_line(aes(y=median), size=line_size*1.5) +  
+  geom_hline(yintercept=0.5, size=line_size, linetype="dashed") + 
+  geom_vline(xintercept=0, size=line_size, linetype="dashed") +
+  #scale_y_continuous(expand=c(0,0), breaks=c(0,0.5,1), limits=c(0,1.025)) + 
+  scale_x_continuous(expand=c(0,0), limits=c(-42,42)) +
+  #scale_linetype_manual(values=c("longdash", "solid")) +
+  theme + point_plot_theme + 
+  theme(legend.position="none",
+        plot.title = element_text(margin=margin(0,0,30,0))) + 
+  geom_text(M_text_within_cat_delta_exemplar_val,mapping=aes(x=x, y=y, label=text), size=7) +
+  labs(y="p(choose left)", 
+       x="\u0394 Exemplar Value\n(left - right)") +
+  scale_fill_brewer(palette=color_pallete) + 
+  scale_color_brewer(palette=color_pallete) + 
+  stat_summary(data=delta_exemplar_val, aes(x=delta_exemplar_value, y=left_chosen), fun.data=mean_se, fun.args = list(mult=1), geom="pointrange", size=1) +
+  geom_hline(yintercept=0.5, size=line_size, linetype="dashed")
+  
+if (Save_plots == 1) {
+  ggsave(filename=sprintf("Plots/%s.%s","Figure4",fig_type), 
+         plot=p2, 
+         width=fig_size[1]-2,
+         height=fig_size[2]-2)
+  ggsave(filename=sprintf("Plots/%s.%s","Figure4","png"), 
+                             plot=p2, 
+                             width=fig_size[1]-2,
+                             height=fig_size[2]-2)}
+
+
+# ===========================
+# rt by chosen exemplar value
+# ===========================
+
+model_draws = as.data.frame(M_within_cat_rt_by_exemplar_val) %>%
+  mutate(intercept_rt = `(Intercept)`,
+         slope_rt = chosen_exemplar_value_centered)
+conditions = c("rt")
+rt_by_exemplar_val <- old_df_V3 %>%
+  group_by(PID, chosen_exemplar_value) %>%
+  dplyr::summarise(zscored_rt = mean(zscored_rt, na.rm=1)) 
+
+# plot the model
+n_fake_samples = 1000
+min_x = min(old_df_V3$chosen_exemplar_value_centered)
+max_x = max(old_df_V3$chosen_exemplar_value_centered)
+conditions_col_names = c("rt")
+is_logistic = 0
+predicted_draws_M_within_cat_rt_by_exemplar_val <- create_posterior_draws_lines(n_fake_samples, min_x, max_x, model_draws, conditions, conditions_col_names, is_logistic) %>%
+  mutate(chosen_exemplar_value = x*sd(old_df_V3$chosen_exemplar_value, na.rm=1) + mean(old_df_V3$chosen_exemplar_value, na.rm=1))
+
+# model text
+M_text_within_cat_rt_by_exemplar_val <- summary_within_cat_rt_by_exemplar_val[summary_within_cat_rt_by_exemplar_val$coef %in% c("chosen_exemplar_value_centered"),] %>%
+  mutate(x = 60,
+         y = 0.25,
+         text = sprintf("\u03b2 = %s", value)) %>%
+  dplyr::select(-c(coef,value))
+
+# model fit
+p3 <- ggplot(predicted_draws_M_within_cat_rt_by_exemplar_val, aes(y=median,x=chosen_exemplar_value)) +
+  geom_ribbon(aes(ymin=lower, ymax=upper), color=NA, alpha=0.4) + 
+  geom_line(aes(y=median), size=line_size*1.5) +  
+  geom_hline(yintercept=0, size=line_size, linetype="dashed") + 
+  #scale_y_continuous(expand=c(0,0), breaks=c(0,0.5,1), limits=c(0,1.025)) + 
+  scale_x_continuous(breaks=c(0,20,40,60,80,100)) +#, limits=c(-1, 101)) +
+  theme + point_plot_theme + 
+  theme(legend.position="none",
+        plot.title = element_text(margin=margin(0,0,30,0))) + 
+  geom_text(M_text_within_cat_rt_by_exemplar_val,mapping=aes(x=x, y=y, label=text), size=7) +
+  labs(y="RT (z-scored)", 
+       x="Chosen Exemplar Value") +
+  scale_fill_brewer(palette=color_pallete) + 
+  scale_color_brewer(palette=color_pallete) + 
+  stat_summary(data=rt_by_exemplar_val, aes(x=chosen_exemplar_value, y=zscored_rt), fun.data=mean_se, fun.args = list(mult=1), geom="pointrange", size=1)
+
+if (Save_plots == 1) {
+  ggsave(filename=sprintf("Plots/%s.%s","Figure5",fig_type), 
+         plot=p3, 
+         width=fig_size[1]-2,
+         height=fig_size[2]-2)
+  ggsave(filename=sprintf("Plots/%s.%s","Figure5","png"), 
+         plot=p3, 
+         width=fig_size[1]-2,
+         height=fig_size[2]-2)}
+
+
+# =================================
+# exemplar choice by exemplar value
+# =================================
+
+exemplar_choice_by_exemplar_val <- exemplar_combined %>%
+  subset(within_category==1) %>%
+  group_by(PID, exemplar_value) %>%
+  dplyr::summarise(zscored_rt = mean(zscored_rt, na.rm=1),
+                   choice = mean(exemplar_choice, na.rm=1)) 
+
+# plot the model
+n_fake_samples = 1000
+min_x = min(exemplar_combined$exemplar_value_centered)
+max_x = max(exemplar_combined$exemplar_value_centered)
+model_draws = as.data.frame(M_within_cat_exemplar_choice_by_value) %>%
+  mutate(intercept_exemplar_val = `(Intercept)`,
+         slope_exemplar_val = exemplar_value_centered)
+conditions = c("exemplar_val")
+conditions_col_names = c("exemplar_val")
+is_logistic = 1
+predicted_draws_M_within_cat_choice_by_value <- create_posterior_draws_lines(n_fake_samples, min_x, max_x, model_draws, conditions, conditions_col_names, is_logistic)
+predicted_draws_M_within_cat_choice_by_value <- predicted_draws_M_within_cat_choice_by_value %>%
+  mutate(exemplar_value = x*sd(exemplar_combined$exemplar_value, na.rm=1) + mean(exemplar_combined$exemplar_value, na.rm=1))
+
+# model text
+M_text_within_cat_exemplar_choice_by_value <- summary_within_cat_exemplar_choice_by_value[summary_within_cat_exemplar_choice_by_value$coef %in% c("exemplar_value_centered"),] %>%
+  mutate(x = 50,
+         y = 0.54,
+         text = sprintf("\u03b2 = %s", value)) %>%
+  dplyr::select(-c(coef,value))
+
+# model fit
+p4 <- ggplot(predicted_draws_M_within_cat_choice_by_value, aes(y=median,x=exemplar_value)) +
+  geom_ribbon(aes(ymin=lower, ymax=upper), color=NA, alpha=0.4) + 
+  geom_line(aes(y=median), size=line_size*1.5) +  
+  geom_hline(yintercept=0.5, size=line_size, linetype="dashed") + 
+  #scale_y_continuous(expand=c(0,0), breaks=c(0,0.5,1), limits=c(0,1.025)) + 
+  scale_x_continuous(breaks=c(0,20,40,60,80,100)) +#, limits=c(-1, 101)) +
+  theme + point_plot_theme + 
+  theme(legend.position="none",
+        plot.title = element_text(margin=margin(0,0,30,0))) + 
+  geom_text(M_text_within_cat_exemplar_choice_by_value,mapping=aes(x=x, y=y, label=text), size=7) +
+  labs(y="p(Choose Exemplar)", 
+       x="Exemplar Value") +
+  scale_fill_brewer(palette=color_pallete) + 
+  scale_color_brewer(palette=color_pallete) + 
+  stat_summary(data=exemplar_choice_by_exemplar_val, aes(x=exemplar_value, y=choice), fun.data=mean_se, fun.args = list(mult=1), geom="pointrange", size=1)
+
+if (Save_plots == 1) {
+  ggsave(filename=sprintf("Plots/%s.%s","Figure6",fig_type), 
+         plot=p4, 
+         width=fig_size[1]-2,
+         height=fig_size[2]-2)
+  ggsave(filename=sprintf("Plots/%s.%s","Figure6","png"), 
+         plot=p4, 
+         width=fig_size[1]-2,
+         height=fig_size[2]-2)}
+
+
+```
+
+
+```{r}
+
+
+```
+
+## Analyse category memory 
+
+```{r}
+
+# V1
+cat_memory_V1 = dfs$category_memory_full %>% 
+  subset(Exp == "V1") %>%
+  mutate(cat_value_group_centered = (cat_value_group - mean(cat_value_group, na.rm=1))/sd(cat_value_group, na.rm=1),
+         cumulative_cat_value_centered = (cumulative_cat_value - mean(cumulative_cat_value, na.rm=1))/sd(cumulative_cat_value, na.rm=1),
+         cat_value_response_centered = (cat_value_response - mean(cat_value_response, na.rm=1))/sd(cat_value_response, na.rm=1))  
+
+# V3
+cat_memory_V3 = dfs$category_memory_full %>% 
+  subset(Exp == "V3") %>%
+  mutate(cat_value_group_centered = (cat_value_group - mean(cat_value_group, na.rm=1))/sd(cat_value_group, na.rm=1),
+         cumulative_cat_value_centered = (cumulative_cat_value - mean(cumulative_cat_value, na.rm=1))/sd(cumulative_cat_value, na.rm=1),
+         cat_value_response_centered = (cat_value_response - mean(cat_value_response, na.rm=1))/sd(cat_value_response, na.rm=1))  
+
+if (run_models==1){
+
+  M_cat_memory_V1 <- stan_glmer(data = cat_memory_V1, 
+                                cat_value_response_centered ~ cumulative_cat_value_centered*cat_value_group_centered + 
+                                  (cumulative_cat_value_centered*cat_value_group_centered | PID),
+                                family = gaussian(), 
+                                adapt_delta = params$adapt_delta, 
+                                iter = params$iterations, 
+                                chains = params$chains, 
+                                warmup = params$warmup,
+                                seed = 12345)
+
+  save(list = "M_cat_memory_V1",
+       file = "Data/V1/Models/M_cat_memory_V1.RData")
+  
+  
+  M_cat_memory_V3 <- stan_glmer(data = cat_memory_V3, 
+                                cat_value_response_centered ~ cumulative_cat_value_centered*cat_value_group_centered + 
+                                  (cumulative_cat_value_centered*cat_value_group_centered | PID),
+                                family = gaussian(), 
+                                adapt_delta = params$adapt_delta, 
+                                iter = params$iterations, 
+                                chains = params$chains, 
+                                warmup = params$warmup,
+                                seed = 12345)
+
+  save(list = "M_cat_memory_V3",
+       file = "Data/V3/Models/M_cat_memory_V3.RData")
+  
+} else {
+  load("Data/V1/Models/M_cat_memory_V1.RData")
+  load("Data/V3/Models/M_cat_memory_V3.RData")
+}
+
+group_values_V1 = sort(unique(cat_memory_V1$cat_value_group_centered))
+draws_cat_memory_V1 <- as.data.frame(M_cat_memory_V1) %>%
+  mutate(intercept_general = `(Intercept)`,
+         slope_general = cumulative_cat_value_centered,
+         intercept_20 = `(Intercept)` + cat_value_group_centered*group_values_V1[1],
+         slope_20 = cumulative_cat_value_centered + `cumulative_cat_value_centered:cat_value_group_centered`*group_values_V1[1],
+         intercept_40 = `(Intercept)` + cat_value_group_centered*group_values_V1[2],
+         slope_40 = cumulative_cat_value_centered + `cumulative_cat_value_centered:cat_value_group_centered`*group_values_V1[2],
+         intercept_60 = `(Intercept)` + cat_value_group_centered*group_values_V1[3],
+         slope_60 = cumulative_cat_value_centered + `cumulative_cat_value_centered:cat_value_group_centered`*group_values_V1[3],
+         intercept_80 = `(Intercept)` + cat_value_group_centered*group_values_V1[4],
+         slope_80 = cumulative_cat_value_centered + `cumulative_cat_value_centered:cat_value_group_centered`*group_values_V1[4])
+summary_cat_memory_V1 <- present_sum_coefs(draws_cat_memory_V1)
+
+group_values_V3 = sort(unique(cat_memory_V3$cat_value_group_centered))
+draws_cat_memory_V3 <- as.data.frame(M_cat_memory_V3) %>%
+  mutate(intercept_general = `(Intercept)`,
+         slope_general = cumulative_cat_value_centered,
+         intercept_20 = `(Intercept)` + cat_value_group_centered*group_values_V1[1],
+         slope_20 = cumulative_cat_value_centered + `cumulative_cat_value_centered:cat_value_group_centered`*group_values_V1[1],
+         intercept_40 = `(Intercept)` + cat_value_group_centered*group_values_V1[2],
+         slope_40 = cumulative_cat_value_centered + `cumulative_cat_value_centered:cat_value_group_centered`*group_values_V1[2],
+         intercept_60 = `(Intercept)` + cat_value_group_centered*group_values_V1[3],
+         slope_60 = cumulative_cat_value_centered + `cumulative_cat_value_centered:cat_value_group_centered`*group_values_V1[3],
+         intercept_80 = `(Intercept)` + cat_value_group_centered*group_values_V1[4],
+         slope_80 = cumulative_cat_value_centered + `cumulative_cat_value_centered:cat_value_group_centered`*group_values_V1[4])
+summary_cat_memory_V3 <- present_sum_coefs(draws_cat_memory_V3)
+  
+
+```
+
+```{r}
+
+cat_memory_plot <- function(draws, summary_coefs, Exp_name, df, conditions, show_value_groups){
+  
+  if (show_value_groups==1){
+    
+    cat_responses <- df %>%
+    rename(value_group = cat_value_group) %>%
+    group_by(PID, value_group) %>%
+    summarize(cat_val_response = mean(cat_value_response, na.rm=1),
+              cat_cumulative = mean(cumulative_cat_value, na.rm=1))
+  
+  # run over each condition, so we could limit the x range to the actual presented values
+  predicted_draws_M <- c()
+  for (i in 1:length(conditions)){
+    n_fake_samples = 1000
+    min_x = min(subset(df, cat_value_group==conditions[i])$cumulative_cat_value_centered, na.rm=1)
+    max_x = max(subset(df, cat_value_group==conditions[i])$cumulative_cat_value_centered, na.rm=1)
+    model_draws = draws
+    conditions_col_names = c("value_group")
+    is_logistic = 0
+    curr_predicted_draws_M <- create_posterior_draws_lines(n_fake_samples, min_x, max_x, model_draws, conditions[i], conditions_col_names, is_logistic)
+    curr_predicted_draws_M <- curr_predicted_draws_M %>%
+      mutate(cumulative_value = x*sd(cat_memory_V1$cumulative_cat_value, na.rm=1) + mean(cat_memory_V1$cumulative_cat_value, na.rm=1),
+             cat_value_response = median*sd(cat_memory_V1$cat_value_response, na.rm=1) + mean(cat_memory_V1$cat_value_response, na.rm=1),
+             lower = lower*sd(cat_memory_V1$cat_value_response, na.rm=1) + mean(cat_memory_V1$cat_value_response, na.rm=1),
+             upper = upper*sd(cat_memory_V1$cat_value_response, na.rm=1) + mean(cat_memory_V1$cat_value_response, na.rm=1))
+    predicted_draws_M <- bind_rows(predicted_draws_M, curr_predicted_draws_M)
+  }
+  # plot the model
+  
+  # model text
+  M_text <- summary_coefs[summary_coefs$coef %in% c("slope_20", "slope_40", "slope_60", "slope_80"),] %>%
+    mutate(value_group = ifelse(coef=="slope_20", "20", ifelse(coef=="slope_40","40",ifelse(coef=="slope_60","60","80"))),
+           x = 35,
+           y = ifelse(coef=="slope_20", 90, ifelse(coef=="slope_40", 80, ifelse(coef=="slope_60", 70, 60))),
+           coef = value_group,
+           text = sprintf("\u03b2(%s) = %s", coef, value)) %>%
+    dplyr::select(-c(coef,value))
+  
+  
+  # model fit
+    p <- ggplot(predicted_draws_M, aes(y=cat_value_response,x=cumulative_value)) +
+    # geom_point(dat  a = cat_responses, aes(y = cat_val_response, x = cat_cumulative, color = as.factor(value_group)),
+    #            fill="white", shape=21, stroke=point_stroke, size=0.5, alpha=0.5) +
+    geom_ribbon(aes(ymin=lower, ymax=upper, fill=value_group), color=NA, alpha=0.4) + 
+    geom_line(aes(y=cat_value_response, color=value_group), size=line_size*1.5) +  
+    #geom_hline(yintercept=0.5, size=line_size, linetype="dashed") + 
+    #geom_vline(xintercept=0, size=line_size, linetype="dashed") +
+    scale_y_continuous(limits=c(0,100), breaks=c(0,20,40,60,80,100)) + 
+    scale_x_continuous(limits=c(0,100), breaks=c(0,20,40,60,80,100)) +
+    #scale_linetype_manual(values=c("longdash", "solid")) +
+    theme + point_plot_theme + 
+    theme(legend.position="none",
+          plot.title = element_text(margin=margin(0,0,30,0))) + 
+    geom_text(M_text,mapping=aes(x=x, y=y, color=value_group, label=text), size=6) +
+    labs(y="Predicted Category Response", 
+         x="Cumulative Category Value",
+         title=Exp_name) +
+    scale_fill_brewer(palette=color_pallete) + 
+    scale_color_brewer(palette=color_pallete)
+
+    
+  } else {
+    
+    cat_responses <- df %>%
+    rename(value_group = cat_value_group) %>%
+    group_by(PID) %>%
+    summarize(cat_val_response = mean(cat_value_response, na.rm=1),
+              cat_cumulative = mean(cumulative_cat_value, na.rm=1))
+  
+  # run over each condition, so we could limit the x range to the actual presented values
+  predicted_draws_M <- c()
+  n_fake_samples = 500
+  min_x = min(df$cumulative_cat_value_centered, na.rm=1)
+  max_x = max(df$cumulative_cat_value_centered, na.rm=1)
+  model_draws = draws
+  conditions_col_names = c()
+  is_logistic = 0
+  curr_predicted_draws_M <- create_posterior_draws_lines(n_fake_samples, min_x, max_x, model_draws, conditions, conditions_col_names, is_logistic)
+  curr_predicted_draws_M <- curr_predicted_draws_M %>%
+    mutate(cumulative_value = x*sd(cat_memory_V1$cumulative_cat_value, na.rm=1) + mean(cat_memory_V1$cumulative_cat_value, na.rm=1),
+           cat_value_response = median*sd(cat_memory_V1$cat_value_response, na.rm=1) + mean(cat_memory_V1$cat_value_response, na.rm=1),
+           lower = lower*sd(cat_memory_V1$cat_value_response, na.rm=1) + mean(cat_memory_V1$cat_value_response, na.rm=1),
+           upper = upper*sd(cat_memory_V1$cat_value_response, na.rm=1) + mean(cat_memory_V1$cat_value_response, na.rm=1))
+  predicted_draws_M <- bind_rows(predicted_draws_M, curr_predicted_draws_M)
+
+  # plot the model
+  
+  # model text
+  M_text <- summary_coefs[summary_coefs$coef %in% c("slope_general"),] %>%
+    mutate(x = 35,
+           y = 80,
+           text = sprintf("\u03b2 = %s", value)) %>%
+    dplyr::select(-c(coef,value))
+  
+  
+  # model fit
+    p <- ggplot(predicted_draws_M, aes(y=cat_value_response,x=cumulative_value)) +
+    # geom_point(dat  a = cat_responses, aes(y = cat_val_response, x = cat_cumulative, color = as.factor(value_group)),
+    #            fill="white", shape=21, stroke=point_stroke, size=0.5, alpha=0.5) +
+    geom_ribbon(aes(ymin=lower, ymax=upper), color=NA, alpha=0.4) + 
+    geom_line(aes(y=cat_value_response), size=line_size*1.5) +  
+    scale_y_continuous(limits=c(0,100), breaks=c(0,20,40,60,80,100)) + 
+    scale_x_continuous(limits=c(0,100), breaks=c(0,20,40,60,80,100)) +
+    theme + point_plot_theme + 
+    theme(legend.position="none",
+          plot.title = element_text(margin=margin(0,0,30,0))) + 
+    geom_text(M_text,mapping=aes(x=x, y=y, label=text), size=6) +
+    labs(y="Predicted Category Response", 
+         x="Cumulative Category Value",
+         title=Exp_name)
+    
+  }
+  
+  return(p)
+  
+}
+
+# p1 <- cat_memory_plot(draws_cat_memory_V1, summary_cat_memory_V1, "Experiment 1", cat_memory_V1, c("20", "40", "60", "80"), 1)
+# p2 <- cat_memory_plot(draws_cat_memory_V3, summary_cat_memory_V3, "Experiment 3", cat_memory_V3, c("20", "40", "60", "80"), 1)
+
+p1 <- cat_memory_plot(draws_cat_memory_V1, summary_cat_memory_V1, "Experiment 1", cat_memory_V1, "general", 0)
+p2 <- cat_memory_plot(draws_cat_memory_V3, summary_cat_memory_V3, "Experiment 3", cat_memory_V3, "general", 0)
+
+p <- plot_grid(p1,p2,
+               ncol=2,
+               axis="bt",
+               align="v", 
+               labels=c("a","b"), 
+               label_size = 30, 
+               label_fontfamily = "Helvetica")
+
+
+if (Save_plots == 1) {
+  ggsave(filename=sprintf("Plots/%s.%s","Figure10",fig_type), 
+                             plot=p, 
+                             width=fig_size[1]+3,
+                             height=fig_size[2]-3)
+  ggsave(filename=sprintf("Plots/%s.%s","Figure10","png"), 
+                             plot=p, 
+                             width=fig_size[1]+3,
+                             height=fig_size[2]-3)}
+
+
+```
+
+
+## Test correlation between category learning slopes in novel trials and accuracy in old trials 
+
+```{r}
+
+# extract slopes from multilevel models
+draws_M_delta_val_V3 <- as.data.frame(M_delta_val_V3) 
+draws_M_within_cat_delta_exemplar_val <- as.data.frame(M_within_cat_delta_exemplar_val) 
+draws_M_within_cat_rt_by_exemplar_val <- as.data.frame(M_within_cat_rt_by_exemplar_val) 
+
+subs_coefs_multilevel <- data.frame()
+subs <- unique(df_V3$PID)
+for (i in 1:length(subs)){
+  curr_sub_delta_val_draws <- draws_M_delta_val_V3[,grepl(subs[i],colnames(draws_M_delta_val_V3))]
+  curr_sub_delta_exemplar_val_draws <- draws_M_within_cat_delta_exemplar_val[,grepl(subs[i],colnames(draws_M_within_cat_delta_exemplar_val))]
+  curr_sub_rt_by_exemplar_val_draws <- draws_M_within_cat_rt_by_exemplar_val[,grepl(subs[i],colnames(draws_M_within_cat_rt_by_exemplar_val))]
+  curr_sub_draws <- bind_cols(curr_sub_delta_val_draws[,2], curr_sub_delta_exemplar_val_draws[,2], curr_sub_rt_by_exemplar_val_draws[,2]) 
+  #colnames(curr_sub_draws) <- c("delta_cumulative_value", "delta_exemplar_value", "rt_by_exemplar_value")
+  curr_sub_draws_median <- curr_sub_draws %>%
+    gather(coef, value) %>%
+    group_by(coef) %>%
+    dplyr::summarize(median = median(value)) %>% 
+    spread(coef, median)
+  subs_coefs_multilevel[i,1] <- subs[i]
+  subs_coefs_multilevel[i,c(2:4)] <- curr_sub_draws_median
+}
+colnames(subs_coefs_multilevel) <- c("PID","delta_cumulative_value", "delta_exemplar_value", "rt_by_exemplar_value")
+
+p1 <- ggplot(subs_coefs_multilevel, aes(y=delta_cumulative_value,x=delta_exemplar_value)) +
+  geom_point(size=point_size-1, fill="white", shape=21, stroke=point_stroke) + 
+  geom_smooth(method=lm, color="turquoise4") +
+  geom_hline(yintercept=0, size=line_size, linetype="dashed") + 
+  geom_vline(xintercept=0, size=line_size, linetype="dashed") +
+  #scale_y_continuous(expand=c(0,0), breaks=c(0,0.5,1), limits=c(0,1.025)) + 
+  #scale_x_continuous(expand=c(0,0)) +
+  theme + point_plot_theme + 
+  labs(y="\u0394 cumulative value coefficient\nNovel trials", 
+       x="\u0394 exempalr value coefficient\nWithin-category old trials",
+       title="Accuracy")
+
+p2 <- ggplot(subs_coefs_multilevel, aes(y=delta_cumulative_value,x=rt_by_exemplar_value)) +
+  geom_point(size=point_size-1, fill="white", shape=21, stroke=point_stroke) + 
+  geom_smooth(method=lm, color="turquoise4") +
+  geom_hline(yintercept=0, size=line_size, linetype="dashed") + 
+  geom_vline(xintercept=0, size=line_size, linetype="dashed") +
+  #scale_y_continuous(expand=c(0,0), breaks=c(0,0.5,1), limits=c(0,1.025)) + 
+  #scale_x_continuous(expand=c(0,0)) +
+  theme + point_plot_theme + 
+  labs(y="\u0394 cumulative value coefficient\nNovel trials", 
+       x="RT by exemplar value coefficient\nWithin-category old trials",
+       title="RT") 
+
+p3 <- ggplot(subs_coefs_multilevel, aes(y=delta_exemplar_value,x=rt_by_exemplar_value)) +
+  geom_point(size=point_size-1, fill="white", shape=21, stroke=point_stroke) + 
+  geom_smooth(method=lm, color="turquoise4") +
+  geom_hline(yintercept=0, size=line_size, linetype="dashed") + 
+  geom_vline(xintercept=0, size=line_size, linetype="dashed") +
+  #scale_y_continuous(expand=c(0,0), breaks=c(0,0.5,1), limits=c(0,1.025)) + 
+  #scale_x_continuous(expand=c(0,0)) +
+  theme + point_plot_theme + 
+  labs(y="\u0394 exemplar value coefficient", 
+       x="RT by exemplar value coefficient",
+       title="Within-category trials") 
+
+p <- plot_grid(p1,p2,
+               ncol=2,
+               axis="bt",
+               align="v", 
+               labels=c("a","b"), 
+               label_size = 30, 
+               label_fontfamily = "Helvetica")
+
+
+if (Save_plots == 1) {
+  ggsave(filename=sprintf("Plots/%s.%s","Figure9",fig_type), 
+                             plot=p, 
+                             width=fig_size[1]+3,
+                             height=fig_size[2]-3)
+  ggsave(filename=sprintf("Plots/%s.%s","Figure9","png"), 
+                             plot=p, 
+                             width=fig_size[1]+3,
+                             height=fig_size[2]-3)}
+
+
+
+```
+
+```{r}
+
+library("pwr")
+library("lme4")
+library("lsr")
+
+# ==================================================
+# run simple logistic regressions to predict choices 
+# ==================================================
+
+v3_df <- subset(dfs$decisions_full, Exp=="V3")
+
+# run logistic fits for each subject and detect their unchosen intercept
+subs <- unique(v3_df$PID)
+subs_coefs <- data.frame()
+for (i in 1:length(subs)){
+  sub_data <- subset(v3_df, PID == subs[i] & is_old==0)
+  m_sub <- glm(data = sub_data, 
+                left_chosen ~ delta_cumulative_value, 
+                family = binomial(link = "logit"))
+  subs_coefs[i,1] <- subs[i]
+  subs_coefs[i,c(2:3)] <- m_sub$coefficients
+}
+colnames(subs_coefs) <- c("PID",rownames(as.data.frame(m_sub$coefficients)))
+
+
+# extract slopes from multilevel model 
+draws_M_delta_val_V3 <- as.data.frame(M_delta_val_V3) 
+subs_coefs_multilevel <- data.frame()
+for (i in 1:length(subs)){
+  curr_sub_draws <- draws_M_delta_val_V3[,grepl(subs[i],colnames(draws_M_delta_val_V3))]
+  curr_sub_draws_median <- curr_sub_draws %>%
+    gather(coef, value) %>%
+    group_by(coef) %>%
+    dplyr::summarize(median = median(value)) %>% 
+    spread(coef, median)
+  subs_coefs_multilevel[i,1] <- subs[i]
+  subs_coefs_multilevel[i,c(2:3)] <- curr_sub_draws_median
+}
+colnames(subs_coefs_multilevel) <- c("PID","Intercept_multilevel","delta_value_multilevel")
+
+# compute summary stats 
+acc_old_trials <- v3_df %>% 
+  subset(is_old==1 & within_category==1) %>%
+  group_by(PID) %>%
+  dplyr::summarise(acc = mean(high_exemplar_chosen, na.rm=1),
+                   zscored_rt = mean(zscored_rt, na.rm=1)) %>%
+  merge(subs_coefs, by="PID") %>%
+  merge(subs_coefs_multilevel, by="PID")
+
+p1 <- ggplot(acc_old_trials, aes(y=delta_value_multilevel,x=acc)) +
+  geom_point(size=point_size-1, fill="white", shape=21, stroke=point_stroke) + 
+  geom_smooth(method=lm, color="turquoise4") +
+  geom_hline(yintercept=0, size=line_size, linetype="dashed") + 
+  geom_vline(xintercept=0.5, size=line_size, linetype="dashed") +
+  #scale_y_continuous(expand=c(0,0), breaks=c(0,0.5,1), limits=c(0,1.025)) + 
+  #scale_x_continuous(expand=c(0,0)) +
+  theme + point_plot_theme + 
+  labs(y="\u0394 cumulative value coefficient\nNovel trials", 
+       x="p(choose higher exemplar)\nWithin-category old trials",
+       title="Accuracy")
+
+p2 <- ggplot(acc_old_trials, aes(y=delta_value_multilevel,x=zscored_rt)) +
+  geom_point(size=point_size-1, fill="white", shape=21, stroke=point_stroke) + 
+  geom_smooth(method=lm, color="turquoise4") +
+  geom_hline(yintercept=0, size=line_size, linetype="dashed") + 
+  geom_vline(xintercept=0, size=line_size, linetype="dashed") +
+  #scale_y_continuous(expand=c(0,0), breaks=c(0,0.5,1), limits=c(0,1.025)) + 
+  #scale_x_continuous(expand=c(0,0)) +
+  theme + point_plot_theme + 
+  labs(y="\u0394 cumulative value coefficient\nNovel trials", 
+       x="RT (zscored)\nWithin-category old trials",
+       title="RT") 
+
+p <- plot_grid(p1,p2,
+               ncol=2,
+               axis="bt",
+               align="v", 
+               labels=c("a","b"), 
+               label_size = 30, 
+               label_fontfamily = "Helvetica")
+
+
+if (Save_plots == 1) {ggsave(filename=sprintf("Plots/%s.%s","episodic_semantic_tradoff",fig_type), 
+                             plot=p, 
+                             width=fig_size[1]+3,
+                             height=fig_size[2]-3)}
+
+# ====================
+# exemplar performance  
+# ====================
+
+exemplar_chosen = v3_df %>% 
+  dplyr::select(c("PID", "block", "is_old","pair_type","within_category","chosen_exemplar_value", "rt", "zscored_rt")) %>%
+  mutate(exemplar_value = chosen_exemplar_value,
+         chosen = 1) %>%
+  dplyr::select(-c("chosen_exemplar_value"))
+exemplar_unchosen = v3_df %>%
+  dplyr::select(c("PID", "block", "is_old","pair_type","within_category","unchosen_exemplar_value", "rt", "zscored_rt")) %>%
+  mutate(exemplar_value = unchosen_exemplar_value,
+         chosen = 0,
+         rt=NA,
+         zscored_rt=NA) %>%
+  dplyr::select(-c("unchosen_exemplar_value"))
+
+exemplar_combined = bind_rows(exemplar_chosen,exemplar_unchosen) 
+
+exemplar_performance_within_category <- exemplar_combined %>%
+  subset(within_category==1) %>%
+  group_by(PID, block, exemplar_value) %>%
+  dplyr::summarize(mean_rt = mean(rt, na.rm=1),
+                   mean_zscored_rt = mean(zscored_rt, na.rm=1),
+                   choice_prob = mean(chosen, na.rm=1))
+
+# assess slopes for choosing the exemplar as a function of its value
+subs_coefs <- data.frame()
+for (i in 1:length(subs)){
+  sub_data <- subset(exemplar_combined, PID == subs[i] & within_category==1)
+  m_sub <- glm(data = sub_data, 
+                chosen ~ exemplar_value, 
+                family = binomial(link = "logit"))
+  subs_coefs[i,1] <- subs[i]
+  subs_coefs[i,c(2:3)] <- m_sub$coefficients
+}
+colnames(subs_coefs) <- c("PID",rownames(as.data.frame(m_sub$coefficients)))
+
+acc_old_trials <- acc_old_trials %>%
+  merge(subs_coefs, by="PID")
+
+p1 <- ggplot(acc_old_trials, aes(y=delta_cumulative_value,x=exemplar_value)) +
+  geom_point(size=point_size-1, fill="white", shape=21, stroke=point_stroke) + 
+  geom_smooth(method=lm, color="turquoise4") +
+  #geom_hline(yintercept=0, size=line_size, linetype="dashed") + 
+  geom_vline(xintercept=0, size=line_size, linetype="dashed") +
+  #scale_y_continuous(expand=c(0,0), breaks=c(0,0.5,1), limits=c(0,1.025)) + 
+  #scale_x_continuous(expand=c(0,0)) +
+  theme + point_plot_theme + 
+  labs(y="\u0394 cumulative value coefficient\nNovel trials", 
+       x="Slope for choosing exemplar by its value\nWithin-category old trials",
+       title="trade-off")
+
+p2 <- ggplot(acc_old_trials, aes(y=acc,x=exemplar_value)) +
+  geom_point(size=point_size-1, fill="white", shape=21, stroke=point_stroke) + 
+  geom_smooth(method=lm, color="turquoise4") +
+  geom_hline(yintercept=0.5, size=line_size, linetype="dashed") + 
+  geom_vline(xintercept=0, size=line_size, linetype="dashed") +
+  #scale_y_continuous(expand=c(0,0), breaks=c(0,0.5,1), limits=c(0,1.025)) + 
+  #scale_x_continuous(expand=c(0,0)) +
+  theme + point_plot_theme + 
+  labs(y="p(choose higher exemplar)\nWithin-category old trials", 
+       x="Slope for choosing exemplar by its value\nWithin-category old trials",
+       title="Within-category old trials")
+
+p <- plot_grid(p1,p2,
+               ncol=2,
+               axis="bt",
+               align="v", 
+               labels=c("a","b"), 
+               label_size = 30, 
+               label_fontfamily = "Helvetica")
+
+
+if (Save_plots == 1) {ggsave(filename=sprintf("Plots/%s.%s","episodic_semantic_tradoff2",fig_type), 
+                             plot=p, 
+                             width=fig_size[1]+5,
+                             height=fig_size[2]-3)}
+
+
+```
+
+![Figure1. Relationship between choices in novel trials and old trials](Plots/episodic_semantic_tradoff.svg) 
+![Figure2. Relationship between choices in novel trials and old trials](Plots/episodic_semantic_tradoff2.svg) 
+
+## Analysis of Experiment 1
+
+### Final Decisions model
+
+```{r}
+
+# Stan parameters
+options(mc.cores = parallel::detectCores())
+
+params <- list()
+params$iterations <- 4000
+params$chains <- 4
+params$warmup <- 2000
+params$adapt_delta <- 0.99
+
+# Create relevant columns for modeling 
+dfs$final_decisions <- dfs$final_decisions %>% 
+  mutate(condition_center = ifelse(condition==0, -1, 1),
+         choice_center = ifelse(chosen_trial==0, -1, 1))
+
+# Remove Non responses
+dfs$final_decisions <- subset(dfs$final_decisions, !is.na(rt))
+
+# ====== choice ======
+
+# Run choice model and save it
+M_choice_delta_val <- stan_glmer(data = dfs$final_decisions, 
+                                 higher_outcome_chosen ~ condition_center*choice_center*zscored_delta_ratings + (condition_center*choice_center*zscored_delta_ratings | PID),
+                                 family = binomial(link="logit"), 
+                                 adapt_delta = params$adapt_delta, 
+                                 iter = params$iterations, 
+                                 chains = params$chains, 
+                                 warmup = params$warmup,
+                                 seed = 12345)
+
+save(list = "M_choice_delta_val",
+     file = "../Data/Exp1/Models/M_choice_delta_val.RData")
+
+# Save posterior draws matrix
+M_draws <- as.data.frame(M_choice_delta_val)
+write.csv(M_draws,"../Data/Exp1/Models/M_choice_delta_val_draws.csv")
+
+# ====== RT ======
+
+# Run RT model and save it
+
+M_choice_RT <- stan_glmer(data = dfs$final_decisions, 
+                             higher_outcome_chosen ~ condition_center*choice_center*zscored_rt + 
+                               (condition_center*choice_center*zscored_rt | PID),
+                                 family = binomial(link="logit"), 
+                                 adapt_delta = params$adapt_delta, 
+                                 iter = params$iterations, 
+                                 chains = params$chains, 
+                                 warmup = params$warmup,
+                                 seed = 12345)
+
+save(list = "M_choice_RT",
+     file = "../Data/Exp1/Models/M_choice_RT.RData")
+
+# Save posterior draws matrix
+M_choice_RT_draws <- as.data.frame(M_choice_RT)
+write.csv(M_choice_RT_draws,"../Data/Exp1/Models/M_choice_RT_draws.csv")
+
+
+```
+
+### Final Decisions phase 
+  
+Here we present the tendency to select a rewarded item in the Final Decisions phase as a function of pair type (chosen vs. unchosen pairs). We then present the coefficients of a multilevel Bayesian logistic regression estimating the tendency to select a rewarded item as a function of choice type (chosen_trial_centered) and the difference in normalized liking ratings between rewarded and unrewarded items (norm_drate_by_outcome).  
+
+
+```{r, analysis of final decisions}
+
+# ================================
+# Choices in Final Decisions phase 
+# ================================
+
+# compute mean probabiltiy to choose gain - for chosen and unchosen alone
+p_gain <- dfs$final_decisions %>% 
+  mutate(choice = ifelse(chosen_trial==1, "Chosen", "Unchosen"),
+         condition = ifelse(condition==1, "Interference", "Repetition")) %>%
+  group_by(Exp, PID, choice, condition) %>% 
+  dplyr::summarize(p_gain = mean(higher_outcome_chosen, na.rm=1)) 
+
+p_gain_group <- p_gain %>%
+  group_by(Exp, choice, condition) %>%
+  dplyr::summarize(mean = mean(p_gain, na.rm=1), 
+                   se = sd(p_gain, na.rm=1)/sqrt(n())) %>%
+  mutate(`p(select rewarded)` = sprintf("%.2f \u00b1 %.2f", mean, se)) %>%
+  dplyr::select(Exp, choice, condition, `p(select rewarded)`)
+
+# print table of group means and 1 sem
+p_gain_group %>%
+  kbl() %>%
+  kable_paper("hover", full_width = F, html_font = "Helvetica", position = "left")
+
+# ======================================
+# Model choices as a function of ratings  
+# ======================================
+
+if (run_models==1){
+  
+  # Create relevant columns for modeling 
+  dfs$final_decisions <- dfs$final_decisions %>% 
+    mutate(condition_center = ifelse(condition==0, -1, 1),
+           choice_center = ifelse(chosen_trial==0, -1, 1))
+
+  # Remove Non responses
+  dfs$final_decisions <- subset(dfs$final_decisions, !is.nan(rt))
+
+  # Run choice model and save it
+  M_choice_delta_val <- stan_glmer(data = dfs$final_decisions, 
+                                   higher_outcome_chosen ~ 
+                                     condition_center*choice_center*zscored_delta_ratings + 
+                                     (condition_center*choice_center*zscored_delta_ratings | PID),
+                                   family = binomial(link="logit"), 
+                                   adapt_delta = params$adapt_delta, 
+                                   iter = params$iterations, 
+                                   chains = params$chains, 
+                                   warmup = params$warmup,
+                                   seed = 12345)
+
+  save(list = "M_choice_delta_val",
+       file = "../Data/Exp1/Models/M_choice_delta_val.RData")
+  
+} else {
+  load("../Data/Exp1/Models/M_choice_delta_val.RData")
+}
+
+# Create coefficients of interest by rearranging model coefs
+M_choice_delta_val_draws <- as.data.frame(M_choice_delta_val) %>%
+  mutate(intercept_chosen_interference = `(Intercept)` + choice_center + condition_center + `condition_center:choice_center`,
+         intercept_chosen_repetition = `(Intercept)` + choice_center - condition_center - `condition_center:choice_center`,
+         intercept_chosen_diff = intercept_chosen_interference - intercept_chosen_repetition,
+         slope_chosen_interference = zscored_delta_ratings + `choice_center:zscored_delta_ratings` + `condition_center:zscored_delta_ratings` + `condition_center:choice_center:zscored_delta_ratings`,
+         slope_chosen_repetition = zscored_delta_ratings + `choice_center:zscored_delta_ratings` - `condition_center:zscored_delta_ratings` - `condition_center:choice_center:zscored_delta_ratings`,
+         slope_chosen_diff = slope_chosen_interference - slope_chosen_repetition,
+         intercept_unchosen_interference = `(Intercept)` - choice_center + condition_center - `condition_center:choice_center`,
+         intercept_unchosen_repetition = `(Intercept)` - choice_center - condition_center + `condition_center:choice_center`,
+         intercept_unchosen_diff = intercept_unchosen_interference - intercept_unchosen_repetition,
+         slope_unchosen_interference = zscored_delta_ratings - `choice_center:zscored_delta_ratings` + `condition_center:zscored_delta_ratings` - `condition_center:choice_center:zscored_delta_ratings`,
+         slope_unchosen_repetition = zscored_delta_ratings - `choice_center:zscored_delta_ratings` - `condition_center:zscored_delta_ratings` + `condition_center:choice_center:zscored_delta_ratings`,
+         slope_unchosen_diff = slope_unchosen_interference - slope_unchosen_repetition)
+
+summary_coefs <- as.data.frame(M_choice_delta_val_draws) %>%
+  gather(coef, value, colnames(M_choice_delta_val_draws)[!str_detect(colnames(M_choice_delta_val_draws), "PID")]) %>%
+  group_by(coef) %>%
+  dplyr::summarize(HDI95_low = posterior_interval(as.matrix(value), prob=0.95)[1],
+                   HDI95_high = posterior_interval(as.matrix(value), prob=0.95)[2],
+                   median = median(value)) %>%
+  mutate(sig = ifelse((median>0 & HDI95_low>0 & HDI95_high>0) | (median<0 & HDI95_low<0 & HDI95_high<0),"*",""),
+         value = sprintf("%.2f [%.2f, %.2f]%s",median, HDI95_low, HDI95_high, sig)) %>%
+  dplyr::select(coef, value) 
+
+# print table of coefs
+summary_coefs %>%
+  kbl() %>%
+  kable_paper("hover", full_width = F, html_font = "Helvetica", position = "left")
+
+```
+
+### RT analysis in Final Decisions phase
+
+#### RT predicting choices
+In this anaysis we assess whether RTs relate to choices in the Final Decisions phase. We follow previous research showing that approach toward reward is faster than avoidance from loss, and so we expect participants to be faster when they choose the more valuable painting.  
+Here we expect to observe this effect in unchosen pairs for Repeated items and not for Interfered items. 
+We will predict the probability to select a rewarded item as a function of condition (Repetition vs. Interference) and reaction times. 
+Because there are not enough no-gain choices in the chosen pairs, we will only include the unchosen trials in this analysis.  
+We can then rearrange the model coefficients to get an estimate of the effect of RT for the two conditions seperately (the slope term). 
+  
+  
+```{r, rt final decisions}
+
+# =============================
+# RT avreages in all pair types 
+# =============================
+
+RT_FD <- subset(dfs$final_decisions, !is.na(rt)) %>%
+  mutate(Choice = ifelse(chosen_trial==1, "Chosen pairs", "Unchosen pairs"),
+         Condition = ifelse(condition==1, "Interference", "Repetition"),
+         `Chosen item` = ifelse(higher_outcome_chosen==1, "S+", "S0")) %>%
+  group_by(Exp, PID, Choice, Condition, `Chosen item`) %>%
+  dplyr::summarise(rt = mean(zscored_rt, na.rm=1)) 
+
+# show group means 
+RT_FD_group <- RT_FD %>%
+  group_by(Exp, Choice, Condition, `Chosen item`) %>%
+  dplyr::summarise(mean = mean(rt, na.rm=1),
+                   se = sd(rt)/sqrt(n())) %>%
+  mutate(RT = sprintf("%.2f \u00b1 %.2f", mean, se)) %>%
+  dplyr::select(Exp, Choice, Condition, `Chosen item`, RT) 
+
+RT_FD_group %>%
+  kbl() %>%
+  kable_paper("hover", full_width = F, html_font = "Helvetica", position = "left")
+
+# =================================================
+# p(gain) as a function of zscored RT and pair type
+# =================================================
+
+# run model 
+if (run_models==1){
+  
+  dfs$final_decisions <- dfs$final_decisions %>% 
+    mutate(condition_center = ifelse(condition==0, -1, 1))
+  
+  # run model and use function to rearrange the coefficients
+  M_zscored_RT_FD <- stan_glmer(data=subset(dfs$final_decisions, !is.na(left_chosen) & chosen_trial==0),
+                                higher_outcome_chosen ~ condition_center*zscored_rt + 
+                                  (condition_center*zscored_rt | PID),
+                                family = binomial(link="logit"),
+                                adapt_delta = params$adapt_delta,
+                                iter = params$iterations,
+                                chains = params$chains,
+                                warmup = params$warmup,
+                                seed = 12345)
+  
+  save(list = "M_zscored_RT_FD",
+       file = "../Data/Exp1/Models/M_zscored_RT_FD.RData")
+  
+} else {
+  load("../Data/Exp1/Models/M_zscored_RT_FD.RData")
+}
+
+# compute median and 95% HDIs of coefs
+draws_zscored_RT_FD <- as.data.frame(M_zscored_RT_FD) %>%
+  mutate(intercept_interference = `(Intercept)` + condition_center,
+         slope_interference = zscored_rt + `condition_center:zscored_rt`,
+         intercept_repetition = `(Intercept)` - condition_center,
+         slope_repetition = zscored_rt - `condition_center:zscored_rt`,
+         intercept_diff = intercept_interference - intercept_repetition,
+         slope_diff = slope_interference - slope_repetition)
+
+summary_draws_zscored_RT_FD <- draws_zscored_RT_FD[,!str_detect(colnames(draws_zscored_RT_FD),"PID")] %>%
+  gather(coef,value) %>%
+  group_by(coef) %>%
+  dplyr::summarize(HDI95_low = posterior_interval(as.matrix(value), prob=0.95)[1],
+                   HDI95_high = posterior_interval(as.matrix(value), prob=0.95)[2],
+                   median = median(value)) %>%
+  mutate(sig = ifelse((median>0 & HDI95_low>0 & HDI95_high>0) | 
+                          (median<0 & HDI95_low<0 & HDI95_high<0),"*",""),
+         value = sprintf("%.2f [%.2f, %.2f]%s",median, HDI95_low, HDI95_high, sig)) %>%
+  dplyr::select(coef, value)
+
+# print table of coefs
+print('Model coefficients in a model including zscored RT')
+summary_draws_zscored_RT_FD %>%
+  kbl() %>%
+  kable_paper("hover", full_width = F, html_font = "Helvetica", position = "left")
+
+```
+
+#### Figure RT
+
+```{r}
+
+# ===============
+# panel a - means
+# ===============
+
+# RT in chosen and unchosen pairs
+p1 <- ggplot(subset(RT_FD, Choice=="Unchosen pairs"), aes(x=`Chosen item`,y=rt, group=Condition)) +
+  stat_summary_bin(aes(y=rt, fill=Condition), fun.y="mean", geom="bar", binwidth=0.2,
+                   position=position_dodge(width=1), alpha=0.5) +
+  #geom_point(aes(color=Condition),position=position_jitterdodge(dodge.width=1, jitter.width=0.1), 
+  #           fill="white", shape=21, stroke=point_stroke, size=2, alpha=0.7) +
+  #scale_color_manual(values="black") + 
+  stat_summary(aes(color=Condition),fun.data=mean_se, fun.args = list(mult=n_sem), geom="errorbar",  
+               width=0.2, size=1, position=position_dodge(1)) + 
+  #geom_hline(yintercept=0, size=line_size, linetype="dashed") +
+  theme + 
+  scale_y_continuous(expand=c(0,0)) + #, limits=c(0, max(RT_FD$rt + 0.1))) + 
+  theme(aspect.ratio=3/2,
+        plot.title = element_text(margin=margin(0,0,30,0))) +
+  labs(x = "Selected stimulus", 
+       y="Reaction times (z-scored)", 
+       title="RT in Unchosen Pairs") +
+  scale_fill_brewer(palette=color_pallete) + 
+  scale_color_brewer(palette=color_pallete)
+
+
+# ===============
+# panel b - model
+# ===============
+
+# we create 1000 fake x values (zscored RTs), and for each we will predict the y values of every draw from the posterior distributions. We do that for every condition (interference vs. repetition pairs) seperately using their rearranged coefs (e.g., the interference intercept and interference slope)
+
+n_fake_samples = 1000
+min_x = -5
+max_x = 5
+model_draws = draws_zscored_RT_FD
+conditions = c("interference","repetition")
+conditions_col_names = c("condition")
+is_logistic = 1
+predicted_draws_rt_model <- create_posterior_draws_lines(n_fake_samples, min_x, max_x, model_draws, conditions, conditions_col_names, is_logistic)
+
+# model text
+rt_model_text <- summary_draws_zscored_RT_FD[summary_draws_zscored_RT_FD$coef %in% c("slope_interference", "slope_repetition"),] %>%
+  mutate(condition = ifelse(coef=="slope_interference", "Interference", "Repetition"),
+         x = ifelse(coef=="slope_interference", -2.5, 2.5),
+         y = ifelse(coef=="slope_interference", 0.8, 0.2),
+         text = sprintf("\u03b2(%s Slope):\n%s",condition, value)) %>%
+  dplyr::select(-c(coef,value))
+
+
+# model fit
+p2 <- ggplot(predicted_draws_rt_model, aes(y=median,x=x)) +
+  geom_ribbon(aes(ymin=lower, ymax=upper, fill=condition), color=NA, alpha=0.4) + 
+  geom_line(aes(y=median, color=condition), size=line_size*1.5) +  
+  geom_hline(yintercept=0.5, size=line_size, linetype="dashed") + 
+  geom_vline(xintercept=0, size=line_size, linetype="dashed") +
+  scale_y_continuous(expand=c(0,0), breaks=c(0,0.5,1), limits=c(0,1.025)) + 
+  scale_x_continuous(expand=c(0,0)) +
+  #scale_linetype_manual(values=c("longdash", "solid")) +
+  theme + point_plot_theme + 
+  theme(legend.position="none",
+        plot.title = element_text(margin=margin(0,0,30,0))) + 
+  geom_text(rt_model_text,mapping=aes(x=x, y=y, group=condition, label=text), size=7) +
+  labs(y="Predicted p(select S+)", 
+       x="Reaction times (z-scored)",
+       title="Choices and RTs in Final Decisions") +
+  scale_fill_brewer(palette=color_pallete) + 
+  scale_color_brewer(palette=color_pallete)
+
+
+p <- plot_grid(p1,p2,
+               ncol=2,
+               axis="bt",
+               align="v", 
+               labels=c("a","b"), 
+               label_size = 30, 
+               label_fontfamily = "Helvetica",
+               rel_widths = c(0.8,1))
+
+
+if (Save_plots == 1) {ggsave(filename=sprintf("Plots/%s.%s","Figure_RT",fig_type), 
+                             plot=p, 
+                             width=fig_size[1]+4,
+                             height=fig_size[2]-2)}
+
+```
+
+### Outcome Estimation phase
+
+Here we present the tendency to estimate items as rewarded ones as a fucntion of choice (chosen vs. unchosen items) and actual given reward (rewarded vs. unrewarded, for unchosen items, this is the outcome of their chosen counterpart).  
+
+```{r, analysis of outcome estimation}
+
+# =======================================
+# Estimations in Outcome Estimation phase 
+# =======================================
+
+outcome_estimation <- dfs$outcome_evaluation %>%
+  mutate(choice = ifelse(stim_type=="chosen", "Chosen", ifelse(stim_type=="unchosen","Unchosen","Novel")),
+         reward = ifelse(outcome==1, "Rewarded", "Unrewarded"),
+         condition = ifelse(condition==1, "Interference", "Repetition")) %>% 
+  group_by(PID, condition, choice, reward) %>%
+  dplyr::summarise(gain_eval = mean(outcome_eval_gain, na.rm=1),
+                   eval_acc = mean(outcome_eval_acc, na.rm=1),
+                   eval_rt = mean(outcome_eval_rt, na.rm=1)) 
+
+outcome_est_group <- outcome_estimation %>%
+  group_by(choice, reward, condition) %>%
+  dplyr::summarise(mean = mean(gain_eval, na.rm=1),
+                   se = sd(gain_eval, na.rm=1)/sqrt(n())) %>%
+  mutate(`p(estimate as rewarded)` = sprintf("%.2f \u00b1 %.2f",mean, se)) %>%
+  dplyr::select(choice,reward,condition,`p(estimate as rewarded)`)
+
+# print table
+outcome_est_group %>%
+  kbl() %>%
+  kable_paper("hover", full_width = F, html_font = "Helvetica", position = "left")
+
+# ===============================================
+# Model estimations as a function of outcome type 
+# ===============================================
+
+if (run_models==1){
+  dfs$outcome_evaluation <- mutate(dfs$outcome_evaluation,
+                                   chosen_obj_centered = ifelse(is_chosen==0,-1,1),
+                                   condition_centered = ifelse(condition==1, 1, -1))
+  M_outcome_estimation <- stan_glmer(data=subset(dfs$outcome_evaluation, is_novel==0), 
+                                     outcome_eval_gain ~ chosen_obj_centered * condition_centered * outcome + 
+                                       (chosen_obj_centered * condition_centered * outcome | PID),
+                                     family = binomial(link="logit"), 
+                                     adapt_delta = params$adapt_delta, 
+                                     iter = params$iterations, 
+                                     chains = params$chains, 
+                                     warmup = params$warmup)
+  save(M_outcome_estimation, file = "../Data/Exp1/Models/M_outcome_estimation.RData")
+} else {
+  load("../Data/Exp1/Models/M_outcome_estimation.RData")
+}
+
+# Rearrange model coefficients to get coefficients of interest
+model_posterior <- as.data.frame(M_outcome_estimation)
+outcome_est_group_fits <- model_posterior[,!str_detect(colnames(model_posterior),"PID")] %>%
+  mutate(interference_chosen_rewarded = `(Intercept)` + chosen_obj_centered + outcome + condition_centered + 
+           `chosen_obj_centered:condition_centered` + `chosen_obj_centered:outcome` + `condition_centered:outcome` + 
+           `chosen_obj_centered:condition_centered:outcome`,
+         interference_chosen_unrewarded = `(Intercept)` + chosen_obj_centered - outcome + condition_centered + 
+           `chosen_obj_centered:condition_centered` - `chosen_obj_centered:outcome` - `condition_centered:outcome` - 
+           `chosen_obj_centered:condition_centered:outcome`,
+         interference_unchosen_rewarded = `(Intercept)` - chosen_obj_centered + outcome + condition_centered - 
+           `chosen_obj_centered:condition_centered` - `chosen_obj_centered:outcome` + `condition_centered:outcome` - 
+           `chosen_obj_centered:condition_centered:outcome`,
+         interference_unchosen_unrewarded = `(Intercept)` - chosen_obj_centered - outcome + condition_centered - 
+           `chosen_obj_centered:condition_centered` + `chosen_obj_centered:outcome` - `condition_centered:outcome` + 
+           `chosen_obj_centered:condition_centered:outcome`,
+         repetition_chosen_rewarded = `(Intercept)` + chosen_obj_centered + outcome - condition_centered - 
+           `chosen_obj_centered:condition_centered` + `chosen_obj_centered:outcome` - `condition_centered:outcome` - 
+           `chosen_obj_centered:condition_centered:outcome`,
+         repetition_chosen_unrewarded = `(Intercept)` + chosen_obj_centered - outcome - condition_centered - 
+           `chosen_obj_centered:condition_centered` - `chosen_obj_centered:outcome` + `condition_centered:outcome` + 
+           `chosen_obj_centered:condition_centered:outcome`,
+         repetition_unchosen_rewarded = `(Intercept)` - chosen_obj_centered + outcome - condition_centered + 
+           `chosen_obj_centered:condition_centered` - `chosen_obj_centered:outcome` - `condition_centered:outcome` + 
+           `chosen_obj_centered:condition_centered:outcome`,
+         repetition_unchosen_unrewarded = `(Intercept)` - chosen_obj_centered - outcome - condition_centered + 
+           `chosen_obj_centered:condition_centered` + `chosen_obj_centered:outcome` + `condition_centered:outcome` - 
+           `chosen_obj_centered:condition_centered:outcome`) %>%
+  gather(coef,value) %>%
+  group_by(coef) %>%
+  dplyr::summarize(HDI95_low = posterior_interval(as.matrix(value), prob=0.95)[1],
+                   HDI95_high = posterior_interval(as.matrix(value), prob=0.95)[2],
+                   median = median(value)) %>%
+  mutate(sig = ifelse((median>0 & HDI95_low>0 & HDI95_high>0) | (median<0 & HDI95_low<0 & HDI95_high<0),"*",""),
+         value = sprintf("%.2f [%.2f, %.2f]%s",median, HDI95_low, HDI95_high, sig)) %>%
+  dplyr::select(coef, value) 
+
+model_coefs_outcome_estimation <- outcome_est_group_fits[outcome_est_group_fits$coef %in% c("(Intercept)","chosen_obj_centered","condition_centered","outcome", "chosen_obj_centered:condition_centered", "chosen_obj_centered:outcome", "condition_centered:outcome", "chosen_obj_centered:condition_centered:outcome"),]
+
+model_coefs_outcome_estimation %>%
+  kbl() %>%
+  kable_paper("hover", full_width = F, html_font = "Helvetica", position = "left")
+
+reaaranged_coefs_outcome_estimation <- outcome_est_group_fits[!outcome_est_group_fits$coef %in% c("(Intercept)","chosen_obj_centered","condition_centered","outcome", "chosen_obj_centered:condition_centered", "chosen_obj_centered:outcome", "condition_centered:outcome", "chosen_obj_centered:condition_centered:outcome"),] %>%
+  separate(coef, c("Condition","Choice", "Outcome"), sep="_") 
+
+reaaranged_coefs_outcome_estimation %>%
+  kbl() %>%
+  kable_paper("hover", full_width = F, html_font = "Helvetica", position = "left")
+
+# ==========================================================================
+# Relationship between inverse decision bias and inverse estimation of value
+# ==========================================================================
+
+inverse_decision_estimation <- outcome_estimation %>% 
+  dplyr::select(-c(eval_acc, eval_rt)) %>%
+  spread(reward, gain_eval) %>%
+  mutate(reward_diff = Rewarded-Unrewarded) %>%
+  merge(p_gain, by=c("PID","choice", "condition")) %>%
+  mutate(choice_centered = ifelse(choice=="Chosen", 1, -1),
+         condition_centered = ifelse(condition=="Interference", 1, -1),
+         p_gain_centered = p_gain - 0.5)
+
+ggplot(inverse_decision_estimation, aes(y=p_gain, x=reward_diff, color=condition)) +
+  geom_point() +
+  geom_smooth(method=lm) +
+  facet_wrap(.~choice) +
+  theme + point_plot_theme +
+  geom_hline(yintercept=0, size=1, linetype="dashed") +
+  geom_vline(xintercept=0, size=1, linetype="dashed")
+
+if (run_models==1){
+  M_inverse_decision_estimation <- stan_glm(data = inverse_decision_estimation, 
+                                     p_gain_centered ~ choice_centered * reward_diff * condition_centered,
+                                     family = gaussian(), 
+                                     adapt_delta = params$adapt_delta, 
+                                     iter = params$iterations, 
+                                     chains = params$chains, 
+                                     warmup = params$warmup)
+  save(M_inverse_decision_estimation, file = "../Data/Exp1/Models/M_inverse_decision_estimation.RData")
+} else {
+  load("../Data/Exp1/Models/M_inverse_decision_estimation.RData")
+}
+
+draws_inverse_decision_estimation <- as.data.frame(M_inverse_decision_estimation) %>%
+  mutate(intercept_chosen_interference = `(Intercept)` + choice_centered + condition_centered + `choice_centered:condition_centered`,
+         slope_chosen_interference = reward_diff + `choice_centered:reward_diff` + `reward_diff:condition_centered` + `choice_centered:reward_diff:condition_centered`,
+         intercept_unchosen_interference = `(Intercept)` - choice_centered + condition_centered - `choice_centered:condition_centered`,
+         slope_unchosen_interference = reward_diff - `choice_centered:reward_diff` + `reward_diff:condition_centered` - `choice_centered:reward_diff:condition_centered`,
+         intercept_chosen_repetition = `(Intercept)` + choice_centered - condition_centered - `choice_centered:condition_centered`,
+         slope_chosen_repetition = reward_diff + `choice_centered:reward_diff` - `reward_diff:condition_centered` - `choice_centered:reward_diff:condition_centered`,
+         intercept_unchosen_repetition= `(Intercept)` - choice_centered - condition_centered + `choice_centered:condition_centered`,
+         slope_unchosen_repetition = reward_diff - `choice_centered:reward_diff` - `reward_diff:condition_centered` + `choice_centered:reward_diff:condition_centered`) 
+
+summary_inverse_decision_estimation <- draws_inverse_decision_estimation %>%
+  gather(coef,value) %>%
+  group_by(coef) %>%
+  dplyr::summarize(HDI95_low = posterior_interval(as.matrix(value), prob=0.95)[1],
+                   HDI95_high = posterior_interval(as.matrix(value), prob=0.95)[2],
+                   median = median(value)) %>%
+  mutate(sig = ifelse((median>0 & HDI95_low>0 & HDI95_high>0) | (median<0 & HDI95_low<0 & HDI95_high<0),"*",""),
+         value = sprintf("%.2f [%.2f, %.2f]%s",median, HDI95_low, HDI95_high, sig)) %>%
+  dplyr::select(coef, value) 
+
+summary_inverse_decision_estimation %>%
+  kbl() %>%
+  kable_paper("hover", full_width = F, html_font = "Helvetica", position = "left")
+
+```
+  
+### Figure 2
+
+```{r, figure 2}
+
+# =================================
+# Panel a: means for p(choose gain) 
+# =================================
+
+bias <- dfs$final_decisions %>%
+  mutate(Choice = ifelse(chosen_trial==1, "Chosen", "Unchosen"),
+         Condition = ifelse(condition==1, "Interference", "Repetition")) %>%
+  group_by(PID, Choice, Condition) %>%
+  dplyr::summarize(p_gain = mean(higher_outcome_chosen, na.rm=1))
+
+p1 <- ggplot(bias, aes(x=Choice,y=p_gain,group=Condition)) +
+  stat_summary_bin(aes(y=p_gain, fill=Condition), fun.y="mean", geom="bar", binwidth=0.2, position=position_dodge(width=1), alpha=0.5) +
+  geom_point(aes(color=Condition), position=position_jitterdodge(dodge.width=1, jitter.width=0.1), 
+                   fill="white", shape=21, stroke=point_stroke, size=point_size-2) +
+  #scale_color_manual(values="black") + 
+  stat_summary(aes(color=Condition),fun.data=mean_se, fun.args = list(mult=n_sem), geom="errorbar", width=0.2, size=0.9, position=position_dodge(1)) + # "turquoise4"
+  geom_hline(yintercept=0.5, size=line_size, linetype="dashed") + 
+  scale_y_continuous(expand=c(0,0), breaks=c(0,0.5,1), limits=c(0,1.02)) + 
+  theme + 
+  theme(axis.title.x=element_blank(),  
+        aspect.ratio=2.5/2,
+        plot.title = element_text(margin=margin(0,0,30,0))) +
+  labs(y="p(select S+)", title="Final Decisions Choices") +
+  scale_x_discrete(breaks = c("Chosen","Unchosen"), limits=c("Chosen","Unchosen"),
+                   # labels = c("1" = expression(atop(S[chosen],paste("(learned)"))),
+                   #            "0" = expression(atop(S[unchosen],paste("(inferred)"))))) 
+                   labels = c("Chosen" = expression(S[chosen]*" (learned)"),
+                              "Unchosen" = expression(S[unchosen]*" (inferred)"))) +
+  scale_fill_brewer(palette=color_pallete) + 
+  scale_color_brewer(palette=color_pallete)
+
+# ==========================
+# Panel b: choice model fits 
+# ==========================
+
+n_fake_samples = 1000
+min_x = -2
+max_x = 2
+model_draws = M_choice_delta_val_draws
+conditions = c("chosen_interference","chosen_repetition","unchosen_interference","unchosen_repetition")
+conditions_col_names = c("choice","condition")
+is_logistic = 1
+predicted_draws_choice_model <- create_posterior_draws_lines(n_fake_samples, min_x, max_x, model_draws, conditions, conditions_col_names, is_logistic)
+
+# model text
+choice_model_text <- subset(summary_coefs, (grepl("intercept_",coef) | grepl("slope_",coef)) & !grepl("_diff",coef)) %>%
+  separate(coef, c("coef","choice","condition"), "_") %>%
+  mutate(text = sprintf("\u03b2(%s %s) = \n%s", choice,coef, value)) %>%
+  mutate(x = ifelse(choice=="unchosen" & condition == "interference", -1, 1),
+         y = ifelse(choice=="unchosen" & condition == "repetition", 0.25, 0.75))
+
+
+# plot fit
+
+p2 <- ggplot(predicted_draws_choice_model, aes(y=median, x=x, linetype=choice, color=condition)) +
+  geom_ribbon(aes(ymin=lower, ymax=upper, fill=condition), color=NA,alpha=0.4) + 
+  geom_line(aes(y=median, linetype=choice, color=condition), size=line_size*1.5) +  
+  geom_hline(yintercept=0.5, size=line_size, linetype="dashed") + 
+  geom_vline(xintercept=0, size=line_size, linetype="dashed") +
+  scale_y_continuous(expand=c(0,0), breaks=c(0,0.5,1), limits=c(0,1.025)) + 
+  scale_x_continuous(expand=c(0,0)) +
+  scale_linetype_manual(values=c("longdash","solid","longdash","solid")) +
+  theme + point_plot_theme + 
+  theme(legend.position="none",
+        plot.title = element_text(margin=margin(0,0,30,0))) + 
+  geom_text(subset(choice_model_text, coef=="intercept" & choice=="unchosen"), 
+                   mapping=aes(x=x, y=y, color=condition, label=text), size=7) +
+  labs(y="Predicted p(select S+)", 
+       x="Normalized \u0394ratings (S+ - S0)",
+       title="Choice model predictions") +
+  scale_fill_brewer(palette=color_pallete) + 
+  scale_color_brewer(palette=color_pallete)
+
+# p <- plot_grid(p1,p2,
+#                ncol=2,
+#                axis="bt",
+#                align="v",
+#                labels=c("a","b"),
+#                label_size = 30,
+#                label_fontfamily = "Helvetica",
+#                rel_widths = c(0.75,1))
+#    
+# if (Save_plots == 1) {ggsave(filename=sprintf("Plots/%s.%s","Figure2",fig_type), 
+#                              plot=p, 
+#                              width=fig_size[1]+4,
+#                              height=fig_size[2]-3)}
+# 
+
+# =================================
+# Panel c: Outcome estimation means
+# =================================
+
+estimates <- subset(outcome_estimation, choice!="Novel") #%>%
+  #mutate(reward = ifelse(reward=="Rewarded", "S+", "S-"))
+
+p3 <- ggplot(estimates, aes(y = gain_eval, x = choice)) +
+  stat_summary_bin(aes(y=gain_eval, fill=condition), fun.y="mean", geom="bar", binwidth=0.2,
+                   position=position_dodge(width=1), alpha=0.5) +
+  geom_point(aes(color=condition, x=choice),
+             position=position_jitterdodge(dodge.width=1, jitter.width=0.1, jitter.height=0.01),
+             shape=21, stroke=point_stroke, size=2, fill="white") +
+  stat_summary(aes(color=condition, x=choice), 
+               fun.data=mean_se, fun.args = list(mult=1), 
+               geom="errorbar", width=0.2, size=0.9, position=position_dodge(width=1)) + 
+  geom_hline(yintercept=0.5, linetype="dashed", size=line_size) + 
+  scale_y_continuous(expand=c(0,0), breaks=c(0,0.5,1), limits=c(-0.03,1.05)) + 
+  theme + 
+  labs(y="p(estimate as S+)", title="Outcome Estimation") +
+  facet_wrap(.~reward) +
+  scale_x_discrete(breaks = c("Chosen", "Unchosen"),
+                   labels = c(expression(S[chosen]), expression(S[unchosen]))) + 
+  theme(aspect.ratio=2/1) +
+  scale_fill_brewer(palette=color_pallete) + 
+  scale_color_brewer(palette=color_pallete)
+  
+
+# ===================================================================
+# Panel d: Relationship between decision bias and outcome estimations
+# ===================================================================
+
+# predict bias for plotting
+
+n_fake_samples = 100
+min_x = -1
+max_x = 1
+model_draws = draws_inverse_decision_estimation
+conditions = c("chosen_interference","chosen_repetition","unchosen_interference","unchosen_repetition")
+conditions_col_names = c("choice","condition")
+is_logistic = 0
+predicted_summary_bias_estimations <- create_posterior_draws_lines(n_fake_samples, min_x, max_x, model_draws, conditions, conditions_col_names, is_logistic) %>%
+  mutate(reward_diff = x,
+         p_gain_centered = median)
+
+inverse_decision_estimation_text <- subset(summary_inverse_decision_estimation, (grepl("intercept_",coef) | grepl("slope_",coef)) & !grepl("_diff",coef)) %>%
+  separate(coef, c("coef","choice","condition"), "_") %>%
+  mutate(text = sprintf("\u03b2(%s %s) = \n%s", choice,coef, value)) %>%
+  mutate(x = ifelse(choice=="unchosen" & condition == "interference", -0.5, 0.5),
+         y = ifelse(choice=="unchosen" & condition == "repetition", -0.4, 0.4))
+
+p4 <- ggplot(subset(inverse_decision_estimation, choice=="Unchosen") %>%
+               mutate(choice = tolower(choice),
+                      condition = tolower(condition)),
+             aes(y=p_gain_centered,x=reward_diff, group=condition)) + 
+  geom_point(aes(color=condition), size=point_size, fill="white", shape=21, stroke=point_stroke) + 
+  theme + 
+  point_plot_theme +
+  geom_ribbon(data = subset(predicted_summary_bias_estimations,choice=="unchosen"), aes(ymin=lower, ymax=upper, fill=condition), color=NA, alpha=0.5) +
+  geom_line(data = subset(predicted_summary_bias_estimations,choice=="unchosen"), aes(y=median, color=condition), size=line_size*1.5) +  
+  geom_hline(yintercept=0, size=line_size, linetype="dashed") + 
+  geom_vline(xintercept=0, size=line_size,  linetype="dashed") +
+  scale_y_continuous(expand=c(0,0),  breaks=c(-0.5,0,0.5), limits=c(-0.55,0.55)) + 
+  scale_x_continuous(expand=c(0,0), breaks=c(-1, 0, 1), limits=c(-1.05, 1.05)) +
+  theme(legend.position="none", plot.title = element_text(margin=margin(0,0,30,0))) + 
+  geom_text(subset(inverse_decision_estimation_text, coef=="slope" & choice=="unchosen"), 
+            size=7, 
+            mapping=aes(x=x, y=y, label=text, color=condition)) + #, group=choice)) +
+  labs(y="p(select S+) - 0.5",
+       x="Inverse estimation score",
+       title="Decision bias and outcome estimations") +
+  scale_fill_brewer(palette=color_pallete) + 
+  scale_color_brewer(palette=color_pallete)
+ 
+# p <- plot_grid(p3,p4,
+#                ncol=2,
+#                axis="bt",
+#                align="v",
+#                labels=c("a","b"),
+#                label_size = 30,
+#                label_fontfamily = "Helvetica",
+#                rel_widths = c(1,1))
+#    
+# if (Save_plots == 1) {ggsave(filename=sprintf("Plots/%s.%s","Figure3",fig_type), 
+#                              plot=p, 
+#                              width=fig_size[1],
+#                              height=fig_size[2]-3)}
+
+p <- plot_grid(p1,p2,p3,p4,
+               ncol=2,nrow=2,
+               axis="bt",
+               align="v",
+               labels=c("a","b","c","d"),
+               label_size = 30,
+               label_fontfamily = "Helvetica")
+
+if (Save_plots == 1) {ggsave(filename=sprintf("Plots/%s.%s","Figure2",fig_type),
+                             plot=p,
+                             width=fig_size[1]+5,
+                             height=fig_size[2]+6)}
+
+```
+
+![Figure2. The inferred value of unchosen options is inversely related to the learned value of chosen options (Experiment 1)](Plots/Figure2.svg) 
+
+### Relationship between associative memory and inverse bias
+  
+Here we present regression models assessing the relationship between inverse inference of value and associative memory of the deliberation pairs. We analyse these effects both across participants and within participants.  
+
+```{r, memory and inverse bias}
+
+# ==============================
+# Pairs memory across conditions
+# ==============================
+
+pairs_acc <- dfs$memory %>%
+  mutate(Condition = ifelse(condition==1, "Interference", "Repetition")) %>%
+  group_by(PID, Condition) %>%
+  dplyr::summarise(pairs_acc = mean(pairs_acc, na.rm=1),
+                   zscored_rt = mean(zscored_rt_pairs, na.rm=1))
+
+# =======================
+# Memory and Inverse bias 
+# =======================
+
+# Compute measures of interest
+memory_bias <- dfs$final_decisions %>%
+  mutate(Choice = ifelse(chosen_trial==1, "Chosen", "Unchosen"),
+         Condition = ifelse(condition==1, "Interference", "Repetition")) %>%
+  group_by(PID, Choice, Condition) %>%
+  dplyr::summarize(p_gain = mean(higher_outcome_chosen, na.rm=1)) %>%
+  spread(Choice,p_gain) %>%
+  mutate(inverse_bias = Chosen - Unchosen) %>%
+  merge(pairs_acc, by=c("PID","Condition"))
+
+# Model inverse decision bias and pairs memory
+if (run_models==1){
+  
+  memory_bias <- memory_bias %>%
+    mutate(condition_centered = ifelse(Condition=="Interference", 1, -1))
+  
+  # run model
+  M_memory_bias <- stan_glm(data=memory_bias,
+                              inverse_bias ~ pairs_acc*condition_centered,
+                              family = gaussian(),
+                              adapt_delta = params$adapt_delta,
+                              iter = params$iterations,
+                              chains = params$chains,
+                              warmup = params$warmup,
+                              seed = 12345)
+  
+  save(list = "M_memory_bias",
+       file = "../Data/Exp1/Models/M_memory_bias.RData")
+} else {
+  load("../Data/Exp1/Models/M_memory_bias.RData")
+}
+
+# Present model coefs
+draws_memory_bias <- as.data.frame(M_memory_bias) %>%
+  mutate(intercept_interference = `(Intercept)` + condition_centered,
+         slope_interference = pairs_acc + `pairs_acc:condition_centered`,
+         intercept_repetition = `(Intercept)` - condition_centered,
+         slope_repetition = pairs_acc - `pairs_acc:condition_centered`)
+summary_memory_bias <- draws_memory_bias %>%
+  gather(coef, value) %>%
+  group_by(coef) %>%
+  dplyr::summarize(HDI95_low = posterior_interval(as.matrix(value), prob=0.95)[1],
+                   HDI95_high = posterior_interval(as.matrix(value), prob=0.95)[2],
+                   median = median(value)) %>%
+  mutate(sig = ifelse((median>0 & HDI95_low>0 & HDI95_high>0) | 
+                          (median<0 & HDI95_low<0 & HDI95_high<0),"*",""),
+         value = sprintf("%.2f [%.2f, %.2f]%s",median, HDI95_low, HDI95_high, sig)) %>%
+  dplyr::select(coef, value)
+
+summary_memory_bias %>%
+  kbl() %>%
+  kable_paper("hover", full_width = F, html_font = "Helvetica", position = "left")
+
+```
+  
+### Figure 3 - memory and bias
+  
+```{r, figure 3}
+
+p1 <- ggplot(pairs_acc, aes(x=Condition,y=pairs_acc,group=Condition)) +
+  stat_summary_bin(aes(y=pairs_acc, fill=Condition), fun.y="mean", geom="bar", binwidth=0.2, position=position_dodge(width=1), alpha=0.5) +
+  geom_point(aes(color=Condition), position=position_jitterdodge(dodge.width=1, jitter.width=0.1), 
+                   fill="white", shape=21, stroke=point_stroke, size=point_size-1) +
+  #scale_color_manual(values="black") + 
+  stat_summary(aes(color=Condition),fun.data=mean_se, fun.args = list(mult=n_sem), geom="errorbar", width=0.1, size=0.9, 
+               position=position_nudge(0.2)) + # "turquoise4"
+  geom_hline(yintercept=0.5, size=line_size, linetype="dashed") + 
+  scale_y_continuous(expand=c(0,0), breaks=c(0,0.5,1), limits=c(0,1.02)) + 
+  theme + 
+  theme(legend.position="none",
+        axis.title.x=element_blank(),  
+        aspect.ratio=2/1,
+        plot.title = element_text(margin=margin(0,0,30,0))) +
+  labs(y="Accuracy", title="Accuracy") +
+  scale_fill_brewer(palette=color_pallete) + 
+  scale_color_brewer(palette=color_pallete)
+
+p2 <- ggplot(pairs_acc, aes(x=Condition,y=zscored_rt,group=Condition)) +
+  stat_summary_bin(aes(y=zscored_rt, fill=Condition), fun.y="mean", geom="bar", binwidth=0.2, position=position_dodge(width=1), alpha=0.5) +
+  geom_point(aes(color=Condition), position=position_jitterdodge(dodge.width=1, jitter.width=0.1), 
+                   fill="white", shape=21, stroke=point_stroke, size=point_size-1) +
+  #scale_color_manual(values="black") + 
+  stat_summary(aes(color=Condition),fun.data=mean_se, fun.args = list(mult=n_sem), 
+               geom="errorbar", width=0.1, size=0.9, position=position_nudge(0.2)) + # "turquoise4"
+  geom_hline(yintercept=0, size=line_size, linetype="dashed") + 
+  scale_y_continuous(expand=c(0,0), breaks=c(-0.5,0,0.5), limits=c(-0.6, 0.6)) + 
+  theme + 
+  theme(legend.position="none",
+        axis.title.x=element_blank(),  
+        aspect.ratio=2/1,
+        plot.title = element_text(margin=margin(0,0,30,0))) +
+  labs(y="RT (z-scored)", title="RT") +
+  scale_fill_brewer(palette=color_pallete) + 
+  scale_color_brewer(palette=color_pallete)
+
+# plot inverse bias and pairs memory
+
+n_fake_samples = 1000
+min_x = min(memory_bias$pairs_acc)
+max_x = max(memory_bias$pairs_acc)
+model_draws = draws_memory_bias
+conditions = c("interference","repetition")
+conditions_col_names = c("condition")
+is_logistic = 0
+predicted_draws_memory_bias <- create_posterior_draws_lines(n_fake_samples, min_x, max_x, model_draws, conditions, conditions_col_names, is_logistic)
+predicted_draws_memory_bias <- predicted_draws_memory_bias %>%
+  mutate(inverse_bias = median,
+         pairs_acc = x)
+# model text
+memory_bias_model_text <- subset(summary_memory_bias, grepl("intercept_",coef) | grepl("slope_",coef)) %>%
+  separate(coef, c("coef","condition"), "_") %>%
+  mutate(text = sprintf("\u03b2(%s) = \n%s", coef, value)) %>%
+  mutate(x = ifelse(coef=="slope" & condition == "interference", 0.25, 0.75),
+         y = ifelse(coef=="slope" & condition == "repetition", -0.7, -0.7)) %>%
+  subset(coef=="slope")
+
+p3 <- ggplot(memory_bias %>% mutate(condition=tolower(Condition)), aes(y=inverse_bias,x=pairs_acc, color=condition)) +
+  geom_point(size=point_size-1, fill="white", shape=21, stroke=point_stroke) + 
+  theme + 
+  point_plot_theme +
+  geom_ribbon(data = predicted_draws_memory_bias, 
+              aes(ymin=lower, ymax=upper, fill=condition), color=NA, alpha=0.4) + 
+  geom_line(data=predicted_draws_memory_bias, aes(y=median, color=condition), size=line_size*1.5) +  
+  geom_hline(yintercept=0, size=line_size, linetype="dashed") + 
+  geom_vline(xintercept=0.5, size=line_size,  linetype="dashed") +
+  scale_y_continuous(expand=c(0,0),  breaks=c(-1,0,1), limits=c(-1.025,1.025)) + 
+  scale_x_continuous(expand=c(0,0), breaks=c(0, 0.5, 1), limits=c(-0.025, 1.025)) +
+  theme(legend.position="none", plot.title = element_text(margin=margin(0,0,30,0))) + 
+  labs(y=expression(atop("Inverse decision bias","p(select "*S[chosen]*"+) - p(select "*S[unchosen]*"+)")),
+       x="Pairs memory (accuracy)",
+       title="Memory and Inverse bias") +
+  geom_text(data=memory_bias_model_text,  mapping=aes(x=x, y=y, label=text, color=condition), size=8) +
+  scale_fill_brewer(palette=color_pallete) + 
+  scale_color_brewer(palette=color_pallete)
+
+
+p <- plot_grid(p1,p2,p3,
+               ncol=3,
+               axis="bt",
+               align="v",
+               labels=c("a","b","c"),
+               label_size = 30,
+               label_fontfamily = "Helvetica",
+               rel_widths = c(0.6,0.6,1))
+
+if (Save_plots == 1) {ggsave(filename=sprintf("Plots/%s.%s","Figure3",fig_type),
+                             plot=p,
+                             width=fig_size[1]+8,
+                             height=fig_size[2]-2)}
+
+```
+  
+![Figure3. Inverse inference of value is related to associative memory](Plots/Figure3.svg)
+
+### Testing whether the results hold when removing explicit strategy participants
+
+```{r, inverse strategy}
+
+# a potential confound of our study is that participants simply inferred that the task design is such that if their choice resulted in a gain, then the unchosen option was probably a loss. In the end of the task we asked participants how they made their choices in unchosen pairs. We now tag the participants who argued for this inference and remove them from analysis to see whetehr the results replicate even without them.
+
+strategy <- clean_data_Exp1$strategies
+# These are the people who explictly mentioned an inverse strategy
+inverse_strategy <- c("1Yu0G", "3PT1e", "6PhdR", "8mjxB", "9Ai4r", "a5b8U", "ADPTy", "aIvIN", "bI48S", "DAt9p", "diiDU", "fl6Ph", "H3ROo", "JeouF", "mEVNr", "n8kIj", "nYFCE", "OAsQd", "oJGUI", "uzP2b", "xvwYZ", "z9lUP")
+
+```
+
+#### Inverse decision bias
+
+```{r, inverse decision bias}
+
+# =====================
+# Inverse decision bias
+# =====================
+
+Exp1_FD_no_strategy <- clean_data_Exp1$final_decisions %>%
+  mutate(inverse_strategy = ifelse(PID %in% inverse_strategy, 1, 0))
+
+Exp1_FD_no_strategy %>%
+  mutate(choice = ifelse(chosen_trial==1, "Chosen", "Unchosen")) %>%
+  group_by(PID, inverse_strategy, choice) %>% 
+  dplyr::summarize(p_gain = mean(higher_outcome_chosen, na.rm=1)) %>%
+  group_by(inverse_strategy, choice) %>%
+  dplyr::summarize(mean = mean(p_gain, na.rm=1), 
+                   se = sd(p_gain, na.rm=1)/sqrt(n()),
+                   n = n(),
+                   n_effect = sum(p_gain<0.5),
+                   percent = round(sum(p_gain<0.5)/n()*100)) %>%
+  mutate(`p(select rewarded)` = sprintf("%.2f \u00b1 %.2f", mean, se),
+         n_effect = ifelse(choice=="Chosen", n-n_effect, n_effect),
+         `n effect` = sprintf("%d/%d", n_effect, n),
+         `% effect` = ifelse(choice=="Chosen", 100-percent, percent),
+         `reported strategy` = ifelse(inverse_strategy==1, "Inverse strategy","No inverse strategy")) %>%
+  ungroup(inverse_strategy) %>%
+  dplyr::select(`reported strategy`, choice, `p(select rewarded)`, `n effect`, `% effect`) %>%
+  kbl() %>%
+  kable_paper("hover", full_width = F, html_font = "Helvetica", position = "left")
+
+if (run_models==1){
+  # run model and use function to rearrange the coefficients
+  M_Exp1_choice_ratings_no_strategy <- run_choice_ratings_model(
+    subset(Exp1_FD_no_strategy, !is.na(left_chosen) & inverse_strategy==0),c(),params,"Exp1")
+  coef_list_Exp1_no_strategy <- create_choice_ratings_coef_list(M_Exp1_choice_ratings_no_strategy, "Exp1", "Pairs")
+} else {
+  load("../data/Models/Strategy_analysis/coef_list_Exp1_no_strategy.RData")
+}
+
+coef_list_Exp1_no_strategy$summary_group_coefs %>%
+    mutate(sig = ifelse((Median>0 & low95HDI>0 & high95HDI>0) | 
+                          (Median<0 & low95HDI<0 & high95HDI<0),"*",""),
+           value = sprintf("%.2f [%.2f, %.2f]%s",Median, low95HDI, high95HDI, sig)) %>%
+    dplyr::select(coef, value) %>%
+  kbl() %>%
+  kable_paper("hover", full_width = F, html_font = "Helvetica", position = "left")
+
+```
+
+#### Outcome Estimation
+
+```{r, outcome estimation}
+
+# ==================
+# Outcome Estimation
+# ==================
+
+outcome_estimation %>%
+  mutate(inverse_strategy = ifelse(PID %in% inverse_strategy, 1, 0)) %>%
+  group_by(inverse_strategy, choice, reward) %>%
+  dplyr::summarise(mean = mean(gain_eval, na.rm=1),
+                   se = sd(gain_eval, na.rm=1)/sqrt(n()),
+                   n = n(),
+                   n_effect = sum(gain_eval<0.5),
+                   percent = round(sum(gain_eval<0.5)/n()*100,1)) %>%
+  mutate(`p(estimate as rewarded)` = sprintf("%.2f \u00b1 %.2f",mean, se),
+         n_effect = ifelse((reward=="Rewarded" & choice=="Chosen") | (reward=="Unrewarded" & choice=="Unchosen"), 
+                           n-n_effect, n_effect),
+         `n effect` = sprintf("%d/%d", n_effect, n),
+         `% effect` = sprintf("%.f",n_effect/n*100),
+          `reported strategy` = ifelse(inverse_strategy==1, "Inverse strategy","No inverse strategy")) %>%
+  ungroup(inverse_strategy) %>%
+  dplyr::select(`reported strategy`,choice,reward,`p(estimate as rewarded)`,`n effect`,`% effect`) %>%
+  kbl() %>%
+  kable_paper("hover", full_width = F, html_font = "Helvetica", position = "left")
+
+# ===============================================
+# Model estimations as a function of outcome type 
+# ===============================================
+
+if (run_models==1){
+  clean_data_Exp1$outcome_evaluation <- mutate(clean_data_Exp1$outcome_evaluation,
+                                             chosen_obj_centered = ifelse(chosen_obj==0,-1,1),
+                                             inverse_strategy = ifelse(PID %in% inverse_strategy, 1, 0))
+  
+  M_outcome_estimation_no_strategy <- stan_glmer(data = subset(clean_data_Exp1$outcome_evaluation,
+                                                               inverse_strategy==0), 
+                                     outcome_eval_gain ~ chosen_obj_centered * reward_type + 
+                                       (chosen_obj_centered * reward_type | PID),
+                                     family = binomial(link="logit"), 
+                                     adapt_delta = params$adapt_delta, 
+                                     iter = params$iterations, 
+                                     chains = params$chains, 
+                                     warmup = params$warmup)
+  save(M_outcome_estimation_no_strategy, file = "../data/Models/Strategy_analysis/M_outcome_estimation_no_strategy.RData")
+} else {
+  load("../data/Models/Strategy_analysis/M_outcome_estimation_no_strategy.RData")
+}
+
+# Rearrange model coefficients to get coefficients of interest
+model_posterior <- as.data.frame(M_outcome_estimation_no_strategy)
+model_posterior[,!str_detect(colnames(model_posterior),"PID")] %>%
+  mutate(gain_chosen = `(Intercept)` + chosen_obj_centered + reward_type + `chosen_obj_centered:reward_type`,
+         no_gain_chosen = `(Intercept)` + chosen_obj_centered - reward_type - `chosen_obj_centered:reward_type`,
+         gain_unchosen = `(Intercept)` - chosen_obj_centered + reward_type - `chosen_obj_centered:reward_type`,
+         no_gain_unchosen = `(Intercept)` - chosen_obj_centered - reward_type + `chosen_obj_centered:reward_type`) %>%
+  gather(coef,value) %>%
+  group_by(coef) %>%
+  dplyr::summarize(HDI95_low = posterior_interval(as.matrix(value), prob=0.95)[1],
+                   HDI95_high = posterior_interval(as.matrix(value), prob=0.95)[2],
+                   median = median(value)) %>%
+  mutate(value = sprintf("%.2f [%.2f, %.2f]",median, HDI95_low, HDI95_high)) %>%
+  dplyr::select(coef, value) %>%
+  kbl() %>%
+  kable_paper("hover", full_width = F, html_font = "Helvetica", position = "left")
+
+```
+
+#### Relationship between inverse decision bias and inverse estimation of value
+
+```{r, estimation vs decisions}
+# ==========================================================================
+# Relationship between inverse decision bias and inverse estimation of value
+# ==========================================================================
+
+outcome_estimation <- outcome_estimation %>%
+  mutate(inverse_strategy = ifelse(PID %in% inverse_strategy, 1, 0))
+
+inverse_decision_estimation_no_strategy <- subset(outcome_estimation,inverse_strategy==0) %>% 
+  dplyr::select(-c(eval_acc, eval_rt)) %>%
+  spread(reward, gain_eval) %>%
+  mutate(reward_diff = Rewarded-Unrewarded) %>%
+  merge(p_gain, by=c("PID","choice")) %>%
+  mutate(choice_centered = ifelse(choice=="Chosen", 1, -1),
+         p_gain_centered = p_gain - 0.5)
+
+if (run_models==1){
+  M_inverse_decision_estimation_no_strategy <- 
+    stan_glm(data = inverse_decision_estimation_no_strategy, 
+             p_gain_centered ~ choice_centered * reward_diff,
+             family = gaussian(), 
+             adapt_delta = params$adapt_delta, 
+             iter = params$iterations, 
+             chains = params$chains, 
+             warmup = params$warmup)
+  save(M_inverse_decision_estimation_no_strategy, file = "../data/Models/Strategy_analysis/M_inverse_decision_estimation_no_strategy.RData")
+} else {
+  load("../data/Models/Strategy_analysis/M_inverse_decision_estimation_no_strategy.RData")
+}
+
+as.data.frame(M_inverse_decision_estimation_no_strategy) %>%
+  mutate(intercept_chosen = `(Intercept)` + choice_centered,
+         slope_chosen = reward_diff + `choice_centered:reward_diff`,
+         intercept_unchosen = `(Intercept)` - choice_centered,
+         slope_unchosen = reward_diff - `choice_centered:reward_diff`) %>%
+  gather(coef,value) %>%
+  group_by(coef) %>%
+  dplyr::summarize(HDI95_low = posterior_interval(as.matrix(value), prob=0.95)[1],
+                   HDI95_high = posterior_interval(as.matrix(value), prob=0.95)[2],
+                   median = median(value)) %>%
+  mutate(value = sprintf("%.2f [%.2f, %.2f]",median, HDI95_low, HDI95_high)) %>%
+  dplyr::select(coef, value) %>%
+  kbl() %>%
+  kable_paper("hover", full_width = F, html_font = "Helvetica", position = "left")
+
+```
+
+#### Relationship between inverse decision bias and associative memory - between participants
+
+```{r, decision bias and memory1}
+
+# ========================================================================================
+# Relationship between inverse decision bias and associative memory - between participants
+# ========================================================================================
+
+  # Model inverse decision bias and pairs memory
+if (run_models==1){
+  coefs_pair_acc_bias_Exp1_no_strategy <-
+  run_bias_memory_model(subset(Exp1_FD_no_strategy, inverse_strategy==0),
+                        "pair_acc",c(),params,"Exp1_no_strategy")
+  load("../data/Models/Memory_Bias/Between_subs/Model_objects/M_Exp1_no_strategy_memory_bias.RData")
+  } else {
+  load("../data/Models/Strategy_analysis/M_Exp1_no_strategy_memory_bias.RData")
+  load("../data/Models/Strategy_analysis/coefs_pair_acc_bias_Exp1_no_strategy.RData")
+}
+
+# Present model coefs
+as.data.frame(M_Exp1_no_strategy_memory_bias) %>%
+  gather(coef, value, `(Intercept)`:sigma) %>%
+  group_by(coef) %>%
+  dplyr::summarize(HDI95_low = posterior_interval(as.matrix(value), prob=0.95)[1],
+                   HDI95_high = posterior_interval(as.matrix(value), prob=0.95)[2],
+                   median = median(value)) %>%
+  mutate(value = sprintf("%.2f [%.2f, %.2f]",median, HDI95_low, HDI95_high)) %>%
+  dplyr::select(coef, value) %>%
+  kbl() %>%
+  kable_paper("hover", full_width = F, html_font = "Helvetica", position = "left")
+
+```
+
+#### Relationship between inverse decision bias and associative memory - within participants
+
+```{r, decision bias and memory2}
+
+# =======================================================================================
+# Relationship between inverse decision bias and associative memory - within participants
+# =======================================================================================
+
+memory_per_deliberation_subs_no_strategy <- memory_per_deliberation_subs %>%
+  mutate(inverse_strategy = ifelse(PID %in% inverse_strategy,"Inverse strategy","No inverse startegy"))
+
+memory_per_deliberation_subs_no_strategy %>%
+  group_by(inverse_strategy, pair_type_cond) %>%
+  dplyr::summarize(mean = mean(pair_acc),
+                   se = sd(pair_acc)/sqrt(n())) %>%
+  mutate(`pair memory accuracy` = sprintf("%.2f \u00b1 %.2f",mean, se)) %>%
+  dplyr::rename(`condition type` = pair_type_cond,
+                `reported strategy` = inverse_strategy) %>%
+  dplyr::select(`reported strategy`, `condition type`, `pair memory accuracy`) %>% 
+  kbl() %>%
+  kable_paper("hover", full_width = F, html_font = "Helvetica", position = "left")
+
+# Model the effect
+memory_per_deliberation_no_strategy <- memory_per_deliberation %>%
+  mutate(inverse_strategy = ifelse(PID %in% inverse_strategy,1,0))
+
+if (run_models==1){
+  M_memory_per_deliberation_Exp1_no_strategy <- stan_glmer(
+    data = subset(memory_per_deliberation_no_strategy, inverse_strategy==0),
+                          pair_acc ~ pair_type_centered + (pair_type_centered | PID),
+                          family = binomial(link="logit"), 
+                          adapt_delta = params$adapt_delta, 
+                          iter = params$iterations, 
+                          chains = params$chains, 
+                          warmup = params$warmup)
+  save(M_memory_per_deliberation_Exp1_no_strategy, 
+       file = "../data/Models/Strategy_analysis/M_memory_per_deliberation_Exp1_no_strategy.RData")
+} else {
+  load("../data/Models/Strategy_analysis/M_memory_per_deliberation_Exp1_no_strategy.RData")
+}
+
+# Present model coefs
+as.data.frame(M_memory_per_deliberation_Exp1_no_strategy) %>%
+  gather(coef, value, `(Intercept)`:pair_type_centered) %>%
+  group_by(coef) %>%
+  dplyr::summarize(HDI95_low = posterior_interval(as.matrix(value), prob=0.95)[1],
+                   HDI95_high = posterior_interval(as.matrix(value), prob=0.95)[2],
+                   median = median(value)) %>%
+  mutate(value = sprintf("%.2f [%.2f, %.2f]",median, HDI95_low, HDI95_high)) %>%
+  dplyr::select(coef,value) %>%
+  kbl() %>%
+  kable_paper("hover", full_width = F, html_font = "Helvetica", position = "left")
+
+```
+
+### Figure 4: decision bias and memory correlations in pilot study 
+  
+```{r, figure 4}
+
+bias_all_exps <- all_exps_list$final_decisions %>%
+  mutate(choice = ifelse(chosen_trial==1, "Chosen", "Unchosen")) %>%
+  mutate(Exp = factor(Exp, levels = c("Pilot", "Exp1", "Exp2", "Exp3", "Exp4")),
+         condition = ifelse(is.na(cond_logical), "None", 
+                            ifelse(cond_logical==1, "1", "0"))) %>%
+         # condition = ifelse(cond_logical==1 | is.na(cond_logical), "1", "0")) %>%
+  group_by(Exp, choice, condition, PID) %>%
+  dplyr::summarise(p_gain = mean(higher_outcome_chosen, na.rm=1),
+                   pair_acc = mean(pair_acc, na.rm=1)) %>%
+  mutate(nudge = ifelse(Exp %in% c("Pilot", "Exp1"), 0.2, 0.125))
+
+bias_all_exps_spread <- bias_all_exps %>%
+  spread(choice, p_gain) %>%
+  mutate(bias = Chosen - Unchosen) 
+
+# show decision bias for all exps
+
+color1 <- "#3FAFAB"; color2 <- "#DFA214"; color3 <- "black"
+fillcolor1 <- "#73D2BC"; fillcolor2 <- "#FFCC33"; fillcolor3 <- "#C1C1C1"
+
+p1 <- ggplot(bias_all_exps, aes(x=choice,y=p_gain,color=condition)) +
+  stat_summary_bin(aes(y=p_gain, fill=condition), fun.y="mean", color=NA, 
+                   geom="bar", binwidth=0.15, position=position_dodge(width=1)) +
+  geom_point(aes(group=condition), position=position_jitterdodge(dodge.width=1, jitter.width=0.1, jitter.height=0), 
+                   fill="white", shape=21, stroke=0.4, size=2) +
+  scale_color_manual(values=c(color1, color2, color3)) + 
+  scale_fill_manual(values=c(fillcolor1, fillcolor2, fillcolor3)) + 
+  stat_summary(aes(group=condition, x=as.numeric(as.factor(choice))+nudge), 
+               fun.data=mean_se, fun.args = list(mult=n_sem), 
+               geom="errorbar", width=0.15, size=0.7, position=position_dodge(width=1)) + 
+  geom_hline(yintercept=0.5, size=line_size, linetype="dashed") + 
+  scale_y_continuous(expand=c(0,0), breaks=c(0,0.5,1), limits=c(0,1.05)) + 
+  theme + 
+  theme(legend.position = "none",
+        axis.title.x=element_blank(), 
+        aspect.ratio=3/2,
+        strip.background = element_rect(colour=NA, fill=NA),
+        panel.spacing = unit(4, "lines"),
+        plot.title = element_text(margin=margin(0,0,30,0), hjust = 0.5, size = 30), 
+        text = element_text(size=26,family="Helvetica"),
+        axis.title = element_text(size = 24), 
+        axis.text = element_text(size = 22, color = "black")) +
+  scale_x_discrete(breaks = c("Chosen","Unchosen"), 
+                   labels = c("Chosen" = expression(S[chosen]),
+                              "Unchosen" = expression(S[unchosen]))) + 
+  labs(y="p(select S+)", title="Inverse decision bias") + 
+  facet_wrap(.~Exp, 
+             ncol=5,
+             labeller = labeller(Exp = c(Pilot="Pilot\n", Exp1="Experiment 1\n", Exp2="Experiment 2\n", 
+                                         Exp3="Experiment 3\n", Exp4="Experiment 4\n")))
+
+# show memory vs. inverse bias
+
+# load regression coefficients or run the model
+if (run_models==1){
+  coefs_pair_acc_bias_Pilot <- run_bias_memory_model(subset(clean_data_Pilot$final_decisions, !is.na(left_chosen)),
+                                                     "pair_acc",c(),params,"Pilot")
+  coefs_pair_acc_bias_Exp1 <- run_bias_memory_model(subset(clean_data_Exp1$final_decisions, !is.na(left_chosen)),
+                                                    "pair_acc",c(),params,"Exp1")
+  coefs_pair_acc_bias_Exp2 <- run_bias_memory_model(subset(clean_data_Exp2$final_decisions, !is.na(left_chosen)),
+                                                    "pair_acc","repeat_cond_centered",params,"Exp2")
+  coefs_pair_acc_bias_Exp3 <- run_bias_memory_model(subset(clean_data_Exp3$final_decisions, !is.na(left_chosen)),
+                                                    "pair_acc","reward_cond",params,"Exp3")
+  coefs_pair_acc_bias_Exp4 <- run_bias_memory_model(subset(clean_data_Exp4$final_decisions,!is.na(left_chosen)),
+                                                    "pair_acc","same_painter_centered",params,"Exp4")
+} else {
+  load("../data/Models/Memory_Bias/Between_subs/Coef_lists/coefs_pair_acc_bias_Pilot.RData")
+  load("../data/Models/Memory_Bias/Between_subs/Coef_lists/coefs_pair_acc_bias_Exp1.RData")
+  load("../data/Models/Memory_Bias/Between_subs/Coef_lists/coefs_pair_acc_bias_Exp2.RData")
+  load("../data/Models/Memory_Bias/Between_subs/Coef_lists/coefs_pair_acc_bias_Exp3.RData")
+  load("../data/Models/Memory_Bias/Between_subs/Coef_lists/coefs_pair_acc_bias_Exp4.RData")
+}
+
+arrange_predicted_fits <- function(coef_list, Exp_name){
+  if (length(colnames(coef_list$predicted_summary_list[[1]]))>5){
+    pred_summary <- bind_rows(coef_list$predicted_summary_list[[1]],coef_list$predicted_summary_list[[2]])
+    colnames(pred_summary)[5] <- "condition";
+  } else {
+    pred_summary <- coef_list$predicted_summary_list[[1]]
+  }
+  pred_summary <- bind_cols(data.frame(Exp=rep(Exp_name,1,nrow(pred_summary))),pred_summary)
+  return(pred_summary)
+}
+memory_predicted_fits <- bind_rows(arrange_predicted_fits(coefs_pair_acc_bias_Pilot, "Pilot"),
+                            arrange_predicted_fits(coefs_pair_acc_bias_Exp1, "Exp1"), 
+                            arrange_predicted_fits(coefs_pair_acc_bias_Exp2, "Exp2"),
+                            arrange_predicted_fits(coefs_pair_acc_bias_Exp3, "Exp3"),
+                            arrange_predicted_fits(coefs_pair_acc_bias_Exp4, "Exp4")) %>%
+  mutate(condition = ifelse(is.na(condition), "None", ifelse(condition==1, "1", "0")),
+         Exp = factor(Exp, levels = c("Pilot", "Exp1", "Exp2", "Exp3", "Exp4")))
+
+arrange_memory_group_fits <- function(coef_list, Exp_name){
+  post_draws <- coef_list$posterior_draws 
+  if (ncol(post_draws) > 3) { # for Experiments 2-4
+    post_draws <- post_draws %>%
+      mutate(`1` = post_draws[,2] + post_draws[,4],
+             `0` = post_draws[,2] - post_draws[,4],
+             Experiment = Exp_name) %>%
+      dplyr::select(Experiment,`1`,`0`) %>%
+      gather(condition, value, `1`:`0`)
+  } else {
+    post_draws <- post_draws %>%
+      dplyr::rename(None = pair_acc) %>%
+      mutate(Experiment = Exp_name) %>%
+      dplyr::select(Experiment, None) %>%
+      gather(condition, value, None)
+  }
+  return(post_draws)
+}
+
+memory_group_fits_text <- bind_rows(arrange_memory_group_fits(coefs_pair_acc_bias_Pilot, "Pilot"),
+                            arrange_memory_group_fits(coefs_pair_acc_bias_Exp1, "Exp1"), 
+                            arrange_memory_group_fits(coefs_pair_acc_bias_Exp2, "Exp2"),
+                            arrange_memory_group_fits(coefs_pair_acc_bias_Exp3, "Exp3"),
+                            arrange_memory_group_fits(coefs_pair_acc_bias_Exp4, "Exp4")) %>%
+    group_by(Experiment, condition) %>%
+    dplyr::summarize(Median=median(value), low95=quantile(value, 0.025), high95=quantile(value, 0.975)) %>%
+    mutate(sig = ifelse((low95>0 & high95>0) | (low95<0 & high95<0),"*",""),
+           text = sprintf("%.2f [%.2f, %.2f]%s",Median, low95, high95, sig),
+           x = 0.45,
+           y = ifelse(condition=="0", -0.5, -0.75)) %>%
+  mutate(Exp = factor(Experiment, levels = c("Pilot", "Exp1", "Exp2", "Exp3", "Exp4"))) %>%
+  arrange(Exp) 
+
+p2 <- ggplot(bias_all_exps_spread, aes(y=bias, x=pair_acc)) + 
+  geom_hline(yintercept=0, size=line_size, linetype="dashed") + 
+  geom_vline(xintercept=0.5, size=line_size, linetype="dashed") +
+  geom_point(size=point_size-2.5, shape=21, fill="white", stroke=point_stroke, aes(color=condition)) + 
+  theme + point_plot_theme +
+  geom_ribbon(data = mutate(memory_predicted_fits, bias=median), 
+              aes(ymin=lower, ymax=upper, fill=condition)) + 
+  geom_line(aes(y=median,color=condition), data=memory_predicted_fits, size=line_size*1.5) +  
+  scale_color_manual(values=c(color1, color2, color3)) + 
+  scale_fill_manual(values=c(fillcolor1, fillcolor2, fillcolor3)) + 
+  scale_y_continuous(expand=c(0,0), breaks=c(-1,0,1), limits=c(-1.025,1.025)) + 
+  scale_x_continuous(expand=c(0,0), breaks=c(0, 0.5, 1), limits=c(-0.025, 1.025)) +
+  theme(legend.position = "none",
+        plot.title = element_text(margin=margin(0,0,30,0), hjust = 0.5, size = 28), 
+        text = element_text(size=26,family="Helvetica"),
+        axis.title = element_text(size = 24), 
+        axis.text = element_text(size = 20, color = "black")) +
+  labs(y="Inverse decision bias", 
+       x="Pairs memory",
+       title="Associative memory and inverse decision bias") +
+  geom_text(data=memory_group_fits_text, mapping=aes(x=x, y=y, label=text, color=condition),size=7) + 
+  facet_wrap(.~Exp, 
+             ncol=5,
+             labeller = labeller(Exp = c(Pilot="Pilot\n", Exp1="Experiment 1\n", Exp2="Experiment 2\n", 
+                                         Exp3="Experiment 3\n", Exp4="Experiment 4\n")))
+
+p <- plot_grid(p1, p2, 
+               nrow=2, 
+               axis="bt",
+               labels=c("a","b"), 
+               label_size = 30,
+               label_fontfamily = "Helvetica")
+
+if (Save_plots == 1) {ggsave(filename=sprintf("../results/Plots/%s.%s","Figure4",fig_type), 
+                             plot=p, 
+                             width=fig_size[1]+10,
+                             height=fig_size[2]+2)}
+
+```
+  
+![Figure4. Main findings were replicated across five distinct data sets](../results/Plots/Figure4.png)
+
+### Power analysis for Experiment 1 based on Pilot study 
+
+```{r}
+
+library("pwr")
+library("lme4")
+library("lsr")
+
+# ========================================================
+# run simple logistic regressions to predict decision bias
+# ========================================================
+
+final_decisions_pilot <- subset(clean_data_Pilot$final_decisions, !is.na(left_chosen)) 
+
+# run logistic fits for each subject and detect their unchosen intercept
+subs <- unique(final_decisions_pilot$PID)
+subs_coefs <- data.frame()
+for (i in 1:length(subs)){
+  sub_data <- subset(final_decisions_pilot, PID == subs[i])
+  m_sub <- glm(data = sub_data, 
+                higher_outcome_chosen ~ chosen_trial_centered * norm_drate_by_outcome, 
+                family = binomial(link = "logit"))
+  subs_coefs[i,1] <- subs[i]
+  subs_coefs[i,c(2:5)] <- m_sub$coefficients
+}
+colnames(subs_coefs) <- c("PID",rownames(as.data.frame(m_sub$coefficients)))
+
+# compute unchosen intercept (intercept coef - chosen_trial coef)
+subs_coefs <- mutate(subs_coefs, unchosen_intercept = `(Intercept)` - chosen_trial_centered)
+
+# compute power
+compute_power <- function(desired_power,desired_sig_level,data,coef,null_point){
+  t_stats <- data %>%
+  dplyr::summarize(
+    t_value = as.numeric(t.test(!!sym(coef), rep(null_point, n()), paired=TRUE)["statistic"]),
+    p_value = as.numeric(t.test(!!sym(coef), rep(null_point, n()), paired=TRUE)["p.value"]),
+    cohens_d = cohensD(x=!!sym(coef),y=rep(null_point, n()),method="paired"), 
+    power = as.numeric(pwr.t.test(n = n(), d = cohens_d, sig.level = desired_sig_level, 
+                       type = c("paired"))["power"]),
+    desired_sample = as.numeric(pwr.t.test(power = desired_power, d = cohens_d, 
+                                sig.level = desired_sig_level, type = c("paired"))["n"]))
+  return(t_stats)
+}
+power_pilot <- compute_power(0.99, 0.05, subs_coefs, "unchosen_intercept",0)
+colnames(power_pilot) <- c("t value", "p value", "Cohen's d", "power in pilot study", "desired sample to get 99% power")
+
+power_pilot %>%
+  kbl() %>%
+  kable_paper("hover", full_width = F, html_font = "Helvetica", position = "left")
+
+```
+
+### Consistency in Deliberation phase
+
+```{r}
+
+clean_data_Exp1$deliberation %>%
+  mutate(choice_consistency = choice_consistency + 1) %>% # we add 1 because we computed how many times the same decision was made before the last block, but a better measure is how many times the decision was repeated (so we need to add the last block to the computation)
+  group_by(PID) %>%
+  dplyr::summarise(cons_mean = mean(choice_consistency, na.rm=1)) %>%
+  dplyr::summarise(mean = mean(cons_mean, na.rm=1),
+                   sd = sd(cons_mean, na.rm=1),
+                   se = sd(cons_mean, na.rm=1)/sqrt(n()))
+
+```
+
+## Supplementary Material analyses
+  
+### Supplementary Figure 1
+
+![Supplementary Figure 1. Reaction times in Final Decisions phase](../results/Plots/Figure_RT.png)  
+  
+
+### Supplementary Figure 2
+
+![Supplementary Figure 2. Experimental manipulations of the deliberation phase in Experiment 2 to 4](../results/Plots/Supp_Figure1.png)
+  
+### Supplementary Tablels
+
+#### Tables with data from Experiments 2 to 4
+
+Here we present tabels with behavioral data as well as regression cofficients of several models across all our experiments.  
+
+```{r, supplementary text 2 - tables}
+
+# Show decision bias and memory performance for each experiment 
+
+# ========================
+# Means of behavioral data 
+# ========================
+
+means_all_exps <- all_exps_list$final_decisions %>% 
+  dplyr::rename(Condition = "cond_name") %>%
+  mutate(Choice = ifelse(chosen_trial==1, "Chosen", "Unchosen"),
+         Exp = case_when(Exp=="Pilot" ~ "Pilot",
+                         Exp=="Exp1" ~ "Experiment 1",
+                         Exp=="Exp2" ~ "Experiment 2",
+                         Exp=="Exp3" ~ "Experiment 3",
+                         Exp=="Exp4" ~ "Experiment 4"),
+         Condition = ifelse(Condition=="High repetition", "More repetitions", 
+                            ifelse(Condition=="Low repetition", "Less repetitions", Condition))) %>%
+  mutate(Exp = factor(Exp, levels = c("Pilot", "Experiment 1", "Experiment 2", "Experiment 3", "Experiment 4"))) %>%
+  group_by(Exp, PID, Choice, Condition) %>% 
+  dplyr::summarize(p_gain = mean(higher_outcome_chosen, na.rm=1),
+                   pair_acc = mean(pair_acc, na.rm=1),
+                   choice_acc = mean(choice_acc, na.rm=1)) 
+
+group_means_all_exps <- means_all_exps %>%
+  group_by(Exp, Choice, Condition) %>%
+  dplyr::summarize(mean_p_gain = mean(p_gain, na.rm=1), se_p_gain = sd(p_gain, na.rm=1)/sqrt(n()),
+                   mean_pair_acc = mean(pair_acc, na.rm=1), se_pair_acc = sd(pair_acc, na.rm=1)/sqrt(n()),
+                   mean_choice_acc = mean(choice_acc, na.rm=1), se_choice_acc = sd(choice_acc, na.rm=1)/sqrt(n())) %>%
+  mutate(p_gain = sprintf("%.2f \u00b1 %.2f",mean_p_gain, se_p_gain),
+         pair_acc = sprintf("%.2f \u00b1 %.2f",mean_pair_acc, se_pair_acc),
+         choice_acc = sprintf("%.2f \u00b1 %.2f",mean_choice_acc, se_choice_acc)) %>%
+  dplyr::select(Exp, Choice, Condition, p_gain, pair_acc, choice_acc) %>%
+  spread(Choice, p_gain) %>%
+  dplyr::select(Exp, Condition, Chosen, Unchosen, pair_acc, choice_acc) %>%
+  dplyr::rename(`S+ selection (Chosen pairs)` = Chosen, `S+ selection (Unchosen pairs)` = Unchosen, `Pairs memory` = pair_acc, `Choice memory` = choice_acc)
+
+group_means_all_exps %>%
+  kbl(caption = "Supplementary Table 1. Behavioral performance in all experiments") %>%
+  kable_paper("hover", full_width = F, html_font = "Helvetica", position = "left")
+
+# ========================
+# Choice and ratings model
+# ========================
+
+if (run_models==1){
+  # run models for all experiments (but exp1)
+  M_Pilot_choice_ratings <- run_choice_ratings_model(
+    subset(clean_data_Pilot$final_decisions, !is.na(left_chosen)),c(),params,"Pilot")
+  M_Exp1_choice_ratings <- run_choice_ratings_model(
+    subset(clean_data_Exp1$final_decisions, !is.na(left_chosen)),c(),params,"Exp1")
+  M_Exp2_choice_ratings <- run_choice_ratings_model(
+    subset(clean_data_Exp2$final_decisions, !is.na(left_chosen)),"repeat_cond_centered",params,"Exp2")
+  M_Exp3_choice_ratings <- run_choice_ratings_model(
+    subset(clean_data_Exp3$final_decisions, !is.na(left_chosen)),"reward_cond",params,"Exp3")
+  M_Exp4_choice_ratings <- run_choice_ratings_model(
+    subset(clean_data_Exp4$final_decisions, !is.na(left_chosen)),"same_painter_centered",params,"Exp4")
+  # create coef list
+  coef_list_Pilot <- create_choice_ratings_coef_list(M_Pilot_choice_ratings, "Pilot", "Pairs")
+  coef_list_Exp1 <- create_choice_ratings_coef_list(M_Exp1_choice_ratings, "Exp1", "Pairs")
+  coef_list_Exp2 <- create_choice_ratings_coef_list(M_Exp2_choice_ratings, "Exp2", c("HighRepeat", "LowRepeat"))
+  coef_list_Exp3 <- create_choice_ratings_coef_list(M_Exp3_choice_ratings, "Exp3", c("HighReward", "LowReward"))
+  coef_list_Exp4 <- create_choice_ratings_coef_list(M_Exp4_choice_ratings, "Exp4", c("Same", "Diff"))
+} else {
+  load("../data/Models/Choice_Ratings_models/Coef_lists/coef_list_Pilot.RData")
+  load("../data/Models/Choice_Ratings_models/Coef_lists/coef_list_Exp1.RData")
+  load("../data/Models/Choice_Ratings_models/Coef_lists/coef_list_Exp2.RData")
+  load("../data/Models/Choice_Ratings_models/Coef_lists/coef_list_Exp3.RData")
+  load("../data/Models/Choice_Ratings_models/Coef_lists/coef_list_Exp4.RData")
+}
+
+# =================================================
+# Present choice and ratings model fits: full model
+# =================================================
+
+# Concatenate model fits of all experiments 
+arrange_fits_full <- function(coef_list, Exp_name){
+  coefs <- coef_list$summary_group_coefs
+  if(nrow(coefs) > 8){
+    coefs <- coefs[c(1:8),]; coefs$coef <- c("Intercept", "Choice", "Condition", "Choice:Condition", "Ratings", 
+                                             "Choice:Ratings", "Ratings:Condition", "Choice:Ratings:Condition")
+  } else {
+    coefs <- coefs[c(1:4),]; coefs$coef <- c("Intercept", "Choice", "Ratings", "Choice:Ratings")
+  }
+  coefs <- coefs %>%
+    mutate(Exp = Exp_name, 
+           sig = ifelse((low95HDI>0 & high95HDI>0) | (low95HDI<0 & high95HDI<0),"*",""),
+           value = sprintf("%.2f [%.2f %.2f]%s",Median, low95HDI, high95HDI, sig)) %>%
+    dplyr::select(Exp, coef, value) %>%
+    spread(coef, value) 
+  return(coefs)
+}
+
+choice_ratings_fits_full <- bind_rows(arrange_fits_full(coef_list_Pilot, "Pilot"),
+                                      arrange_fits_full(coef_list_Exp1, "Exp. 1"), 
+                                      arrange_fits_full(coef_list_Exp2, "Exp. 2"),
+                                      arrange_fits_full(coef_list_Exp3, "Exp. 3"),
+                                      arrange_fits_full(coef_list_Exp4, "Exp. 4")) %>%
+  dplyr::select(Exp, Intercept, Choice, Ratings, `Choice:Ratings`, Condition, `Choice:Condition`, 
+                `Ratings:Condition`, `Choice:Ratings:Condition`)
+
+choice_ratings_fits_full %>%
+  kbl(caption = "Supplementary Table 2. Regression coefficients in the Final Decision phase") %>%
+  kable_paper("hover", full_width = F, html_font = "Helvetica", position = "left") 
+
+# ===========================================================
+# Present choice and ratings model fits: slope and intercepts
+# ===========================================================
+
+arrange_fits <- function(coef_list, Exp_name){
+  coefs <- subset(coef_list$summary_group_coefs, grepl(c("Intercept_"),coef) | grepl(c("Slope_"),coef)) %>%
+    mutate(Exp = Exp_name, 
+           sig = ifelse((Median>0 & low95HDI>0 & high95HDI>0) | (Median<0 & low95HDI<0 & high95HDI<0),"*",""),
+           value = sprintf("%.2f [%.2f %.2f]%s",Median, low95HDI, high95HDI,sig)) %>%
+    dplyr::select(Exp, coef, value) %>%
+    separate(coef, c("coef","choice","condition"), "_") %>%
+    spread(coef, value) %>%
+    dplyr::rename(Choice = "choice", Condition = "condition")
+  return(coefs)}
+
+choice_ratings_fits <- bind_rows(arrange_fits(coef_list_Pilot, "Pilot"),
+                                 arrange_fits(coef_list_Exp1, "Experiment 1"), 
+                                 arrange_fits(coef_list_Exp2, "Experiment 2"),
+                                 arrange_fits(coef_list_Exp3, "Experiment 3"),
+                                 arrange_fits(coef_list_Exp4, "Experiment 4")) 
+
+slopes <- choice_ratings_fits %>% 
+  dplyr::select(Exp, Choice, Condition, Slope) %>% 
+  spread(Choice, Slope) %>% 
+  dplyr::rename(`Slope (Chosen pairs)` = "Chosen", `Slope (Unchosen pairs)` = "Unchosen")
+intercepts <- choice_ratings_fits %>% 
+  dplyr::select(Exp, Choice, Condition, Intercept) %>% 
+  spread(Choice, Intercept) %>% 
+  dplyr::rename(`Intercept (Chosen pairs)` = "Chosen", `Intercept (Unchosen pairs)` = "Unchosen")
+fits_table <- merge(intercepts, slopes, by=c("Exp", "Condition")) %>%
+  mutate(Condition = case_when(Condition=="HighRepeat" ~ "More repetitions",
+                               Condition=="LowRepeat" ~ "Less repetitions",
+                               Condition=="HighReward" ~ "High reward",
+                               Condition=="LowReward" ~ "Low reward",
+                               Condition=="Same" ~ "Same painter",
+                               Condition=="Diff" ~ "Different painter",
+                               Condition=="Pairs" ~ ""),
+        Experiment = factor(Exp, levels=c("Pilot", "Experiment 1", "Experiment 2", "Experiment 3", "Experiment 4"))) %>%
+  arrange(Experiment) %>%
+  dplyr::select(Experiment, Condition, `Intercept (Chosen pairs)`, `Slope (Chosen pairs)`,
+                `Intercept (Unchosen pairs)`, `Slope (Unchosen pairs)`)
+
+fits_table %>%
+  kbl(caption = "Supplementary Table 3. Coefficients of interest for chosen and unchosen pairs.") %>%
+  kable_paper("hover", full_width = F, html_font = "Helvetica", position = "left") 
+
+# ========================================================
+# Present choice and ratings model fits: across conditions
+# ========================================================
+
+choice_ratings_fits_across_conds <- function(coef_list, Exp_name){
+  coefs <- coef_list$posterior_group_coefs %>%
+    mutate(Experiment = Exp_name,
+           Chosen_Intercept = `(Intercept)` + chosen_trial_centered,
+           Unchosen_Intercept = `(Intercept)` - chosen_trial_centered,
+           Chosen_Slope = norm_drate_by_outcome + `chosen_trial_centered:norm_drate_by_outcome`,
+           Unchosen_Slope = norm_drate_by_outcome - `chosen_trial_centered:norm_drate_by_outcome`) %>%
+    dplyr::select(c(Experiment,Chosen_Intercept,Unchosen_Intercept,Chosen_Slope,Unchosen_Slope)) %>%
+    gather(coef, value,Chosen_Intercept:Unchosen_Slope) %>%
+    separate(coef, c("choice","coef"), "_") %>%
+    group_by(Experiment,choice,coef) %>%
+    dplyr::summarise(HDI95_low = posterior_interval(as.matrix(value), prob=0.95)[1],
+                     HDI95_high = posterior_interval(as.matrix(value), prob=0.95)[2],
+                     median = median(value)) %>%
+    mutate(sig = ifelse((median>0 & HDI95_low>0 & HDI95_high>0) | (median<0 & HDI95_low<0 & HDI95_high<0),"*",""),
+           value = sprintf("%.2f [%.2f %.2f]%s",median, HDI95_low, HDI95_high,sig)) %>%
+    dplyr::select(c(Experiment, choice, coef, value)) %>%
+    spread(coef, value) %>%
+    dplyr::rename(Choice = "choice")
+  return(coefs)
+}
+
+fits_across_conds <- bind_rows(choice_ratings_fits_across_conds(coef_list_Exp2, "Experiment 2"),
+                               choice_ratings_fits_across_conds(coef_list_Exp3, "Experiment 3"),
+                               choice_ratings_fits_across_conds(coef_list_Exp4, "Experiment 4"))
+
+slopes_across_conds <- fits_across_conds %>% 
+  dplyr::select(Experiment, Choice, Slope) %>% 
+  spread(Choice, Slope) %>% 
+  dplyr::rename(`Slope (Chosen pairs)` = "Chosen", `Slope (Unchosen pairs)` = "Unchosen")
+intercepts_across_conds <- fits_across_conds %>% 
+  dplyr::select(Experiment, Choice, Intercept) %>% 
+  spread(Choice, Intercept) %>% 
+  dplyr::rename(`Intercept (Chosen pairs)` = "Chosen", `Intercept (Unchosen pairs)` = "Unchosen")
+fits_table_across_conds <- merge(intercepts_across_conds, slopes_across_conds, by=c("Experiment")) %>%
+  dplyr::select(Experiment, `Intercept (Chosen pairs)`, `Slope (Chosen pairs)`,
+                `Intercept (Unchosen pairs)`, `Slope (Unchosen pairs)`)
+
+fits_table_across_conds %>%
+  kbl(caption = "Supplementary Table 4. Coefficients of interest for chosen and unchosen pairs across conditions") %>%
+  kable_paper("hover", full_width = F, html_font = "Helvetica", position = "left") 
+
+# =========================================
+# Present model fits: pairs memory and bias 
+# =========================================
+
+if (run_models==1){
+  coefs_pair_acc_bias_Pilot <- run_bias_memory_model(subset(clean_data_Pilot$final_decisions, !is.na(left_chosen)),
+                                                     "pair_acc",c(),params,"Pilot")
+  coefs_pair_acc_bias_Exp1 <- run_bias_memory_model(subset(clean_data_Exp1$final_decisions, !is.na(left_chosen)),
+                                                    "pair_acc",c(),params,"Exp1")
+  coefs_pair_acc_bias_Exp2 <- run_bias_memory_model(subset(clean_data_Exp2$final_decisions, !is.na(left_chosen)),
+                                                    "pair_acc","repeat_cond_centered",params,"Exp2")
+  coefs_pair_acc_bias_Exp3 <- run_bias_memory_model(subset(clean_data_Exp3$final_decisions, !is.na(left_chosen)),
+                                                    "pair_acc","reward_cond",params,"Exp3")
+  coefs_pair_acc_bias_Exp4 <- run_bias_memory_model(subset(clean_data_Exp4$final_decisions,!is.na(left_chosen)),
+                                                    "pair_acc","same_painter_centered",params,"Exp4")
+} else {
+  load("../data/Models/Memory_Bias/Between_subs/Coef_lists/coefs_pair_acc_bias_Pilot.RData")
+  load("../data/Models/Memory_Bias/Between_subs/Coef_lists/coefs_pair_acc_bias_Exp1.RData")
+  load("../data/Models/Memory_Bias/Between_subs/Coef_lists/coefs_pair_acc_bias_Exp2.RData")
+  load("../data/Models/Memory_Bias/Between_subs/Coef_lists/coefs_pair_acc_bias_Exp3.RData")
+  load("../data/Models/Memory_Bias/Between_subs/Coef_lists/coefs_pair_acc_bias_Exp4.RData")
+}
+
+memory_fits <- function(coef_list, Exp_name){
+  post_draws <- coef_list$posterior_draws 
+  if (ncol(post_draws) > 3) {
+    post_draws <- post_draws %>%
+      mutate(Slope_cond1 = post_draws[,2] + post_draws[,4],
+             Slope_cond0 = post_draws[,2] - post_draws[,4])
+    colnames <- c("Intercept", "Memory", "Condition", "Memory:Condition", "Sigma", 
+                  "Memory (Condition1)", "Memory (Condition2)")
+  } else {
+    colnames <- c("Intercept", "Memory", "Sigma")
+  }
+  colnames(post_draws) <- colnames
+  summary_draws <- post_draws %>%
+    gather(coef, value) %>% 
+    group_by(coef) %>%
+    dplyr::summarize(Median=median(value), low95=quantile(value, 0.025), high95=quantile(value, 0.975)) %>%
+    mutate(sig = ifelse((low95>0 & high95>0) | (low95<0 & high95<0),"*",""),
+             value = sprintf("%.2f [%.2f, %.2f]%s",Median, low95, high95, sig),
+             Exp = Exp_name) %>%
+    dplyr::select(Exp, coef, value) %>%
+    spread(coef,value) %>%
+    dplyr::select("Exp", colnames, -"Sigma")
+  return(summary_draws)
+}
+
+pair_acc_fits <- bind_rows(memory_fits(coefs_pair_acc_bias_Pilot, "Pilot"),
+                          memory_fits(coefs_pair_acc_bias_Exp1, "Exp1"), 
+                          memory_fits(coefs_pair_acc_bias_Exp2, "Exp2"),
+                          memory_fits(coefs_pair_acc_bias_Exp3, "Exp3"),
+                          memory_fits(coefs_pair_acc_bias_Exp4, "Exp4"))
+
+pair_acc_fits %>%
+  kbl(caption = "Supplementary Table 5. Pairs memory and decision bias model regression coefficients") %>%
+  kable_paper("hover", full_width = F, html_font = "Helvetica", position = "left") 
+
+
+# ==========================================
+# Present model fits: choice memory and bias 
+# ==========================================
+
+if (run_models==1){
+  coefs_choice_acc_bias_Pilot <- run_bias_memory_model(subset(clean_data_Pilot$final_decisions, !is.na(left_chosen)),
+                                                     "choice_acc",c(),params,"Pilot")
+  coefs_choice_acc_bias_Exp1 <- run_bias_memory_model(subset(clean_data_Exp1$final_decisions, !is.na(left_chosen)),
+                                                    "choice_acc",c(),params,"Exp1")
+  coefs_choice_acc_bias_Exp2 <- run_bias_memory_model(subset(clean_data_Exp2$final_decisions, !is.na(left_chosen)),
+                                                    "choice_acc","repeat_cond_centered",params,"Exp2")
+  coefs_choice_acc_bias_Exp3 <- run_bias_memory_model(subset(clean_data_Exp3$final_decisions, !is.na(left_chosen)),
+                                                    "choice_acc","reward_cond",params,"Exp3")
+  coefs_choice_acc_bias_Exp4 <- run_bias_memory_model(subset(clean_data_Exp4$final_decisions,!is.na(left_chosen)),
+                                                    "choice_acc","same_painter_centered",params,"Exp4")
+} else {
+  load("../data/Models/Memory_Bias/Between_subs/Coef_lists/coefs_choice_acc_bias_Pilot.RData")
+  load("../data/Models/Memory_Bias/Between_subs/Coef_lists/coefs_choice_acc_bias_Exp1.RData")
+  load("../data/Models/Memory_Bias/Between_subs/Coef_lists/coefs_choice_acc_bias_Exp2.RData")
+  load("../data/Models/Memory_Bias/Between_subs/Coef_lists/coefs_choice_acc_bias_Exp3.RData")
+  load("../data/Models/Memory_Bias/Between_subs/Coef_lists/coefs_choice_acc_bias_Exp4.RData")
+}
+
+
+choice_acc_fits <- bind_rows(memory_fits(coefs_choice_acc_bias_Pilot, "Pilot"),
+                            memory_fits(coefs_choice_acc_bias_Exp1, "Exp1"), 
+                            memory_fits(coefs_choice_acc_bias_Exp2, "Exp2"),
+                            memory_fits(coefs_choice_acc_bias_Exp3, "Exp3"),
+                            memory_fits(coefs_choice_acc_bias_Exp4, "Exp4"))
+
+choice_acc_fits %>%
+  kbl(caption = "Supplementary Table 6. Choice memory and decision bias model regression coefficients") %>%
+  kable_paper("hover", full_width = F, html_font = "Helvetica", position = "left") 
+
+
+```
+
+### Supplementary Text 2 - surprise memory test
+
+```{r}
+
+# pairs memory across experiments
+memory_all_exps <- all_exps_list$memory %>%
+  group_by(PID) %>%
+  dplyr::summarise(pairs_acc = mean(pair_acc, na.rm=1),
+                   choice_acc = mean(choice_acc, na.rm=1)) %>%
+  dplyr::summarise(pairs_acc_mean = mean(pairs_acc, na.rm=1),
+                   choice_acc_mean = mean(choice_acc, na.rm=1),
+                   pairs_acc_se = sd(pairs_acc, na.rm=1)/sqrt(n()),
+                   choice_acc_se = sd(choice_acc, na.rm=1)/sqrt(n())) %>%
+  mutate(`Pairs memory` = sprintf("%.2f \u00b1 %.2f",pairs_acc_mean, pairs_acc_se),
+         `Choice memory` = sprintf("%.2f \u00b1 %.2f",choice_acc_mean, choice_acc_se)) %>%
+  select(`Pairs memory`,`Choice memory`)
+
+
+memory_all_exps %>%
+  kbl() %>%
+  kable_paper("hover", full_width = F, html_font = "Helvetica", position = "left")
+
+```
+
+### Supplementary Text 3
+
+#### Analyzing Experiment 2 (low vs. high repetition of deliberation pairs)
+
+```{r, supplementary text 2 - experiment 2}
+
+# ====================================================================
+# Memory difference between conditions (to assess memory manipulation)
+# ====================================================================
+
+# Run model
+if (run_models == 1) {
+  memory_Exp2 <- clean_data_Exp2$memory %>%
+    mutate(repeat_cond_centered = ifelse(repeat_cond==1,1,-1))
+  M_memory_diff_Exp2 <- stan_glmer(data = memory_Exp2, 
+                              pair_acc ~ repeat_cond_centered + (repeat_cond_centered | PID),
+                              family = binomial(link="logit"), 
+                              adapt_delta = params$adapt_delta, 
+                              iter = params$iterations, 
+                              chains = params$chains, 
+                              warmup = params$warmup)
+  save(M_memory_diff_Exp2, file = "../data/Models/Supplementary_analyses/Memory_differences/M_memory_diff_Exp2.RData")
+} else {
+  load("../data/Models/Supplementary_analyses/Memory_differences/M_memory_diff_Exp2.RData")
+}
+
+# Present coefs
+sims_M_memory_diff_Exp2 <- as.data.frame(M_memory_diff_Exp2)
+coef_memory_diff_Exp2 <- sims_M_memory_diff_Exp2[, c("(Intercept)", "repeat_cond_centered")]  %>%
+  gather(coef,value) %>%
+  group_by(coef) %>%
+  dplyr::summarise(HDI95_low = posterior_interval(as.matrix(value), prob=0.95)[1],
+                   HDI95_high = posterior_interval(as.matrix(value), prob=0.95)[2],
+                   median = median(value)) %>%
+  mutate(value = sprintf("%.2f [%.2f, %.2f]",median, HDI95_low, HDI95_high),
+         coef = ifelse(coef=="repeat_cond_centered", "condition slope (repeatition type)", coef)) %>%
+  dplyr::select(coef,value)
+
+coef_memory_diff_Exp2 %>%
+  kbl() %>%
+  kable_paper("hover", full_width = F, html_font = "Helvetica", position = "left")
+
+# ===========================================
+# Decision bias difference between conditions
+# ===========================================
+
+# Choices in Final Decisions phase
+conds_diff_Exp2 <- clean_data_Exp2$final_decisions %>%
+  mutate(choice = ifelse(chosen_trial==1, "Chosen", "Unchosen")) %>%
+  group_by(PID, cond_logical, choice) %>%
+  dplyr::summarize(p_gain = mean(higher_outcome_chosen, na.rm=1)) %>%
+  spread(cond_logical, p_gain) %>%
+  mutate(cond_diff = `0` - `1`) %>%
+  group_by(choice) %>%
+  dplyr::summarise(mean = mean(cond_diff),
+                   se = sd(cond_diff)/sqrt(n())) %>%
+  mutate(`p(select S+) difference between conditions`= sprintf("%.2f \u00b1 %.2f",mean, se)) %>%
+  dplyr::select(choice, `p(select S+) difference between conditions`)
+
+conds_diff_Exp2 %>%
+  kbl() %>%
+  kable_paper("hover", full_width = F, html_font = "Helvetica", position = "left")
+
+# Model coefficient (we rearrange the coefs to get the difference score)
+unchosen_intercept_diffs_Exp2 <- data.frame(coef=coef_list_Exp2$posterior_group_coefs$Intercept_Unchosen_LowRepeat - 
+  coef_list_Exp2$posterior_group_coefs$Intercept_Unchosen_HighRepeat) %>%
+  dplyr::summarise(HDI95_low = posterior_interval(as.matrix(coef), prob=0.95)[1],
+                   HDI95_high = posterior_interval(as.matrix(coef), prob=0.95)[2],
+                   median = median(coef)) %>%
+  mutate(`unchosen intercept difference between conditions` = sprintf("%.2f [%.2f, %.2f]",median, HDI95_low, HDI95_high))
+
+unchosen_intercept_diffs_Exp2 %>%
+  dplyr::select(`unchosen intercept difference between conditions`) %>%
+  kbl() %>%
+  kable_paper("hover", full_width = F, html_font = "Helvetica", position = "left")
+
+```
+
+#### Analyzing Experiment 3 (low vs. high reward)
+
+```{r, supplementary text 2 - experiment 3}
+
+# ========================================================================================
+# Chosen pairs intercept difference between conditions (to assess motivation manipulation)
+# ========================================================================================
+
+chosen_intercept_diffs_Exp3 <- data.frame(coef=coef_list_Exp3$posterior_group_coefs$Intercept_Chosen_HighReward - 
+             coef_list_Exp3$posterior_group_coefs$Intercept_Chosen_LowReward) %>%
+  dplyr::summarise(HDI95_low = posterior_interval(as.matrix(coef), prob=0.95)[1],
+                   HDI95_high = posterior_interval(as.matrix(coef), prob=0.95)[2],
+                   median = median(coef)) %>%
+  mutate(`chosen intercept difference between conditions` = sprintf("%.2f [%.2f, %.2f]",median, HDI95_low, HDI95_high))
+
+chosen_intercept_diffs_Exp3 %>%
+  dplyr::select(`chosen intercept difference between conditions`) %>%
+  kbl() %>%
+  kable_paper("hover", full_width = F, html_font = "Helvetica", position = "left")
+
+# ===================================================================================
+# Memory difference between conditions (to assess whether motivation impacted memory)
+# ===================================================================================
+
+memory_Exp3 <- clean_data_Exp3$memory 
+if (run_models == 1) {
+  M_memory_diff_Exp3 <- stan_glmer(data = memory_Exp3, 
+                              pair_acc ~ reward_cond + (reward_cond | PID),
+                              family = binomial(link="logit"), 
+                              adapt_delta = params$adapt_delta, 
+                              iter = params$iterations, 
+                              chains = params$chains, 
+                              warmup = params$warmup)
+save(M_memory_diff_Exp3,
+     file = "../data/Models/Supplementary_analyses/Memory_differences/M_memory_diff_Exp3.RData")
+} else {
+  load("../data/Models/Supplementary_analyses/Memory_differences/M_memory_diff_Exp3.RData")
+}
+
+sims_M_memory_diff_Exp3 <- as.data.frame(M_memory_diff_Exp3)
+coef_memory_diff_Exp3 <- sims_M_memory_diff_Exp3[, c("(Intercept)", "reward_cond")]  %>%
+  gather(coef,value) %>%
+  group_by(coef) %>%
+  dplyr::summarise(HDI95_low = posterior_interval(as.matrix(value), prob=0.95)[1],
+                   HDI95_high = posterior_interval(as.matrix(value), prob=0.95)[2],
+                   median = median(value)) %>%
+  mutate(value = sprintf("%.2f [%.2f, %.2f]",median, HDI95_low, HDI95_high),
+         coef = ifelse(coef=="reward_cond", "condition slope (reward type)", coef)) %>%
+  dplyr::select(coef, value)
+
+coef_memory_diff_Exp3 %>%
+  kbl() %>%
+  kable_paper("hover", full_width = F, html_font = "Helvetica", position = "left")
+
+
+# ===========================================
+# Decision bias difference between conditions
+# ===========================================
+
+# Choices in Final Decisions phase
+conds_diff_Exp3 <- clean_data_Exp3$final_decisions %>%
+  mutate(choice = ifelse(chosen_trial==1, "Chosen", "Unchosen")) %>%
+  group_by(PID, cond_logical, choice) %>%
+  dplyr::summarize(p_gain = mean(higher_outcome_chosen, na.rm=1)) %>%
+  spread(cond_logical, p_gain) %>%
+  mutate(cond_diff = `0` - `1`) %>%
+  group_by(choice) %>%
+  dplyr::summarise(mean = mean(cond_diff),
+                   se = sd(cond_diff)/sqrt(n())) %>%
+  mutate(`p(select S+) difference between conditions`= sprintf("%.2f \u00b1 %.2f",mean, se)) %>%
+  dplyr::select(choice, `p(select S+) difference between conditions`)
+
+conds_diff_Exp3 %>%
+  kbl() %>%
+  kable_paper("hover", full_width = F, html_font = "Helvetica", position = "left")
+
+# Model coefficient (we rearrange the coefs to get the difference score)
+
+unchosen_intercept_diffs_Exp3 <- data.frame(coef=coef_list_Exp3$posterior_group_coefs$Intercept_Unchosen_LowReward - 
+             coef_list_Exp3$posterior_group_coefs$Intercept_Unchosen_HighReward) %>%
+  dplyr::summarise(HDI95_low = posterior_interval(as.matrix(coef), prob=0.95)[1],
+                   HDI95_high = posterior_interval(as.matrix(coef), prob=0.95)[2],
+                   median = median(coef)) %>%
+  mutate(`unchosen intercept difference between conditions` = sprintf("%.2f [%.2f, %.2f]",median, HDI95_low, HDI95_high))
+
+unchosen_intercept_diffs_Exp3 %>%
+  dplyr::select(`unchosen intercept difference between conditions`) %>%
+  kbl() %>%
+  kable_paper("hover", full_width = F, html_font = "Helvetica", position = "left")
+
+```
+
+#### Analyzing Experiment 4 (same vs. different painter)
+
+```{r, supplementary text 2 - experiment 4}
+
+# =============================================================================================
+# Memory difference between conditions (to assess whether binding manipulation impacted memory)
+# =============================================================================================
+
+# Run model
+if (run_models == 1) {
+  memory_Exp4 <- clean_data_Exp4$memory %>%
+  mutate(painter_centered = ifelse(del_same_painter==1,1,-1))
+  M_memory_diff_Exp4 <- stan_glmer(data = memory_Exp4, 
+                              pair_acc ~ painter_centered + (painter_centered | PID),
+                              family = binomial(link="logit"), 
+                              adapt_delta = params$adapt_delta, 
+                              iter = params$iterations, 
+                              chains = params$chains, 
+                              warmup = params$warmup)
+save(M_memory_diff_Exp4,
+     file = "../data/Models/Supplementary_analyses/Memory_differences/M_memory_diff_Exp4.RData")
+} else {
+  load("../data/Models/Supplementary_analyses/Memory_differences/M_memory_diff_Exp4.RData")
+}
+
+# Present model coefs
+sims_M_memory_diff_Exp4 <- as.data.frame(M_memory_diff_Exp4)
+coef_memory_diff_Exp4 <- 
+  sims_M_memory_diff_Exp4[, c("(Intercept)", "painter_centered")]  %>%
+  gather(coef,value) %>%
+  group_by(coef) %>%
+  dplyr::summarise(HDI95_low = posterior_interval(as.matrix(value), prob=0.95)[1],
+                   HDI95_high = posterior_interval(as.matrix(value), prob=0.95)[2],
+                   median = median(value)) %>%
+  mutate(value = sprintf("%.2f [%.2f, %.2f]",median, HDI95_low, HDI95_high),
+         coef = ifelse(coef=="painter_centered", "condition slope (painter type)", coef)) %>%
+  dplyr::select(coef,value)
+
+coef_memory_diff_Exp4 %>%
+  kbl() %>%
+  kable_paper("hover", full_width = F, html_font = "Helvetica", position = "left")
+
+# ================================================================================================
+# Difference in memory slope in Memory - Bias model (condition modulated memory-bias relationship)
+# ================================================================================================
+
+memory_bias_diff_conds_Exp4 <- 
+  data.frame(coef=coefs_pair_acc_bias_Exp4$posterior_draws_per_cond$cond1$Slope - 
+             coefs_pair_acc_bias_Exp4$posterior_draws_per_cond$cond0$Slope) %>%
+  dplyr::summarise(HDI95_low = posterior_interval(as.matrix(coef), prob=0.95)[1],
+                   HDI95_high = posterior_interval(as.matrix(coef), prob=0.95)[2],
+                   median = median(coef)) %>%
+  mutate(`memory slope difference between conditions` = sprintf("%.2f [%.2f, %.2f]",median, HDI95_low, HDI95_high))
+
+memory_bias_diff_conds_Exp4 %>%
+  dplyr::select(`memory slope difference between conditions`) %>%
+  kbl() %>%
+  kable_paper("hover", full_width = F, html_font = "Helvetica", position = "left")
+
+
+# ===========================================
+# Decision bias difference between conditions
+# ===========================================
+
+# Choices in Final Decisions phase
+conds_diff_Exp4 <- clean_data_Exp4$final_decisions %>%
+  mutate(choice = ifelse(chosen_trial==1, "Chosen", "Unchosen")) %>%
+  group_by(PID, cond_logical, choice) %>%
+  dplyr::summarize(p_gain = mean(higher_outcome_chosen, na.rm=1)) %>%
+  spread(cond_logical, p_gain) %>%
+  mutate(cond_diff = `0` - `1`) %>%
+  group_by(choice) %>%
+  dplyr::summarise(mean = mean(cond_diff),
+                   se = sd(cond_diff)/sqrt(n())) %>%
+  mutate(`p(select S+) difference between conditions`= sprintf("%.2f \u00b1 %.2f",mean, se)) %>%
+  dplyr::select(choice, `p(select S+) difference between conditions`)
+
+conds_diff_Exp4 %>%
+  kbl() %>%
+  kable_paper("hover", full_width = F, html_font = "Helvetica", position = "left")
+
+# Model coefficient
+unchosen_intercept_diffs_Exp4 <- 
+  data.frame(coef=coef_list_Exp4$posterior_group_coefs$Intercept_Unchosen_Diff - 
+               coef_list_Exp4$posterior_group_coefs$Intercept_Unchosen_Same) %>%
+  dplyr::summarise(HDI95_low = posterior_interval(as.matrix(coef), prob=0.95)[1],
+                   HDI95_high = posterior_interval(as.matrix(coef), prob=0.95)[2],
+                   median = median(coef)) %>%
+  mutate(`unchosen intercept difference between conditions` = sprintf("%.2f [%.2f, %.2f]",median, HDI95_low, HDI95_high))
+
+unchosen_intercept_diffs_Exp4 %>%
+  dplyr::select(`unchosen intercept difference between conditions`) %>%
+  kbl() %>%
+  kable_paper("hover", full_width = F, html_font = "Helvetica", position = "left")
+
+```
+
+# Prepare source data file (data points to create the figures)
+
+```{r}
+
+# Figure 2
+
+fig2a <- clean_data_Exp1$final_decisions %>%
+  mutate(`pair type` = ifelse(chosen_trial==1, "Chosen", "Unchosen")) %>%
+  group_by(PID,`pair type`) %>%
+  dplyr::summarise(`p(select S+)` = mean(higher_outcome_chosen, na.rm=1)) 
+
+fig2b <- predicted_draws_choice_model %>%
+  rename(`normalized delta ratings` = x,
+         `pair type` = choice) %>%
+  mutate(`predicted p(select S+)` = median)
+
+fig2c <- estimates %>%
+  select(c(PID, choice, reward, gain_eval)) %>%
+  rename(`p(estimate as S+)` = gain_eval,
+         `actual reward` = reward,
+         `pair type` = choice)
+
+fig2d_points <- inverse_decision_estimation %>%
+  subset(choice=="Unchosen") %>%
+  select(PID, reward_diff, p_gain_centered) %>%
+  rename(`inverse estimation score` = reward_diff,
+         `p(select S+) - 0.5` = p_gain_centered)
+
+fig2d_fit <- predicted_summary_bias_estimations %>%
+  subset(choice=="Unchosen") %>%
+  select(-c(choice, choice_centered)) %>%
+  rename(`inverse estimation score` = reward_diff,
+         `p(select S+) - 0.5` = p_gain_centered)
+  
+# Figure 3
+
+fig3a_points <- memory_bias %>%
+  select(PID, pair_acc, inverse_bias) %>%
+  rename(`pairs memory` = pair_acc,
+         `inverse decision bias` = inverse_bias)
+
+fig3a_fit <- coefs_pair_acc_bias_Exp1$predicted_summary_list[[1]] %>%
+  rename(`pairs memory` = pair_acc) %>%
+  mutate(`inverse decision bias` = median)
+
+fig3b <- memory_per_deliberation_subs %>%
+  select(-condition) %>%
+  rename(`deliberation pair` = pair_type_cond,
+         `pairs memory` = pair_acc)
+
+# Figure 4
+
+fig4a <- bias_all_exps %>%
+  select(-nudge) %>%
+  rename(`p(select S+)` = p_gain,
+         `pair type` = choice,
+         `pairs memory` = pair_acc) %>%
+  subset(select = c(Exp, PID, `pair type`, condition, `p(select S+)`,`pairs memory`)) %>%
+  mutate(`condition description` = case_when(
+    Exp %in% c("Pilot","Exp1") ~ "None",
+    Exp == "Exp2" & condition==1 ~ "more repetitions",
+    Exp == "Exp2" & condition==0 ~ "less repetitions",
+    Exp == "Exp3" & condition==1 ~ "high reward",
+    Exp == "Exp3" & condition==0 ~ "low reward",
+    Exp == "Exp4" & condition==1 ~ "same painter",
+    Exp == "Exp4" & condition==0 ~ "different painter"))
+
+fig4b_points <- bias_all_exps_spread %>%
+  select(Exp, PID, condition, pair_acc, bias) %>%
+  rename(`pairs memory` = pair_acc,
+         `inverse decision bias` = bias) %>%
+  mutate(`condition description` = case_when(
+    Exp %in% c("Pilot","Exp1") ~ "None",
+    Exp == "Exp2" & condition==1 ~ "more repetitions",
+    Exp == "Exp2" & condition==0 ~ "less repetitions",
+    Exp == "Exp3" & condition==1 ~ "high reward",
+    Exp == "Exp3" & condition==0 ~ "low reward",
+    Exp == "Exp4" & condition==1 ~ "same painter",
+    Exp == "Exp4" & condition==0 ~ "different painter"))
+
+fig4b_fit <- memory_predicted_fits %>%
+  rename(`pairs memory` = pair_acc) %>%
+  mutate(`inverse decision bias` = median,
+         `condition description` = case_when(
+           Exp %in% c("Pilot","Exp1") ~ "None",
+           Exp == "Exp2" & condition==1 ~ "more repetitions",
+           Exp == "Exp2" & condition==0 ~ "less repetitions",
+           Exp == "Exp3" & condition==1 ~ "high reward",
+           Exp == "Exp3" & condition==0 ~ "low reward",
+           Exp == "Exp4" & condition==1 ~ "same painter",
+           Exp == "Exp4" & condition==0 ~ "different painter"))
+
+  
+# Supplementary Figure 1
+
+supp_fig1a <- RT_FD %>%
+  rename(`pair type` = `Pair type`)
+
+supp_fig1b <- predicted_draws_rt_model %>%
+  rename(`zscored rt` = x,
+         `pair type` = choice) %>%
+  mutate(`predicted p(select S+)` = median)
+
+# Supplementary Table 1
+
+table1 <- means_all_exps %>%
+  rename(`p(select S+)` = p_gain,
+         `Pairs Memory` = pair_acc,
+         `Choice Memory` = choice_acc,
+         `Pair Type` = Choice,
+         `Experiment` = Exp) %>%
+  mutate(Condition = ifelse(is.na(Condition),"None",Condition))
+
+# Supplementary Table 2
+
+table2_fits <- function(coef_list, Exp_name){
+  coefs <- bind_cols(data.frame(Experiment=rep(Exp_name,nrow(coef_list$posterior_group_coefs))), coef_list$posterior_group_coefs)
+  if(ncol(coefs) > 9){
+    coefs <- coefs[,c(1:9)]; colnames(coefs) <- c("Experiment","Intercept", "Choice", "Condition", "Choice:Condition", "Ratings",
+                                                  "Choice:Ratings", "Ratings:Condition", "Choice:Ratings:Condition")
+  } else {
+    coefs <- coefs[,c(1:5)]; colnames(coefs) <- c("Experiment","Intercept", "Choice", "Ratings", "Choice:Ratings")
+  }
+  return(coefs)
+}
+
+table2 <- bind_rows(table2_fits(coef_list_Pilot, "Pilot"),
+                    table2_fits(coef_list_Exp1, "Experiment 1"), 
+                    table2_fits(coef_list_Exp2, "Experiment 2"),
+                    table2_fits(coef_list_Exp3, "Experiment 3"),
+                    table2_fits(coef_list_Exp4, "Experiment 4")) 
+
+# Supplementary Table 3
+
+table3_fits <- function(coef_list, Exp_name){
+  relevant_cols <- grepl(c("Intercept_"),colnames(coef_list$posterior_group_coefs)) | 
+    grepl(c("Slope_"),colnames(coef_list$posterior_group_coefs)) 
+  coefs <- coef_list$posterior_group_coefs[, relevant_cols] %>%
+    gather("coef", "value") %>%
+    separate(coef, c("coef","Choice","Condition"), "_") %>%
+    mutate(Experiment = Exp_name)
+  chosen <- coefs %>% subset(Choice=="Chosen") %>% 
+    group_by(coef) %>% mutate(obs = 1:n()) %>% spread(coef, value) %>% rename(`Chosen Intercept` = "Intercept", `Chosen Slope` = "Slope") %>% select(-c(Choice))
+  unchosen <- coefs %>% subset(Choice=="Unchosen") %>% 
+    group_by(coef) %>% mutate(obs = 1:n()) %>% spread(coef, value) %>% rename(`Unchosen Intercept` = "Intercept", `Unchosen Slope` = "Slope") %>% select(-c(Choice))
+  all_coefs <- chosen %>% merge(unchosen, by=c("Experiment", "Condition", "obs")) %>% arrange(obs) %>% select(-obs)
+  return(all_coefs)
+}
+
+table3 <- bind_rows(table3_fits(coef_list_Pilot, "Pilot"),
+                    table3_fits(coef_list_Exp1, "Experiment 1"), 
+                    table3_fits(coef_list_Exp2, "Experiment 2"),
+                    table3_fits(coef_list_Exp3, "Experiment 3"),
+                    table3_fits(coef_list_Exp4, "Experiment 4")) %>% 
+  mutate(Condition = case_when(
+         Condition=="Pairs" ~ "None",
+         Condition=="HighRepeat" ~ "more repetitions",
+         Condition=="LowRepeat"  ~ "less repetitions",
+         Condition=="HighReward" ~ "high reward",
+         Condition=="LowReward" ~ "low reward",
+         Condition=="Same" ~ "same painter",
+         Condition=="Diff" ~ "different painter")) 
+
+# Supplementary Table 4
+
+table4_fits <- function(coef_list, Exp_name){
+  coefs <- coef_list$posterior_group_coefs %>%
+    mutate(Experiment = Exp_name,
+           Chosen_Intercept = `(Intercept)` + chosen_trial_centered,
+           Unchosen_Intercept = `(Intercept)` - chosen_trial_centered,
+           Chosen_Slope = norm_drate_by_outcome + `chosen_trial_centered:norm_drate_by_outcome`,
+           Unchosen_Slope = norm_drate_by_outcome - `chosen_trial_centered:norm_drate_by_outcome`) %>%
+    dplyr::select(c(Experiment,Chosen_Intercept,Unchosen_Intercept,Chosen_Slope,Unchosen_Slope)) %>%
+    gather(coef, value,Chosen_Intercept:Unchosen_Slope) %>%
+    separate(coef, c("choice","coef"), "_") 
+    chosen <- coefs %>% subset(choice=="Chosen") %>% group_by(coef) %>% 
+      mutate(obs = 1:n()) %>% spread(coef, value) %>% 
+      rename(`chosen intercept` = "Intercept", `chosen slope` = "Slope") %>% select(-c(choice))
+    unchosen <- coefs %>% subset(choice=="Unchosen") %>% 
+      group_by(coef) %>% mutate(obs = 1:n()) %>% spread(coef, value) %>% 
+      rename(`unchosen intercept` = "Intercept", `unchosen slope` = "Slope") %>% select(-c(choice))
+  all_coefs <- chosen %>% merge(unchosen, by=c("Experiment", "obs")) %>% arrange(obs) %>% select(-obs)
+  return(all_coefs)
+}
+
+table4 <- bind_rows(table4_fits(coef_list_Exp2, "Experiment 2"),
+                    table4_fits(coef_list_Exp3, "Experiment 3"),
+                    table4_fits(coef_list_Exp4, "Experiment 4"))
+
+# Supplementary Table 5
+
+table5_fits <- function(coef_list, Exp_name){
+  coefs <- bind_cols(data.frame(Experiment=rep(Exp_name,nrow(coef_list$posterior_draws))),
+                     coef_list$posterior_draws)
+  if (ncol(coefs) > 4) {
+    coefs <- coefs %>%
+      mutate(Slope_cond1 = coefs[,3] + coefs[,5],
+             Slope_cond0 = coefs[,3] - coefs[,5])
+    colnames <- c("Experiment","Intercept", "Memory", "Condition", "Memory:Condition", "Sigma", 
+                  "Memory (Condition1)", "Memory (Condition2)")
+  } else {
+    colnames <- c("Experiment","Intercept", "Memory", "Sigma")
+  }
+  colnames(coefs) <- colnames
+  coefs <- coefs %>% select(-Sigma)
+  return(coefs)
+}
+
+table5 <- bind_rows(table5_fits(coefs_pair_acc_bias_Pilot, "Pilot"),
+                    table5_fits(coefs_pair_acc_bias_Exp1, "Experiment 1"), 
+                    table5_fits(coefs_pair_acc_bias_Exp2, "Experiment 2"),
+                    table5_fits(coefs_pair_acc_bias_Exp3, "Experiment 3"),
+                    table5_fits(coefs_pair_acc_bias_Exp4, "Experiment 4"))
+
+
+# Supplementary Table 6
+
+table6 <- bind_rows(table5_fits(coefs_choice_acc_bias_Pilot, "Pilot"),
+                    table5_fits(coefs_choice_acc_bias_Exp1, "Experiment 1"), 
+                    table5_fits(coefs_choice_acc_bias_Exp2, "Experiment 2"),
+                    table5_fits(coefs_choice_acc_bias_Exp3, "Experiment 3"),
+                    table5_fits(coefs_choice_acc_bias_Exp4, "Experiment 4"))
+
+
+
+# Save it all into one excel file with different sheets
+library(openxlsx)
+sheets_list <- list("fig2a" = fig2a, 
+                    "fig2b" = fig2b, 
+                    "fig2c" = fig2c, 
+                    "fig2d_points" = fig2d_points, 
+                    "fig2d_fit" = fig2d_fit, 
+                    "fig3a_points" = fig3a_points, 
+                    "fig3a_fit" = fig3a_fit, 
+                    "fig3b" = fig3b, 
+                    "fig4a" = fig4a, 
+                    "fig4b_points" = fig4b_points, 
+                    "fig4b_fit" = fig4b_fit, 
+                    "supp_fig1a" = supp_fig1a, 
+                    "supp_fig1b" = supp_fig1b,
+                    "table1" = table1,
+                    "table2" = table2,
+                    "table3" = table3,
+                    "table4" = table4,
+                    "table5" = table5,
+                    "table6" = table6) 
+write.xlsx(sheets_list, "../results/Source_Data.xlsx")
+
+```
+
+```{r}
+
+age <- clean_data_Exp1$demographics %>% select("PID","age") %>% 
+  mutate(age_group = ifelse(age > 17 & age < 22, "18-21",
+                            ifelse(age > 21 & age < 26, "22-25",
+                                   ifelse(age > 25 & age < 30, "26-29", "30-36"))))
+memory_bias_age <- merge(memory_bias, age, by="PID") 
+
+p1 <- ggplot(memory_bias_age, aes(y=inverse_bias,x=pair_acc,color=age_group)) + 
+  geom_point(size=point_size-1, fill="white", shape=21, stroke=point_stroke) + 
+  theme + 
+  point_plot_theme +
+  geom_smooth(method = "lm", se=FALSE) + 
+  geom_hline(yintercept=0, size=line_size, linetype="dashed") + 
+  geom_vline(xintercept=0.5, size=line_size,  linetype="dashed") +
+  scale_y_continuous(expand=c(0,0),  breaks=c(-1,0,1), limits=c(-1.025,1.025)) + 
+  scale_x_continuous(expand=c(0,0), breaks=c(0, 0.5, 1), limits=c(-0.025, 1.025)) +
+  theme(plot.title = element_text(margin=margin(0,0,30,0))) + 
+  labs(y=expression(atop("Inverse decision bias","p(select "*S[chosen]*"+) - p(select "*S[unchosen]*"+)")),
+       x="Pairs memory (accuracy)",
+       title="Between participants")
+
+bias_age <- merge(bias, age, by="PID") 
+
+p2 <- ggplot(bias_age, aes(x=factor(chosen_trial),y=p_gain, color=age_group, fill=age_group)) +
+  stat_summary_bin(aes(y=p_gain), fun.y="mean", geom="bar", binwidth=0.2, 
+                   position=position_dodge(width=1)) +
+  geom_point(position=position_jitterdodge(dodge.width=1, jitter.width=0.1), 
+                   fill="white", shape=21, stroke=point_stroke, size=point_size) +
+  #scale_color_manual(values="black") + 
+  stat_summary(fun.data=mean_se, fun.args = list(mult=n_sem), geom="errorbar", width=0.1, size=0.9, 
+               position=position_nudge(0.2)) + # "turquoise4"
+  geom_hline(yintercept=0.5, size=line_size, linetype="dashed") + 
+  scale_y_continuous(expand=c(0,0), breaks=c(0,0.5,1), limits=c(0,1.02)) + 
+  theme + 
+  theme(axis.title.x=element_blank(),
+        aspect.ratio=2.5/2,
+        plot.title = element_text(margin=margin(0,0,30,0))) +
+  labs(y="p(select S+)", title="Final Decisions Choices") +
+  scale_x_discrete(breaks = c("1","0"), limits=c("1","0"),
+                   # labels = c("1" = expression(atop(S[chosen],paste("(learned)"))),
+                   #            "0" = expression(atop(S[unchosen],paste("(inferred)"))))) 
+                   labels = c("1" = expression(S[chosen]*" (learned)"),
+                              "0" = expression(S[unchosen]*" (inferred)"))) 
+
+
+```
