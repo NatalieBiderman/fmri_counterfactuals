@@ -2,8 +2,8 @@
 
 /* define parameters to include in the css */
 :root {
-  --img_height: 300px;
-  --img_width: 300px;
+  --img_height: 400px;
+  --img_width: 400px;
   --fixation_width: 100px;
   --frame_width: 10px;
   --prompt_height: 0px;/*30px;*/

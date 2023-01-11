@@ -2,16 +2,19 @@
 library(stringr)
 folder = "../Stimuli/Experimental_stims/"
 categories = c("People", "Objects", "Scenes")
-files_data = c()
+file_names = c()
+category_names = c()
 for (i in 1:length(categories)){
-  curr_files_data = list.files(paste0(folder,"/",categories[i]), all.files = TRUE ,pattern="*.jpg")
-  files_data = c(files_data,curr_files_data)
+  curr_file_names = list.files(paste0(folder,"/",categories[i]), all.files = TRUE ,pattern="*.jpg")
+  file_names = c(file_names,curr_file_names)
+  curr_category_names = rep(categories[i],length(curr_file_names))
+  category_names = c(category_names,curr_category_names)
 }
 Stimuli <- "["
-for (i in 1:length(files_data)){
-  if (i != length(files_data)){
-    Stimuli <- sprintf("%s['%s','%s',%d],",Stimuli,str_remove(gsub('[0-9]+', '', files_data[i]),".jpg"),files_data[i],i-1)
+for (i in 1:length(file_names)){
+  if (i != length(file_names)){
+    Stimuli <- sprintf("%s['%s','%s',%d],",Stimuli,category_names[i],file_names[i],i-1)
   } else {
-    Stimuli <- sprintf("%s['%s','%s',%d]]",Stimuli,str_remove(gsub('[0-9]+', '', files_data[i]),".jpg"),files_data[i],i-1)
+    Stimuli <- sprintf("%s['%s','%s',%d]]",Stimuli,category_names[i],file_names[i],i-1)
   }
 }
