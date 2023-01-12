@@ -34,6 +34,9 @@
   }
   images = images.concat(Instructions_stimuli);
 
+  // asign instructions path
+  instructions_path = "Stimuli/Instructions/" + curr_category + "/"
+
   // ============================= Enter fullscreen ==============================
 
   var fullscreen = {
@@ -129,8 +132,8 @@
   var rating_instructions = {
         type: 'instructions',
         pages: [
-            "<div><img class='instructions' src='Stimuli/Instructions/Rating.png'</img></div>",
-            "<div><img class='instructions' src='Stimuli/Instructions/start_quiz.png'</img></div>"],
+            "<div><img class='instructions' src='" + instructions_path + "Rating.png'</img></div>",
+            "<div><img class='instructions' src='" + instructions_path + "start_quiz.png'</img></div>"],
         data: {ttype: "rating_instructions"},
         show_clickable_nav: true
       };
@@ -198,10 +201,11 @@ for (t = 0; t < n_ratings; t++){
 // Deliberatiion instructions
 var deliberation_instructions = {
       type: 'instructions',
-      pages: ["<div><img class='instructions' src='Stimuli/Instructions/Deliberation1.png'</img></div>",
-              "<div><img class='instructions' src='Stimuli/Instructions/Deliberation2.png'</img></div>",
-              "<div><img class='instructions' src='Stimuli/Instructions/Deliberation3.png'</img></div>",
-              "<div><img class='instructions' src='Stimuli/Instructions/start_quiz.png'</img></div>"],
+      pages: ["<div><img class='instructions' src='" + instructions_path + "Deliberation1.png'</img></div>",
+              "<div><img class='instructions' src='" + instructions_path + "Deliberation2.png'</img></div>",
+              "<div><img class='instructions' src='" + instructions_path + "Deliberation3.png'</img></div>",
+              "<div><img class='instructions' src='" + instructions_path + "Deliberation4.png'</img></div>",
+              "<div><img class='instructions' src='" + instructions_path + "start_quiz.png'</img></div>"],
       data: {ttype: "deliberation_instructions"},
       show_clickable_nav: true
     };
@@ -502,9 +506,9 @@ var deliberation_too_fast = {
   // Reward learning instructions
   var reward_learning_instructions = {
         type: 'instructions',
-        pages: ["<div><img class='instructions' src='Stimuli/Instructions/Reward_learning1.png'</img></div>",
-                "<div><img class='instructions' src='Stimuli/Instructions/Reward_learning2.png'</img></div>",
-                "<div><img class='instructions' src='Stimuli/Instructions/start_quiz.png'</img></div>"],
+        pages: ["<div><img class='instructions' src='" + instructions_path + "Reward_learning1.png'</img></div>",
+                "<div><img class='instructions' src='" + instructions_path + "Reward_learning2.png'</img></div>",
+                "<div><img class='instructions' src='" + instructions_path + "start_quiz.png'</img></div>"],
         data: {ttype: "reward_learning_instructions"},
         show_clickable_nav: true
       };
@@ -641,8 +645,8 @@ var deliberation_too_fast = {
   // Final decisions instructions
   var final_decisions_instructions = {
         type: 'instructions',
-        pages: ["<div><img class='instructions' src='Stimuli/Instructions/Final_decisions.png'</img></div>",
-                "<div><img class='instructions' src='Stimuli/Instructions/start_quiz.png'</img></div>"],
+        pages: ["<div><img class='instructions' src='" + instructions_path + "Final_decisions.png'</img></div>",
+                "<div><img class='instructions' src='" + instructions_path + "start_quiz.png'</img></div>"],
         data: {ttype: "final_decisions_instructions"},
         show_clickable_nav: true
       };
@@ -792,8 +796,8 @@ var deliberation_too_fast = {
   // Final decisions instructions
   var memory_test_instructions = {
         type: 'instructions',
-        pages: ["<div><img class='instructions' src='Stimuli/Instructions/Memory_test.png'</img></div>",
-                "<div><img class='instructions' src='Stimuli/Instructions/start_quiz.png'</img></div>"],
+        pages: ["<div><img class='instructions' src='" + instructions_path + "Memory_test.png'</img></div>",
+                "<div><img class='instructions' src='" + instructions_path + "start_quiz.png'</img></div>"],
         data: {ttype: "memory_test_instructions"},
         show_clickable_nav: true
       };
@@ -939,8 +943,8 @@ var deliberation_too_fast = {
           var final_ratings_instructions = {
                 type: 'instructions',
                 pages: [
-                    "<div><img class='instructions' src='Stimuli/Instructions/Final_ratings.png'</img></div>",
-                    "<div><img class='instructions' src='Stimuli/Instructions/start_quiz.png'</img></div>"],
+                    "<div><img class='instructions' src='" + instructions_path + "Final_ratings.png'</img></div>",
+                    "<div><img class='instructions' src='" + instructions_path + "start_quiz.png'</img></div>"],
                 data: {ttype: "final_ratings_instructions"},
                 show_clickable_nav: true
               };
@@ -994,8 +998,8 @@ var deliberation_too_fast = {
           var outcome_evaluation_instructions = {
                 type: 'instructions',
                 pages: [
-                    "<div><img class='instructions' src='Stimuli/Instructions/Outcome_evaluation.png'</img></div>",
-                    "<div><img class='instructions' src='Stimuli/Instructions/start_quiz.png'</img></div>"],
+                    "<div><img class='instructions' src='" + instructions_path + "Outcome_evaluation.png'</img></div>",
+                    "<div><img class='instructions' src='" + instructions_path + "start_quiz.png'</img></div>"],
                 data: {ttype: "outcome_evaluation_instructions"},
                 show_clickable_nav: true
               };
@@ -1145,31 +1149,9 @@ var deliberation_too_fast = {
   { type: 'survey-text',
     questions: [{prompt: 'Was there anything in the instructions you found unclear?',columns: 60, rows: 15}],
     data: {ttype: 'debreif_clear_instructions'}},
-  // coronavirus intro
-  { type: 'html-keyboard-response',
-      data: {ttype: 'coronavirus_intro'},
-      stimulus: "We will now ask you a few questions about the Coronavirus pandemic."+
-                "<br>Please answer them sincerely.</br>" +
-                "<br>Please press the 'N' key to begin.</br>",
-      choices: keys_go_next,
-      response_ends_trial: true},
-  // anxiety coronavirus
-  { type: 'survey-likert',
-    questions: [{prompt: 'How anxious do you feel about the Coronavirus pandemic?',labels: ['1<br>Not at all', '2', '3', '4', '5', '6<br>Very much'],required: true}],
-    data: {ttype: 'corona_anxiety'}},
-  // general cognitive performance
-  { type: 'survey-likert',
-    questions: [{prompt: 'Do you feel the Coronavirus pandemic has affected<br>your cognitive performance in general?<br>',labels: ['1<br>Not at all', '2', '3', '4', '5', '6<br>Very much'],required: true}],
-    data: {ttype: 'corona_general_performance'}},
-  // current task performance
-  { type: 'survey-likert',
-    questions: [{prompt: 'Do you feel the Coronavirus pandemic has affected<br>your performance during this experiment?<br>',labels: ['1<br>Not at all', '2', '3', '4', '5', '6<br>Very much'],required: true}],
-    data: {ttype: 'corona_task_performance'}},
-  // free text about corona effects
   { type: 'survey-text',
-    questions: [{prompt: 'If you feel the Coronavirus pandemic has affected your cognitive performance in general or during this task, please describe how.', columns: 60, rows: 15}],
-    data: {ttype: 'corona_performance_text'}},
-
+    questions: [{prompt: 'What did you think about the photographs we showed you?',columns: 60, rows: 15}],
+    data: {ttype: 'debreif_photos'}},
     // compute extra rewards given to subjects
   { type: "html-keyboard-response",
     stimulus: function() {
@@ -1198,7 +1180,7 @@ var deliberation_too_fast = {
     choices: [' '],
     data: {ttype: 'final_reward_tally'}},
   { type: 'html-keyboard-response',
-    stimulus: '<p>Data uploading... The screen will turn grey when all data are uploaded.</p>',
+    stimulus: '<p>Data uploading... The screen will turn grey when all data are uploaded. You may submit your code</p>',
     choices: jsPsych.NO_KEYS,
     trial_duration: 6000,
     data: {ttype: 'debreif_end'}
@@ -1225,9 +1207,8 @@ var deliberation_too_fast = {
           console.log(interaction_data.json());
           //jsPsych.data.getInteractionData().localSave('csv','interaction_data.csv');
         } else if (server==1) { // server
-          var subject = jsPsych.data.get().last(1).select('PID').values[0];
-          saveData('S_' + subject + '_' + timeStamp(), jsPsych.data.get().ignore('stimulus').csv());
-          saveData('Interactive_S_' + subject + '_' + timeStamp(), jsPsych.data.getInteractionData().csv())
+          saveData('data_sub_' + subID, jsPsych.data.get().ignore('stimulus').csv());
+          saveData('int_data_sub_' + subID, jsPsych.data.getInteractionData().csv())
         } // else
       } // on_finish
     });
