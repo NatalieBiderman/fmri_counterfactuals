@@ -158,7 +158,7 @@ for (t = 0; t < n_ratings; t++){
            index: t},
     stimulus: '<img class="object" src="{0}/{1}" />',
     labels: ['Not at all', 'Very much'],
-    prompt: '<p>How much do you like this painting?</p>',
+    prompt: '<p>How much do you like this photograph?</p>',
     response_ends_trial: true,
     on_start: function(trial){
       trial.stimulus = String.format(trial.stimulus, image_folder, trial.data.stimulus);
@@ -226,7 +226,7 @@ timeline.push(repeat_deliberation_instructions,start_phase)
   var first_del_practice = {
         type: 'html-keyboard-response',
         data: {ttype: 'first_deliberation_block'},
-        stimulus: "You will now start your first practice round of choosing between paintings.<br></br>"+
+        stimulus: "You will now start your first practice round of choosing between photographs.<br></br>"+
                   "Please press the 'N' key to begin.",
         choices: keys_go_next,
         response_ends_trial: true
@@ -391,7 +391,7 @@ var deliberation_too_fast = {
       type: 'survey-text',
       data: {ttype: "explain_trial",
             index: t},
-      questions: [{prompt: "Why did you choose to buy this painting?", rows: 10, columns: 40}],
+      questions: [{prompt: "Why did you choose to buy this photograph?", rows: 10, columns: 40}],
       preamble: choice_confirm_stims,
       on_start: function(trial){
         // decide which stimuli to present
@@ -967,7 +967,7 @@ var deliberation_too_fast = {
             stimulus: '<img class="object" src="{0}/{1}" />',
             labels: ['Not at all', 'Very much'],
             response_ends_trial: true,
-            prompt: '<p>How much do you like this painting?</p>',
+            prompt: '<p>How much do you like this photograph?</p>',
             on_start: function(trial){
               trial.data.stimulus = Final_ratings[trial.data.index].painting;
               trial.stimulus = String.format(trial.stimulus, image_folder, trial.data.stimulus);
@@ -1141,10 +1141,10 @@ var deliberation_too_fast = {
     questions: [{prompt: 'Did you use any type of strategy in the final decisions phase (right before the memory questions)?', columns: 60, rows: 15}],
     data: {ttype: 'debreif_strategy_FD'}},
   { type: 'survey-text',
-    questions: [{prompt: 'In the same decisions phase, some of the pairs included paintings we did not show you their auction outcomes. How did you decide which one to choose in these pairs?', columns: 60, rows: 15}],
+    questions: [{prompt: 'In the same decisions phase, some of the pairs included photographs we did not show you their auction outcomes. How did you decide which one to choose in these pairs?', columns: 60, rows: 15}],
     data: {ttype: 'debreif_strategy_unchosen'}},
   { type: 'survey-text',
-    questions: [{prompt: 'Did you use any type of strategy in the decisions phase in the begining of the study where you had to choose which painting should go on auction?',columns: 60, rows: 15}],
+    questions: [{prompt: 'Did you use any type of strategy in the decisions phase in the begining of the study where you had to choose which photograph should go on auction?',columns: 60, rows: 15}],
     data: {ttype: 'debreif_strategy_deliberation'}},
   { type: 'survey-text',
     questions: [{prompt: 'Was there anything in the instructions you found unclear?',columns: 60, rows: 15}],
