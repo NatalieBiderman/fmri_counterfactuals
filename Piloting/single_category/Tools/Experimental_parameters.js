@@ -39,49 +39,49 @@ var timing_confirmation   = 500;
 var timing_warning        = 1500;
 var timeline              = [];
 var quiz_qs               = {rating:
-                                [{prompt: "True or False: You will rate the following paintings according to how much you like them",
+                                [{prompt: "True or False: You will rate the following photographs according to how much you like them",
                                  options: ["True", "False"]},
-                                {prompt: "You will rate paintings by using: ",
+                                {prompt: "You will rate photographs by using: ",
                                  options: ["Mouse","Two optional keys"]}],
                              deliberation:
-                                [{prompt: "True or False: You will now choose paintings for an auction, and your goal is to make decisions that will maximize your profits from the auction",
+                                [{prompt: "True or False: You will now choose photographs for an auction, and your goal is to make decisions that will maximize your profits from the auction",
                                  options: ['True','False']},
                                 {prompt: "True or False: You will practice the decisions a couple of times before the final round of decisions",
                                  options: ["True", "False"]},
                                 {prompt: "How should you make this decision?",
                                  options: ["Consider carefully and take your time (up to 10 seconds)","Do it as quickly as possible"]},
-                                {prompt: "True or False: When asked why did you choose a specific painting, you may refer to any internal thoughts or external features that led to your decision",
+                                {prompt: "True or False: When asked why did you choose a specific photograph, you may refer to any internal thoughts or external features that led to your decision",
                                   options: ["True", "False"]},
-                                {prompt: "What button should you press to choose the painting on the left?",
+                                {prompt: "What button should you press to choose the photograph on the left?",
                                  options: ["K","D"]}],
                              reward:
                                 [{prompt: "True or False: You will now find out the results of the auction.",
                                  options: ['True','False']},
-                                {prompt: "True or False: Your chosen paintings could either result in a gain or in no gain",
+                                {prompt: "True or False: Your chosen photographs could either result in a gain or in no gain",
                                  options: ["True", "False"]},
-                                {prompt: "What should you do when shown a painting?",
+                                {prompt: "What should you do when shown a photograph?",
                                  options: ["Just look at it","Press the space bar to see its outcome"]},
-                                {prompt: "What should you do when shown the outcome of the painting?",
+                                {prompt: "What should you do when shown the outcome of the photograph?",
                                  options: ["Just look at it","Press the relevant key while the outcome is presented"]}],
                              final_decisions:
-                                [{prompt: "True or False: You will now make more decisions between paintings to prepare a portfolio of high-valued paintings",
+                                [{prompt: "True or False: You will now make more decisions between photographs to prepare a portfolio of high-valued photographs",
                                  options: ['True','False']},
-                                {prompt: "To choose the painting on the right you should press what key with the right index finger?",
+                                {prompt: "To choose the photograph on the right you should press what key with the right index finger?",
                                  options: ["K","D"]}],
                              memory:
                                 [{prompt: "You will now be asked what you remember from which phase of the experiment?",
                                  options: ["Decisions made in the beginning of the experiment","Decisions made in the end of the experiment"]},
-                                {prompt: "Recombined paintings are:",
-                                 options: ["Random paintings you haven't seen before", "Paintings you have seen before but they were not paired together"]}],
+                                {prompt: "Recombined photographs are:",
+                                 options: ["Random photographs you haven't seen before", "Photographs you have seen before but they were not paired together"]}],
                              final_ratings:
-                                [{prompt: "True or False: You will now rate again how much you like the following paintings",
+                                [{prompt: "True or False: You will now rate again how much you like the following photographs",
                                  options: ["True","False"]},
                                  {prompt: "Your responses should be made using:",
                                   options: ["Mouse","Two optional keys"]}],
                              outcome_evaluation:
-                                 [{prompt: "True or False: After you made decisions about which paintings should go on auction and learned their profits, the remaining paintings (those you did not choose) also went on auction.",
+                                 [{prompt: "True or False: After you made decisions about which photographs should go on auction and learned their profits, the remaining photographs (those you did not choose) also went on auction.",
                                   options: ["True","False"]},
-                                  {prompt: "True or False: You will now be asked what the auction outcomes were for the paintings you previously chose and those you did not choose to go on auction.",
+                                  {prompt: "True or False: You will now be asked what the auction outcomes were for the photographs you previously chose and those you did not choose to go on auction.",
                                    options: ["True","False"]},
                                   {prompt: "If the outcome was a GAIN, which button should you press?",
                                    options: ["Up arrow", "Down arrow"]},
@@ -91,7 +91,7 @@ quiz_answers                = {rating: ["True", "Mouse"],
                               deliberation: ["True", "True", "Consider carefully and take your time (up to 10 seconds)", "True", "D"],
                               reward: ["True", "True", "Press the space bar to see its outcome", "Press the relevant key while the outcome is presented"],
                               final_decisions: ["True", "K"],
-                              memory: ["Decisions made in the beginning of the experiment", "Paintings you have seen before but they were not paired together"],
+                              memory: ["Decisions made in the beginning of the experiment", "Photographs you have seen before but they were not paired together"],
                               final_ratings: ["True", "Mouse"],
                               outcome_evaluation: ["True", "True", "Up arrow", "True"]};
 
@@ -125,9 +125,9 @@ var reward_stim           = '<table class="table"><tr>\
                             <td class="object"> </td>\
                             <td class="object"><img class="{4}" src="{5}"/></td>\
                             <td class="object"> </td></tr></table>';
-var propmt_decision        = 'Which painting do you choose? <br> left (D) / right (K) </br>';
-var prompt_see_reward      = 'Press the SPACE bar to see the outcome of this painting'
+var propmt_decision        = 'Which photograph do you choose? <br> left (D) / right (K) </br>';
+var prompt_see_reward      = 'Press the SPACE bar to see the outcome of this photograph'
 var prompt_reward          = 'Gain (up) / No gain (down)';
 var prompt_pair_memory     = '<p>Is this pair INTACT (up) or RECOMBINED (down)?</p>';
-var prompt_decision_memory = 'Which paintings did you previously choose? <br> left (D) / right (K) </br>';
-var prompt_outcome_eval    = 'What was the auction profit of this painting?<br> Gain (up) / No gain (down) <br>';
+var prompt_decision_memory = 'Which photographs did you previously choose? <br> left (D) / right (K) </br>';
+var prompt_outcome_eval    = 'What was the auction profit of this photograph?<br> Gain (up) / No gain (down) <br>';
