@@ -1,0 +1,5 @@
+"success","ttype","start_time","trial_type","trial_index","time_elapsed","internal_node_id","warning","missed_checkup","PID","stim_type","view_history","rt","responses","category","repeat_instructions","key_press"
+"true","full_screen","d01182023hr0055","fullscreen","0","2055","0.0-0.0","0","0","U480R","People","","","","","",""
+"","rating_instructions","","instructions","1","4666","0.0-1.0-0.0","0","0","U480R","People","[{""page_index"":0,""viewing_time"":1692},{""page_index"":1,""viewing_time"":917}]","2610","","","",""
+"","","","survey-multi-choice","2","7353","0.0-1.0-1.0","0","0","U480R","People","","2683","{""Q0"":""True"",""Q1"":""Mouse""}","rating_comprehension_check","0",""
+"","start_phase","","html-keyboard-response","3","8689","0.0-2.0","0","0","U480R","People","","1335","","","","78"
