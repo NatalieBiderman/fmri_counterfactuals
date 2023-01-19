@@ -109,10 +109,10 @@ function transpose(a) {
     });
 }
 // Present png instructions screen
-function present_instructions(img, category, keys){
+function present_instructions(img, ttype, keys){
   var instructions = {
     type: "html-keyboard-response",
-    data: {category: category},
+    data: {ttype: ttype},
     stimulus: '<img class="instructions" src="Stimuli/Instructions/' + img + '"</img>',
     choices: keys_instructions,
     response_ends_trial: true
@@ -158,16 +158,16 @@ function makeid(length) {
 }
 
 // Present quiz instructions using a loop function (until they get all qs right)
-function present_quiz_instructions(instructions_screen, category, quiz_qs, quiz_answers){
+function present_quiz_instructions(instructions_screen, ttype, quiz_qs, quiz_answers){
 
     // Make sure participants understood the instructions, by giving them a short quiz.
     // if they got it wrong, present the instructions again, until they get it right.
     var comprehension_check = {
               type: 'survey-multi-choice',
               questions: quiz_qs,
-              data: {category: category},
+              data: {ttype: ttype},
               on_finish: function(data) {
-                  var responses = jsPsych.data.get().filter({category: category}).last(1).values()[0].responses;
+                  var responses = jsPsych.data.get().filter({ttype: ttype}).last(1).values()[0].responses;
                       responses = responses.split(","); // seperate responses by comma
                   var correct_answers = quiz_answers;
                   var repeat = 0;
@@ -183,7 +183,7 @@ function present_quiz_instructions(instructions_screen, category, quiz_qs, quiz_
     var if_missed_instructions = {
       timeline: [missed_instruction_checkup],
       conditional_function: function(data){
-          if (jsPsych.data.get().filter({category: category}).last(1).values()[0].repeat_instructions){
+          if (jsPsych.data.get().filter({ttype: ttype}).last(1).values()[0].repeat_instructions){
             return true;
           } else {
           return false;
@@ -194,7 +194,7 @@ function present_quiz_instructions(instructions_screen, category, quiz_qs, quiz_
     var repeat_instructions = {
       timeline: [instructions_screen,comprehension_check,if_missed_instructions],
       loop_function: function(){
-        if (jsPsych.data.get().filter({category: category}).last(1).values()[0].repeat_instructions){
+        if (jsPsych.data.get().filter({ttype: ttype}).last(1).values()[0].repeat_instructions){
           return true;
         } else {
           return false;
