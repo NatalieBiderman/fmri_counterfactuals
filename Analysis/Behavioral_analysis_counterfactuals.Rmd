@@ -36,11 +36,12 @@ if(length(new_packages)) install.packages(new_packages)
 lapply(list_of_packages, require, character.only = TRUE)
 
 # Load functions
-source("Tools/create_csv_from_js_data.R")
-source("Tools/create_interactive_csv_from_js_data.R")
+source("Tools/create_csv_from_js_data_fmri.R")
+source("Tools/create_interactive_csv_from_js_data_fmri.R")
 source("Tools/create_event_log.R")
 source("Tools/preprocess_js_data_counterfactuals.R")
 source("Tools/plotting.R")
+source("Tools/find_outlier_mturkers.R")
 
 # Figure parameters
 fig_size = c(10,10)
@@ -129,123 +130,77 @@ for (sub in subs){
 
 ```
 
+
+# Process MTurk details 
+
+1. Find outlier subs
+2. Figure out who should be invited for Part2
+3. Compute bonus money 
+
+```{r}
+
+# ==============================================================================
 # Compute bonus money 
-
-```{r}
-
-# load raw data
-raw_df <- list(read.csv(paste0(data_path,"/Raw_data/raw_category_learning.csv")), 
-               read.csv(paste0(data_path,"/Raw_data/raw_size.csv")),
-               read.csv(paste0(data_path,"/Raw_data/raw_rl.csv")))
-names(raw_df) <- c("category_learning", "size", "rl")
-
-# ==============================================================================
-# compute bonus money 
 # ==============================================================================
 
-final_tally_category <- raw_df$category_learning %>% 
-  subset(!is.na(total_bonus_tally)) %>% 
-  dplyr::select(PID, total_bonus_tally) %>% 
-  dplyr::rename(category_learning = "total_bonus_tally")
-
-final_tally_size <- raw_df$size %>% 
-  subset(!is.na(size_final_tally)) %>% 
-  dplyr::select(PID, size_final_tally) %>% 
-  dplyr::rename(size = "size_final_tally")
-
-final_tally_rl <- raw_df$rl %>% 
-  subset(!is.na(total_bonus_tally)) %>% 
-  dplyr::select(PID, total_bonus_tally) %>% 
-  dplyr::rename(rl = "total_bonus_tally")
-
-bonus <- merge(merge(final_tally_category,final_tally_size, by="PID"),final_tally_rl, by="PID") %>%
-  mutate(total_bonus = category_learning + size + rl)
-
-write.csv(bonus %>% dplyr::select(PID, total_bonus), "Data/Bonus/bonus.csv")
-
-print(bonus)
-```
-
-# Save bonus for mturkers 
-
-```{r}
-
-# Create a bonus matrix so we could upload a csv of bonus money with worker IDs 
-# find workers that were not given bonus money yet
-subject_log <- read.csv("Data/Subject_log/subject_log.csv", stringsAsFactors = FALSE)
-if (exists("subject_log")){
-  worker_ID <- subject_log[subject_log$ApprovalStatus=="Pending",
-                        c("Actual.Completion.Code","AmazonIdentifier","AmountBonused")]
-  colnames(worker_ID) <- c("PID","Worker_ID","AmountBonused")
-  bonus$PID <- as.character(bonus$PID)
-  bonus <- left_join(worker_ID, bonus, by = "PID")
-  write.csv(bonus,"Data/Bonus/bonus.csv")
-}
-
-```
-
-# Run diagnostics for mturk participants 
-
-```{r}
-
-# ==============================================================================
-# aggregate warnings throughout the tasks
-# ==============================================================================
-
-warning_category <- raw_df$category_learning %>% 
+# fixed bonus of $1.5 - for participants who participated in the deliberation phase 
+deliberation_bonus <- 1.5
+n_FD_trials <- 216 # total trials, chosen pairs are half of that. 
+bonus_sum <- 2
+sum_per_correct <- bonus_sum/(n_FD_trials/2)
+reward <- df$all_data %>%
   group_by(PID) %>%
-  dplyr::summarize(no_response = sum(no_response, na.rm=1),
-         missed_instruction_checkup = sum(missed_checkup, na.rm=1),
-         category_memory_warning = sum(did_not_enter_response, na.rm=1),
-         task = "category_learning")
+  dplyr::summarize(presented_reward = sum(total_reward_tally,na.rm=TRUE),
+                   computed_reward = round(sum(ttype=="final_decisions" & chosen_trial==1 & 
+                                                 higher_outcome_chosen==1, na.rm=1)*sum_per_correct,2) + deliberation_bonus)
 
-warning_size <- raw_df$size %>% 
-  group_by(PID) %>%
-  dplyr::summarize(no_response = sum(no_response, na.rm=1),
-         missed_instruction_checkup = sum(missed_checkup, na.rm=1),
-         category_memory_warning = NaN,
-         task = "size")
+subs_log <- read.csv("../Piloting/single_category/Data/subs_log/subs_log.csv")
 
-warning_rl <- raw_df$rl %>% 
-  group_by(PID) %>%
-  dplyr::summarize(no_response = sum(no_response, na.rm=1),
-         missed_instruction_checkup = sum(missed_checkup, na.rm=1),
-         category_memory_warning = NaN,
-         task = "rl")
-
-warning_task <- bind_rows(warning_category,warning_size,warning_rl) %>%
-  gather(no_response:category_memory_warning, key="event", value="n") %>%
-  subset(n > 0) %>%
-  add_column(ttype = "", .after = "task")
-
-# load interaction data 
-warning_int_data <- read.csv(paste0(data_path,"/df_interaction.csv")) %>%
-  group_by(PID, task, ttype, event) %>%
-  summarize(n = n()) 
-
-warning <- bind_rows(warning_task, warning_int_data) %>%
-  arrange(PID, task, event, ttype, n)
+bonus <- subs_log  %>%
+  subset(ApprovalStatus=="Pending") %>%
+  subset(`Actual.Completion.Code` != "") %>%
+  mutate(PID = str_trim(`Actual.Completion.Code`)) %>%
+  dplyr::select(PID, AmazonIdentifier) %>%
+  merge(reward, by="PID", all=TRUE) %>%
+  dplyr::select(AmazonIdentifier, computed_reward) %>%
+  mutate(computed_reward = ifelse(is.na(computed_reward),bonus_sum,computed_reward)) %>%
+  subset(AmazonIdentifier != "<NA>")
+  
+write.table(bonus, "../Piloting/single_category/Data/Bonus/bonus.csv", sep=",",  col.names=FALSE, row.names=FALSE)
 
 # ==============================================================================
 # find outlier subs
 # ==============================================================================
 
-blur_focus_criterion = 10
-no_response_criterion = 25
-missed_instructions_criterion = 10
+# outlier criteria 
+non_responses <- 100
+blur_focus <- 100
+inst_tests <- 15
+del_too_fast <- 10
+chosen_bias <- 0.5 
 
-warning <- warning %>%
-  mutate(outlier = ifelse(((event == "blur" | event == "focus") & n > blur_focus_criterion) | 
-                            (event == "no_response" & n > no_response_criterion) |
-                            (event == "missed_instructions_criterion" & n > missed_instructions_criterion), 1 ,0))
+outliers <- find_outlier_mturkers(df$all_data, df$interaction_data, df$final_decisions, non_responses, blur_focus, inst_tests, del_too_fast, chosen_bias)
 
-outlier_subs <- as.numeric(unlist(unique(warning[warning$outlier==1, "PID"])))
+
+# ==============================================================================
+# remove outlier subs 
+# ==============================================================================
+
+outlier_subs <- outliers$outliers
 all_df <- df
 for (i in 1:length(df)){
   df[[i]] <- df[[i]] %>% subset(!PID %in% outlier_subs)
-  write.csv(df[[i]], paste0(clean_data_path,"/df_",names(df)[i],".csv"))
+  write.csv(df[[i]], paste0(processed_clean_data_path,"/",names(df)[i],".csv"))
 }
 
+
+# ==============================================================================
+# Check duration
+# ==============================================================================
+
+duration <- df$all_data %>% 
+  group_by(PID) %>% 
+  dplyr::summarize(duration = (time_elapsed[ttype=="debreif_end"] - time_elapsed[ttype=="full_screen"])/60000)
 
 ```
 
@@ -267,111 +222,179 @@ demographics <- df$debreif %>%
 print(demographics)
 
 ```
-# Make sure experiment works ok
+
+# Behavioral analysis 
+
+### Deliberation
+
+#### Check that choices in the deliberation phase follow subjects initial preferences 
 
 ```{r}
 
-# ------------------------------------------------------------------------------
-# 1. make sure repetition of exemplars happens only in old trials 
-# ------------------------------------------------------------------------------
+deliberation <- df$deliberation %>%
+  subset(block == 2) %>%
+  group_by(PID) %>%
+  mutate(zscored_left_rating = zscore(rating_left),
+         zscored_right_rating = zscore(rating_right),
+         zscored_delta_ratings = zscored_left_rating - zscored_right_rating)
 
-left_stims <- df$category_learning %>% subset(is_practice == 0 & no_response == 0) %>% dplyr::select(PID, left_category, left_exemplar, old_trial, repeated_trial) %>% dplyr::rename(category = "left_category", exemplar = "left_exemplar")
-right_stims <- df$category_learning %>% subset(is_practice == 0 & no_response == 0) %>% dplyr::select(PID, right_category, right_exemplar, old_trial, repeated_trial) %>% dplyr::rename(category = "right_category", exemplar = "right_exemplar")
-all_stims <- bind_rows(left_stims, right_stims)
+p1 <- ggplot(data=deliberation, aes(y=left_chosen,x=zscored_delta_ratings)) + 
+#geom_point(position=position_jitter(height=0.04)) + 
+  stat_smooth(aes(color=factor(PID), group=factor(PID)), method="glm", method.args=list(family="binomial"), 
+              na.rm=TRUE, se=FALSE, alpha=0.3, size=0.5) + 
+ stat_smooth(method="glm",method.args=list(family="binomial"), na.rm=TRUE, size=1.5, color="black") + 
+ theme(legend.position="none") + 
+ labs(title="Deliberation choices as a function of preferences", 
+      x="Zscored delta ratings\n(left - right)", 
+      y="Left chosen") + 
+ geom_hline(yintercept=0.5, linetype="dashed", size=0.5) + 
+ geom_vline(xintercept=0, linetype="dashed", size=0.5) 
 
-# if there is no repetition of trials, we get 15 exemplars per category shown for novel trials. 
-all_stims %>% 
-  group_by(PID, old_trial, category) %>%
-  dplyr::summarise(n = n())
+if (Save_plots==1){ggsave(filename=sprintf("Plots/%s.%s","Deliberation1",fig_type), plot=p1, width=fig_size[1],height=fig_size[2])}
+print(p1)
 
-# no repetition of exemplars 
-all_stims %>% subset(repeated_trial==0) %>% group_by(PID, old_trial, category, exemplar) %>%
-  dplyr::summarise(n = n())
 
-# ------------------------------------------------------------------------------
-# 2. look at distribution of delta values 
-# ------------------------------------------------------------------------------
 
-ggplot(df$category_learning %>% subset(old_trial==0), aes(x=delta_cumulative_value)) + 
-  geom_histogram(binwidth=.9) 
-
-ggplot(df$category_learning %>% subset(old_trial==0), aes(x=delta_cumulative_value)) + 
-  geom_histogram() +
-  facet_wrap(.~PID)
-
-ggplot(df$category_learning %>% subset(old_trial==0), aes(x=left_category_value - right_category_value)) + 
-  geom_histogram(binwidth=.9) +
-  facet_wrap(.~PID)
-  
-# ------------------------------------------------------------------------------
-# 3. check how long each block takes (and make sure it is the same length for all participants and all blocks) - do this for category learning, size and rl 
-# ------------------------------------------------------------------------------
-
-block_duration <- df$events_log %>% 
-  fill(block) %>%
-  fill(index) %>%
-  group_by(PID, task, block) %>%
-  dplyr::summarise(length_duration = sum(duration),
-                   length_duration_time_elapsed = sum(duration_time_elapsed))
-# it seems the last trial of the last block in the category learning task doesn't include a feedback and iti. 
-
-# ------------------------------------------------------------------------------
-# 4. check how many trials each block includes in the category learning task
-# ------------------------------------------------------------------------------
-
-df$category_learning %>% group_by(PID, block) %>%
-  dplyr::summarize(n= n())
-
-# ------------------------------------------------------------------------------
-# 5. look at delta value for size and rl
-# ------------------------------------------------------------------------------
-
-ggplot(df$size, aes(x=delta_size)) + 
-  geom_histogram() +
-  facet_wrap(.~PID)
-
-ggplot(df$rl, aes(x=delta_cumulative_value)) + 
-  geom_histogram() +
-  facet_wrap(.~condition)
-
-prop_rl <- df$rl %>%
-  mutate(acc = ifelse(high_group_on_left == left_chosen, 1, 0)) %>%
-  group_by(PID, condition) %>%
-  dplyr::summarize(p_optimal = mean(acc, na.rm=1))
-
-# ------------------------------------------------------------------------------
-# 6. decide on suitable percentage of bonus money 
-# ------------------------------------------------------------------------------
-
-percentage <- 0.00055
-df$category_learning %>%
-  group_by(PID, block) %>% 
-  dplyr::summarize(chosen_earnings = sum(chosen_exemplar_value, na.rm=1) * percentage,
-                   max_earnings = sum(ifelse(left_exemplar_value>right_exemplar_value, left_exemplar_value, right_exemplar_value), na.rm=1) * percentage,
-                   min_earnings = sum(ifelse(left_exemplar_value<right_exemplar_value, left_exemplar_value, right_exemplar_value), na.rm=1) * percentage) 
-
-percentage <- 0.00075
-df$rl %>%
-  group_by(PID, block) %>% 
-  dplyr::summarize(chosen_earnings = sum(chosen_item_value, na.rm=1) * percentage,
-                   max_earnings = sum(ifelse(left_item_value>right_item_value, left_item_value, right_item_value), na.rm=1) * percentage,
-                   min_earnings = sum(ifelse(left_item_value<right_item_value, left_item_value, right_item_value), na.rm=1) * percentage) 
-
-# ------------------------------------------------------------------------------
-# 7. Check how many old trials appear in every block
-# ------------------------------------------------------------------------------
-
-test <- df$category_learning %>% 
-  mutate(within_cat_test = ifelse(left_category == right_category, 1, 0)) %>%
-  subset(repeated_trial == 0 & within_cat_test==1) %>%
-  group_by(PID, block) %>%
-  dplyr::summarize(n = n())
-
-test
 ```
 
 
-# Behavioral analysis 
+
+### Final Decisions 
+
+#### Compute decision bias 
+
+```{r}
+
+# ================================
+# Choices in Final Decisions phase 
+# ================================
+
+# compute mean probabiltiy to choose gain - for chosen and unchosen alone
+p_gain <- df$final_decisions %>% 
+ subset(!is.na(rt)) %>%
+ mutate(choice = ifelse(chosen_trial==1, "Chosen", "Unchosen")) %>%
+ group_by(PID, choice) %>% 
+ dplyr::summarize(p_gain = mean(higher_outcome_chosen, na.rm=1)) %>%
+ tidyr::spread(choice, p_gain) %>%
+ subset(Chosen > 0.5) %>%
+ tidyr::gather("choice","p_gain",Chosen:Unchosen)
+
+p_gain_group <- p_gain %>%
+ group_by(choice) %>%
+ dplyr::summarize(mean = mean(p_gain, na.rm=1), 
+                  se = sd(p_gain, na.rm=1)/sqrt(n())) %>%
+ mutate(`p(select rewarded)` = sprintf("%.2f \u00b1 %.2f", mean, se)) %>%
+ dplyr::select(choice, `p(select rewarded)`)
+
+# print table of group means and 1 sem
+p_gain_group %>%
+ kbl() %>%
+ kable_paper("hover", full_width = F, html_font = "Helvetica", position = "left")
+
+p1 <- ggplot(p_gain %>% mutate(condition=NaN), aes(x=choice,y=p_gain)) +
+ stat_summary_bin(aes(y=p_gain), fun.y="mean", geom="bar", binwidth=0.2, 
+                  position=position_dodge(width=1), fill="grey") +
+ geom_point(aes(color=factor(condition)), position=position_jitterdodge(dodge.width=1, jitter.width=0.1), 
+            fill="white", shape=21, stroke=point_stroke, size=point_size) +
+ scale_color_manual(values="black") + 
+ stat_summary(fun.data=mean_se, fun.args = list(mult=n_sem), geom="errorbar", width=0.1, size=0.9, 
+              position=position_nudge(0.2), color="black") + # "turquoise4"
+ geom_hline(yintercept=0.5, size=line_size, linetype="dashed") + 
+ scale_y_continuous(expand=c(0,0), breaks=c(0,0.5,1), limits=c(0,1.02)) + 
+ theme + 
+ theme(axis.title.x=element_blank(), 
+       legend.position="none" , 
+       aspect.ratio=2.5/2,
+       plot.title = element_text(margin=margin(0,0,30,0))) +
+ labs(y="p(select S+)", title="Final Decisions Choices") +
+ scale_x_discrete(breaks = c("Chosen","Unchosen"), limits=c("Chosen","Unchosen"),
+                  # labels = c("1" = expression(atop(S[chosen],paste("(learned)"))),
+                  # "0" = expression(atop(S[unchosen],paste("(inferred)"))))) 
+                  labels = c("Chosen" = expression(S[chosen]*" (learned)"),
+                             "Unchosen" = expression(S[unchosen]*" (inferred)"))) 
+
+if (Save_plots==1){ggsave(filename=sprintf("Plots/%s.%s","FD1_mean_bias", fig_type), plot=p1, width=fig_size[1],height=fig_size[2])}
+print(p1)
+
+# ================================
+# RT in Final Decisions phase 
+# ================================
+
+RT_FD <- df$final_decisions %>%
+  group_by(PID) %>%
+  mutate(zscored_rt = zscore(rt)) %>%
+  subset(!is.na(rt)) %>%
+  mutate(`Pair type` = ifelse(chosen_trial==1, "Chosen", "Unchosen"),
+         Outcome = ifelse(higher_outcome_chosen == 1, "Gain selected", "No gain selected")) %>%
+ group_by(PID, `Pair type`, Outcome) %>%
+ dplyr::summarise(rt = mean(rt, na.rm=1),
+                  zscored_rt = mean(zscored_rt, na.rm=1)) 
+
+# show group means 
+RT_FD %>%
+ group_by(`Pair type`,Outcome) %>%
+ dplyr::summarise(mean_rt = mean(rt),
+                  se_rt = sd(rt)/sqrt(n()),
+                  mean_zrt = mean(zscored_rt),
+                  se_zrt = sd(zscored_rt)/sqrt(n())) %>%
+ mutate(RT = sprintf("%.2f \u00b1 %.2f", mean_rt, se_rt),
+        zRT = sprintf("%.2f \u00b1 %.2f", mean_zrt, se_zrt)) %>%
+ select(`Pair type`, Outcome, RT, zRT) %>%
+ kbl() %>%
+ kable_paper("hover", full_width = F, html_font = "Helvetica", position = "left")
+
+
+# ================================
+# Memory and bias
+# ================================
+
+memory_pgain <- df$memory %>%
+ subset(!is.na(rt_pairs)) %>%
+ mutate(pair_acc = ifelse(old_pair == old_response, 1, 0)) %>%
+ group_by(PID) %>%
+ dplyr::summarise(pair_acc = mean(pair_acc)) %>%
+ merge(p_gain, by = "PID")
+
+memory_pgain %>%
+ group_by(choice) %>%
+ dplyr::summarise(mean_pair_acc = mean(pair_acc),
+                  se_pair_acc = sd(pair_acc)/sqrt(n()),
+                  mean_p_gain = mean(p_gain),
+                  se_p_gain = sd(p_gain)/sqrt(n())) %>%
+ mutate(`Pair accuracy` = sprintf("%.2f \u00b1 %.2f", mean_pair_acc, se_pair_acc),
+`p(select S+)` = sprintf("%.2f \u00b1 %.2f", mean_p_gain, se_p_gain)) %>%
+ select(choice, `Pair accuracy`, `p(select S+)`) %>%
+ kbl() %>%
+ kable_paper("hover", full_width = F, html_font = "Helvetica", position = "left")
+
+p2 <- ggplot(memory_pgain, aes(y=p_gain,x=pair_acc,color=choice)) +
+ geom_smooth(method = "lm") + 
+ geom_point() + 
+ geom_hline(yintercept=0.5, linetype="dashed") + 
+ geom_vline(xintercept=0.5, linetype="dashed") +
+ scale_y_continuous(expand=c(0,0), breaks=c(0,0.5,1), limits=c(0,1.025)) + 
+ theme + point_plot_theme
+
+if (Save_plots==1){ggsave(filename=sprintf("Plots/%s.%s","memory_bias", fig_type), plot=p2, width=fig_size[1],height=fig_size[2])}
+print(p2)
+
+memory_inverse_bias <- memory_pgain %>%
+ tidyr::spread(choice, p_gain) %>%
+ mutate(bias = Chosen - Unchosen) 
+
+p3 <- ggplot(memory_inverse_bias, aes(y=bias,x=pair_acc)) +
+ geom_smooth(method = "lm", color="black") + 
+ geom_point() + 
+ geom_hline(yintercept=0.5, linetype="dashed") + 
+ geom_vline(xintercept=0.5, linetype="dashed") +
+ scale_y_continuous(expand=c(0,0), breaks=c(0,0.5,1), limits=c(0,1.025)) + 
+ theme + point_plot_theme
+
+if (Save_plots==1){ggsave(filename=sprintf("Plots/%s.%s","memory_inverse_bias", fig_type), plot=p3, width=fig_size[1],height=fig_size[2])}
+print(p3)
+
+```
+
 
 ## present category learning data
 

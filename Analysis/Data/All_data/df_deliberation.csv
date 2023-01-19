@@ -1,13 +1,510 @@
 "","PID","index","time_elapsed","block","reward_type","stimulus_left","stimulus_right","rating_left","rating_right","painting_left","painting_right","left_chosen","chosen_obj","unchosen_obj","explain_trial","explain_response","explain_rt"
-"1","2V2GG",10,64411,1,-1,28,0,50,50,"justin-chen-J7Cf1Gch49E-unsplash.jpg","abstral-official-cyOKLSgkgCE-unsplash.jpg",1,28,0,1,"",0.843
-"2","2V2GG",13,73578,2,-1,12,45,50,50,"daniel-rigdon-dXmXKPP2L4E-unsplash.jpg","sarah-noltner-pL5ZzPp1zqg-unsplash.jpg",1,12,45,1,"",0.988
-"3","2V2GG",17,82567,2,-1,9,16,50,50,"carlos-andres-gomez-vJuk8Y86mRw-unsplash.jpg","giano-currie-5-9YOsmf8IQ-unsplash.jpg",1,9,16,1,"",1.264
-"4","2V2GG",2,39944,1,1,47,18,50,50,"tyler-nix-ZGa9d1a_4tA-unsplash.jpg","good-faces-xmSWVeGEnJw-unsplash.jpg",1,47,18,1,"",1.669
-"5","2V2GG",20,89682,2,-1,31,3,50,50,"mathilda-khoo-vLR0YP_otCo-unsplash.jpg","art-hauntington-jzY0KRJopEI-unsplash.jpg",1,31,3,1,"",1.245
-"6","2V2GG",21,92892,2,-1,24,14,50,50,"joel-mott-LaK153ghdig-unsplash.jpg","freddy-kearney-o-ioeoATbIM-unsplash.jpg",1,24,14,1,"",1.575
-"7","2V2GG",22,96310,2,-1,8,41,50,50,"bruce-dixon-3M9WJQVHzog-unsplash.jpg","prince-akachi-i2hoD-C2RUA-unsplash.jpg",1,8,41,1,"",1.576
-"8","2V2GG",23,99844,2,1,26,22,50,50,"juri-gianfrancesco-9EZadYaMzk4-unsplash.jpg","jessica-radanavong-mrYkTuAesKE-unsplash.jpg",1,26,22,1,"",1.203
-"9","2V2GG",3,43468,1,1,25,21,50,50,"joseph-gonzalez-iFgRcqHznqg-unsplash.jpg","jessica-felicio-_cvwXhGqG-o-unsplash.jpg",0,21,25,1,"",0.919
-"10","2V2GG",4,46233,1,1,42,10,50,50,"prince-akachi-l3IHXOdMyHQ-unsplash.jpg","charles-etoroma-95UF6LXe-Lo-unsplash.jpg",1,42,10,1,"",0.679
-"11","2V2GG",7,52785,1,1,34,27,50,50,"oliver-johnson-1TUIcKob7Zs-unsplash.jpg","jurica-koletic-7YVZYZeITc8-unsplash.jpg",1,34,27,1,"",0.621
-"12","2V2GG",8,55992,1,1,37,35,50,50,"pavel-anoshin-d0peGya6R5Y-unsplash.jpg","oliver-ragfelt-khV4fTy6-D8-unsplash.jpg",0,35,37,1,"",0.626
+"1","1ae5n",0,290412,1,-1,24,22,58,57,"joel-mott-LaK153ghdig-unsplash.jpg","jessica-radanavong-mrYkTuAesKE-unsplash.jpg",1,24,22,1,"The models smile is beautiful and I love the palm trees",17.317
+"2","1ae5n",1,312505,1,-1,46,23,55,46,"stefan-stefancik-QXevDflbl8A-unsplash.jpg","joanna-nix-walkup-H4fEMshfwTE-unsplash.jpg",1,46,23,1,"The sunset and lighting is gorgeous",11.196
+"3","1ae5n",14,447978,2,1,2,49,47,46,"arjunsyah-TBUA5KHJn6k-unsplash.jpg","vicky-hladynets-_gDoyVv5F4c-unsplash.jpg",1,2,49,1,"I think the background is really pretty",10.962
+"4","1ae5n",15,461853,2,1,45,39,56,44,"sarah-noltner-pL5ZzPp1zqg-unsplash.jpg","philip-martin-5aGUyCW_PJw-unsplash.jpg",0,39,45,1,"The landscape and the mans black sweater are a gorgeous contrast",19.404
+"5","1ae5n",16,496891,2,1,8,3,61,53,"bruce-dixon-3M9WJQVHzog-unsplash.jpg","art-hauntington-jzY0KRJopEI-unsplash.jpg",1,8,3,1,"It looks like an authentic photo and the angle of the mans face works really well ",23.211
+"6","1ae5n",16,492814,2,1,8,3,61,53,"bruce-dixon-3M9WJQVHzog-unsplash.jpg","art-hauntington-jzY0KRJopEI-unsplash.jpg",NA,NA,NA,1,"It looks like an authentic photo and the angle of the mans face works really well ",23.211
+"7","1ae5n",18,527464,2,1,40,33,45,56,"prince-akachi-4Yv84VgQkRM-unsplash.jpg","olena-sergienko-0TSd6uCKTKc-unsplash.jpg",1,40,33,1,"The mans smile",7.087
+"8","1ae5n",19,537620,2,1,26,37,59,60,"juri-gianfrancesco-9EZadYaMzk4-unsplash.jpg","pavel-anoshin-d0peGya6R5Y-unsplash.jpg",0,37,26,1,"I think the black contrasting with the white background is really nice",16.672
+"9","1ae5n",22,563869,2,1,7,48,55,57,"brooke-cagle-HRZUzoX1e6w-unsplash.jpg","velizar-ivanov-7ktP9yZA1g4-unsplash.jpg",1,7,48,1,"I love the stripes on her shirt with the palms in the background",16.952
+"10","1ae5n",5,343379,1,-1,41,27,57,47,"prince-akachi-i2hoD-C2RUA-unsplash.jpg","jurica-koletic-7YVZYZeITc8-unsplash.jpg",1,41,27,1,"Her smile looks very authentic ",14.968
+"11","1ae5n",6,365556,1,-1,1,13,60,60,"aiony-haust-jmATI5Q_YgY-unsplash.jpg","erik-lucatero-d2MSDujJl2g-unsplash.jpg",1,1,13,1,"It resembles a classic painting",14.073
+"12","1ae5n",7,383671,1,-1,16,36,54,61,"giano-currie-5-9YOsmf8IQ-unsplash.jpg","ospan-ali-mGdA2fzjWLo-unsplash.jpg",0,36,16,1,"Her features and clothing are very unique and striking",19.873
+"13","1ae5n",8,408955,1,-1,17,15,56,56,"gleb-lukomets-paBzWCPN23k-unsplash.jpg","gabriel-silverio-u3WmDyKGsrY-unsplash.jpg",1,17,15,1,"I like the lighting on her face and the shadows ",13.496
+"14","1K9vK",0,374076,1,1,49,8,64,43,"vicky-hladynets-_gDoyVv5F4c-unsplash.jpg","bruce-dixon-3M9WJQVHzog-unsplash.jpg",0,8,49,1,"There is more going on and feels like more emotion in this photograph ",29.419
+"15","1K9vK",10,518487,1,-1,3,2,36,77,"art-hauntington-jzY0KRJopEI-unsplash.jpg","arjunsyah-TBUA5KHJn6k-unsplash.jpg",0,2,3,1,"I really like the background of this photo It makes me feel happy and hopeful I thin others would agree with that",20.872
+"16","1K9vK",11,542873,1,1,21,36,32,40,"jessica-felicio-_cvwXhGqG-o-unsplash.jpg","ospan-ali-mGdA2fzjWLo-unsplash.jpg",0,36,21,1,"I really enjoy how the photo shows a different cultural stuff like clothes and such ",31.514
+"17","1K9vK",12,582534,2,1,40,13,62,67,"prince-akachi-4Yv84VgQkRM-unsplash.jpg","erik-lucatero-d2MSDujJl2g-unsplash.jpg",1,40,13,1,"I like the fact the guy is holding a camera It opens the thoughts about doing my own hobbies and how enjoyable they make me feel ",24.898
+"18","1K9vK",14,613749,2,-1,24,41,79,71,"joel-mott-LaK153ghdig-unsplash.jpg","prince-akachi-i2hoD-C2RUA-unsplash.jpg",1,24,41,1,"Her smile with the background gives off a really happy feeling and that she is in such a really nice and fun place to be ",22.966
+"19","1K9vK",17,645269,2,1,14,30,64,32,"freddy-kearney-o-ioeoATbIM-unsplash.jpg","matheus-ferrero-pg_WCHWSdT8-unsplash.jpg",1,14,30,1,"This gentleman gives off a feeling of being super friendly and wanting to help you out with learning something new I feel connected to that photograph ",36.46
+"20","1K9vK",20,690134,2,-1,25,4,72,41,"joseph-gonzalez-iFgRcqHznqg-unsplash.jpg","barna-bartis-2x3vfVxwR7o-unsplash.jpg",1,25,4,1,"His smile is captivating I am drawn in to his smile and the background makes me more interested ",29.687
+"21","1K9vK",22,727062,2,1,26,35,38,69,"juri-gianfrancesco-9EZadYaMzk4-unsplash.jpg","oliver-ragfelt-khV4fTy6-D8-unsplash.jpg",1,26,35,1,"The trees the man is touching makes the photo feel very connected to me I like that background and would like to know more about it",35.413
+"22","1K9vK",23,765282,2,-1,39,47,36,34,"philip-martin-5aGUyCW_PJw-unsplash.jpg","tyler-nix-ZGa9d1a_4tA-unsplash.jpg",1,39,47,1,"his facial expression leaves the viewer wondering what is on his mind Also wondering where he is exactly from the background looks very interesting ",27.852
+"23","1K9vK",7,431058,1,1,45,11,67,77,"sarah-noltner-pL5ZzPp1zqg-unsplash.jpg","christian-ferrer-8vT-DgHZDG4-unsplash.jpg",0,11,45,1,"The colors and feeling given off by this photo I think other people will be able to relate to it more ",23.78
+"24","1K9vK",8,458594,1,-1,34,42,37,38,"oliver-johnson-1TUIcKob7Zs-unsplash.jpg","prince-akachi-l3IHXOdMyHQ-unsplash.jpg",0,42,34,1,"Her face and background give a lot of interpretation for anyone who is looking to purchase a photo ",33.382
+"25","1K9vK",9,494857,1,-1,27,16,74,41,"jurica-koletic-7YVZYZeITc8-unsplash.jpg","giano-currie-5-9YOsmf8IQ-unsplash.jpg",0,16,27,1,"The colors and her face are very nice I enjoy the colors in the background ",20.383
+"26","1pow4",0,231927,1,-1,8,12,67,64,"bruce-dixon-3M9WJQVHzog-unsplash.jpg","daniel-rigdon-dXmXKPP2L4E-unsplash.jpg",0,12,8,1,"Looked more professional",12.287
+"27","1pow4",1,247471,1,1,26,19,74,66,"juri-gianfrancesco-9EZadYaMzk4-unsplash.jpg","ha-nguy-n-OFSQ6bHjFjs-unsplash.jpg",1,26,19,1,"Liked the interaction with the plant",11.98
+"28","1pow4",10,330431,1,1,1,33,73,60,"aiony-haust-jmATI5Q_YgY-unsplash.jpg","olena-sergienko-0TSd6uCKTKc-unsplash.jpg",1,1,33,1,"Looks like a painting",13.786
+"29","1pow4",13,355583,2,-1,45,48,65,77,"sarah-noltner-pL5ZzPp1zqg-unsplash.jpg","velizar-ivanov-7ktP9yZA1g4-unsplash.jpg",0,48,45,1,"More photogenic ",6.631
+"30","1pow4",14,364984,2,-1,21,28,69,66,"jessica-felicio-_cvwXhGqG-o-unsplash.jpg","justin-chen-J7Cf1Gch49E-unsplash.jpg",0,28,21,1,"Better smile",7.287
+"31","1pow4",16,377863,2,1,5,40,62,65,"batel-studio-ttSRjiYG_WM-unsplash.jpg","prince-akachi-4Yv84VgQkRM-unsplash.jpg",0,40,5,1,"Great smile liked the camera ",16.248
+"32","1pow4",2,263055,1,-1,29,41,69,63,"leilani-angel-K84vnnzxmTQ-unsplash.jpg","prince-akachi-i2hoD-C2RUA-unsplash.jpg",0,41,29,1,"Better smile",4.971
+"33","1pow4",21,408016,2,-1,18,23,72,76,"good-faces-xmSWVeGEnJw-unsplash.jpg","joanna-nix-walkup-H4fEMshfwTE-unsplash.jpg",1,18,23,1,"Love her hair",7.978
+"34","1pow4",22,419159,2,-1,24,44,73,71,"joel-mott-LaK153ghdig-unsplash.jpg","rikonavt-HQjfrvdTfak-unsplash.jpg",1,24,44,1,"Great smile",5.261
+"35","1pow4",23,427095,2,1,13,39,59,68,"erik-lucatero-d2MSDujJl2g-unsplash.jpg","philip-martin-5aGUyCW_PJw-unsplash.jpg",1,13,39,1,"no particular reason",13.913
+"36","1pow4",4,279055,1,1,37,17,63,69,"pavel-anoshin-d0peGya6R5Y-unsplash.jpg","gleb-lukomets-paBzWCPN23k-unsplash.jpg",0,17,37,1,"Person was more photogenic ",11.127
+"37","1pow4",6,296463,1,1,36,47,61,67,"ospan-ali-mGdA2fzjWLo-unsplash.jpg","tyler-nix-ZGa9d1a_4tA-unsplash.jpg",1,36,47,1,"Looked artsy while the other looked professional",16.622
+"38","6mfmY",11,683542,1,1,0,45,89,88,"abstral-official-cyOKLSgkgCE-unsplash.jpg","sarah-noltner-pL5ZzPp1zqg-unsplash.jpg",0,45,0,1,"its better",65.219
+"39","6mfmY",12,752527,2,-1,23,48,88,93,"joanna-nix-walkup-H4fEMshfwTE-unsplash.jpg","velizar-ivanov-7ktP9yZA1g4-unsplash.jpg",0,48,23,1,"clearer",3.887
+"40","6mfmY",13,759053,2,-1,24,15,84,88,"joel-mott-LaK153ghdig-unsplash.jpg","gabriel-silverio-u3WmDyKGsrY-unsplash.jpg",0,15,24,1,"colorful",5.238
+"41","6mfmY",16,771082,2,1,8,30,75,90,"bruce-dixon-3M9WJQVHzog-unsplash.jpg","matheus-ferrero-pg_WCHWSdT8-unsplash.jpg",0,30,8,1,"cooler",3.376
+"42","6mfmY",19,783183,2,-1,36,33,68,80,"ospan-ali-mGdA2fzjWLo-unsplash.jpg","olena-sergienko-0TSd6uCKTKc-unsplash.jpg",0,33,36,1,"cooler",3.466
+"43","6mfmY",2,620352,1,1,20,26,87,87,"houcine-ncib-B4TjXnI0Y2c-unsplash.jpg","juri-gianfrancesco-9EZadYaMzk4-unsplash.jpg",1,20,26,1,"its cooler",7.639
+"44","6mfmY",20,789885,2,1,1,32,93,71,"aiony-haust-jmATI5Q_YgY-unsplash.jpg","nathan-dumlao-ger61_TX6oI-unsplash.jpg",1,1,32,1,"smoother",4.498
+"45","6mfmY",21,797282,2,-1,27,12,90,88,"jurica-koletic-7YVZYZeITc8-unsplash.jpg","daniel-rigdon-dXmXKPP2L4E-unsplash.jpg",1,27,12,1,"cold tone",6.355
+"46","6mfmY",3,630298,1,-1,21,38,91,74,"jessica-felicio-_cvwXhGqG-o-unsplash.jpg","petr-sevcovic-HzDF-rxlSeM-unsplash.jpg",0,38,21,1,"its colors are cooln",8.204
+"47","6mfmY",4,640877,1,-1,49,29,91,93,"vicky-hladynets-_gDoyVv5F4c-unsplash.jpg","leilani-angel-K84vnnzxmTQ-unsplash.jpg",0,29,49,1,"clearer",4.782
+"48","6mfmY",5,648279,1,1,39,9,92,78,"philip-martin-5aGUyCW_PJw-unsplash.jpg","carlos-andres-gomez-vJuk8Y86mRw-unsplash.jpg",0,9,39,1,"dynamic",4.183
+"49","6mfmY",9,667957,1,1,43,19,90,92,"raamin-ka-0qJBEzudn5E-unsplash.jpg","ha-nguy-n-OFSQ6bHjFjs-unsplash.jpg",1,43,19,1,"cooler",4.538
+"50","7ZxYS",1,403114,1,-1,27,1,36,68,"jurica-koletic-7YVZYZeITc8-unsplash.jpg","aiony-haust-jmATI5Q_YgY-unsplash.jpg",1,27,1,1,"This photograph was better than other one",20.353
+"51","7ZxYS",10,518533,1,1,9,47,35,35,"carlos-andres-gomez-vJuk8Y86mRw-unsplash.jpg","tyler-nix-ZGa9d1a_4tA-unsplash.jpg",1,9,47,1,"A photograph was good ",13.516
+"52","7ZxYS",11,535613,1,-1,49,8,64,39,"vicky-hladynets-_gDoyVv5F4c-unsplash.jpg","bruce-dixon-3M9WJQVHzog-unsplash.jpg",1,49,8,1,"The photograph makes pretty",13.418
+"53","7ZxYS",13,1477388,2,1,18,12,69,40,"good-faces-xmSWVeGEnJw-unsplash.jpg","daniel-rigdon-dXmXKPP2L4E-unsplash.jpg",0,12,18,1,"The photograph was good",10.749
+"54","7ZxYS",14,1491777,2,1,17,21,37,66,"gleb-lukomets-paBzWCPN23k-unsplash.jpg","jessica-felicio-_cvwXhGqG-o-unsplash.jpg",0,21,17,1,"There was a better than others",11.446
+"55","7ZxYS",15,1506416,2,-1,45,28,70,36,"sarah-noltner-pL5ZzPp1zqg-unsplash.jpg","justin-chen-J7Cf1Gch49E-unsplash.jpg",1,45,28,1,"The photo was too good",9.209
+"56","7ZxYS",17,1522490,2,-1,2,35,39,61,"arjunsyah-TBUA5KHJn6k-unsplash.jpg","oliver-ragfelt-khV4fTy6-D8-unsplash.jpg",1,2,35,1,"The photograph was good ",11.544
+"57","7ZxYS",19,1540286,2,-1,39,3,66,65,"philip-martin-5aGUyCW_PJw-unsplash.jpg","art-hauntington-jzY0KRJopEI-unsplash.jpg",1,39,3,1,"The photograph was good",10.475
+"58","7ZxYS",21,1556946,2,1,11,37,43,65,"christian-ferrer-8vT-DgHZDG4-unsplash.jpg","pavel-anoshin-d0peGya6R5Y-unsplash.jpg",1,11,37,1,"The photograph was better one",11.812
+"59","7ZxYS",3,443407,1,1,16,33,59,70,"giano-currie-5-9YOsmf8IQ-unsplash.jpg","olena-sergienko-0TSd6uCKTKc-unsplash.jpg",0,33,16,1,"the photograph was good ",17.222
+"60","7ZxYS",7,474731,1,-1,46,41,66,65,"stefan-stefancik-QXevDflbl8A-unsplash.jpg","prince-akachi-i2hoD-C2RUA-unsplash.jpg",0,41,46,1,"that person looks pretty",19.933
+"61","7ZxYS",8,497963,1,1,6,30,37,37,"ben-o-bro-C5XyLljkMrY-unsplash.jpg","matheus-ferrero-pg_WCHWSdT8-unsplash.jpg",1,6,30,1,"The photograph was different",12.962
+"62","8WXnd",1,135485,1,1,38,3,86,89,"petr-sevcovic-HzDF-rxlSeM-unsplash.jpg","art-hauntington-jzY0KRJopEI-unsplash.jpg",1,38,3,1,"I like the filter it makes it look more artistic",6.499
+"63","8WXnd",10,190403,1,1,8,6,78,87,"bruce-dixon-3M9WJQVHzog-unsplash.jpg","ben-o-bro-C5XyLljkMrY-unsplash.jpg",0,6,8,1,"The subjects smile makes the photo very appealing",6.88
+"64","8WXnd",11,201278,1,-1,39,43,72,82,"philip-martin-5aGUyCW_PJw-unsplash.jpg","raamin-ka-0qJBEzudn5E-unsplash.jpg",1,39,43,1,"The background adds a pretty artistry to the photo",8.019
+"65","8WXnd",12,214483,2,-1,40,33,84,66,"prince-akachi-4Yv84VgQkRM-unsplash.jpg","olena-sergienko-0TSd6uCKTKc-unsplash.jpg",0,33,40,1,"The contrast between the subject and the pale background is very striking",8.32
+"66","8WXnd",17,236708,2,-1,45,1,89,76,"sarah-noltner-pL5ZzPp1zqg-unsplash.jpg","aiony-haust-jmATI5Q_YgY-unsplash.jpg",0,1,45,1,"The way the photo is lit makes it look almost similar to a painting",7.175
+"67","8WXnd",18,247092,2,1,31,15,86,78,"mathilda-khoo-vLR0YP_otCo-unsplash.jpg","gabriel-silverio-u3WmDyKGsrY-unsplash.jpg",1,31,15,1,"The shadows make the photo look extremely unique with a pretty contrast to it",11.811
+"68","8WXnd",20,264630,2,-1,17,10,66,84,"gleb-lukomets-paBzWCPN23k-unsplash.jpg","charles-etoroma-95UF6LXe-Lo-unsplash.jpg",1,17,10,1,"The shadows and the subjects pose make the photo look like a woodsy painting",8.916
+"69","8WXnd",21,276510,2,1,12,2,77,69,"daniel-rigdon-dXmXKPP2L4E-unsplash.jpg","arjunsyah-TBUA5KHJn6k-unsplash.jpg",1,12,2,1,"The background adds a pretty contrast to the photo that makes it striking",8.49
+"70","8WXnd",23,290731,2,1,7,25,77,82,"brooke-cagle-HRZUzoX1e6w-unsplash.jpg","joseph-gonzalez-iFgRcqHznqg-unsplash.jpg",1,7,25,1,"The smile makes the photo look very candid and very cute ",7.17
+"71","8WXnd",4,150383,1,-1,34,20,72,76,"oliver-johnson-1TUIcKob7Zs-unsplash.jpg","houcine-ncib-B4TjXnI0Y2c-unsplash.jpg",1,34,20,1,"The use of shadow makes the photo look very elegant",6.547
+"72","8WXnd",6,162964,1,-1,29,14,86,82,"leilani-angel-K84vnnzxmTQ-unsplash.jpg","freddy-kearney-o-ioeoATbIM-unsplash.jpg",0,14,29,1,"I like the lighting and the use of an older subject for the photo",9.247
+"73","8WXnd",9,180975,1,1,11,16,83,73,"christian-ferrer-8vT-DgHZDG4-unsplash.jpg","giano-currie-5-9YOsmf8IQ-unsplash.jpg",1,11,16,1,"The use of color makes the picture pop really well",6.539
+"74","9nseM",11,1653838,1,-1,43,30,70,61,"raamin-ka-0qJBEzudn5E-unsplash.jpg","matheus-ferrero-pg_WCHWSdT8-unsplash.jpg",1,43,30,1,"look beautiful",22.538
+"75","9nseM",16,1703717,2,1,2,11,70,74,"arjunsyah-TBUA5KHJn6k-unsplash.jpg","christian-ferrer-8vT-DgHZDG4-unsplash.jpg",0,11,2,1,"she look very beautiful",23.307
+"76","9nseM",17,1730666,2,1,44,27,61,52,"rikonavt-HQjfrvdTfak-unsplash.jpg","jurica-koletic-7YVZYZeITc8-unsplash.jpg",0,27,44,1,"Nice Simile",17.242
+"77","9nseM",18,1752979,2,1,3,42,67,35,"art-hauntington-jzY0KRJopEI-unsplash.jpg","prince-akachi-l3IHXOdMyHQ-unsplash.jpg",1,3,42,1,"Look beautiful",32.599
+"78","9nseM",2,1482694,1,-1,49,5,43,66,"vicky-hladynets-_gDoyVv5F4c-unsplash.jpg","batel-studio-ttSRjiYG_WM-unsplash.jpg",0,5,49,1,"I like it smile",20.411
+"79","9nseM",20,1793480,2,-1,15,41,78,66,"gabriel-silverio-u3WmDyKGsrY-unsplash.jpg","prince-akachi-i2hoD-C2RUA-unsplash.jpg",1,15,41,1,"She happy",10.457
+"80","9nseM",21,1808136,2,1,20,48,56,72,"houcine-ncib-B4TjXnI0Y2c-unsplash.jpg","velizar-ivanov-7ktP9yZA1g4-unsplash.jpg",1,20,48,1,"Nice look",11.794
+"81","9nseM",23,1828726,2,1,35,16,63,71,"oliver-ragfelt-khV4fTy6-D8-unsplash.jpg","giano-currie-5-9YOsmf8IQ-unsplash.jpg",0,16,35,1,"Nice look",8.956
+"82","9nseM",3,1508952,1,-1,18,0,66,36,"good-faces-xmSWVeGEnJw-unsplash.jpg","abstral-official-cyOKLSgkgCE-unsplash.jpg",1,18,0,1,"It look nice",19.972
+"83","9nseM",5,1536915,1,1,29,23,76,75,"leilani-angel-K84vnnzxmTQ-unsplash.jpg","joanna-nix-walkup-H4fEMshfwTE-unsplash.jpg",0,23,29,1,"It look nice",19.679
+"84","9nseM",7,1564203,1,-1,31,24,66,75,"mathilda-khoo-vLR0YP_otCo-unsplash.jpg","joel-mott-LaK153ghdig-unsplash.jpg",0,24,31,1,"She look beautiful",26.179
+"85","9nseM",8,1595825,1,-1,28,13,38,56,"justin-chen-J7Cf1Gch49E-unsplash.jpg","erik-lucatero-d2MSDujJl2g-unsplash.jpg",1,28,13,1,"Good hair style",44.088
+"86","aDc5y",10,2919146,1,-1,44,21,84,83,"rikonavt-HQjfrvdTfak-unsplash.jpg","jessica-felicio-_cvwXhGqG-o-unsplash.jpg",1,44,21,1,"This photo is more attractive and I like the background",3.173
+"87","aDc5y",11,2927130,1,-1,16,41,58,76,"giano-currie-5-9YOsmf8IQ-unsplash.jpg","prince-akachi-i2hoD-C2RUA-unsplash.jpg",0,41,16,1,"The photo makes me pleasure",9.41
+"88","aDc5y",14,2948955,2,-1,35,26,78,72,"oliver-ragfelt-khV4fTy6-D8-unsplash.jpg","juri-gianfrancesco-9EZadYaMzk4-unsplash.jpg",1,35,26,1,"I like the background of this photo",21.659
+"89","aDc5y",15,2975025,2,-1,12,32,75,75,"daniel-rigdon-dXmXKPP2L4E-unsplash.jpg","nathan-dumlao-ger61_TX6oI-unsplash.jpg",1,12,32,1,"This photo is more attractive and I like the background",4.843
+"90","aDc5y",16,2983950,2,1,4,9,74,74,"barna-bartis-2x3vfVxwR7o-unsplash.jpg","carlos-andres-gomez-vJuk8Y86mRw-unsplash.jpg",1,4,9,1,"Highlight of this photo is omit the background",23.749
+"91","aDc5y",17,3011211,2,1,27,29,58,86,"jurica-koletic-7YVZYZeITc8-unsplash.jpg","leilani-angel-K84vnnzxmTQ-unsplash.jpg",1,27,29,1,"This photo is more attractive and I like the background",2.449
+"92","aDc5y",18,3016615,2,1,45,30,73,65,"sarah-noltner-pL5ZzPp1zqg-unsplash.jpg","matheus-ferrero-pg_WCHWSdT8-unsplash.jpg",1,45,30,1,"This photo is more attractive and I like the background",2.36
+"93","aDc5y",2,2820253,1,1,36,14,68,71,"ospan-ali-mGdA2fzjWLo-unsplash.jpg","freddy-kearney-o-ioeoATbIM-unsplash.jpg",0,14,36,1,"The photographer put more effort to take this photo",11.379
+"94","aDc5y",21,3027760,2,1,49,34,64,63,"vicky-hladynets-_gDoyVv5F4c-unsplash.jpg","oliver-johnson-1TUIcKob7Zs-unsplash.jpg",1,49,34,1,"The photo editing effect is high",19.247
+"95","aDc5y",4,2840775,1,1,1,28,85,82,"aiony-haust-jmATI5Q_YgY-unsplash.jpg","justin-chen-J7Cf1Gch49E-unsplash.jpg",1,1,28,1,"This photo is more attractive and I like the background",27.636
+"96","aDc5y",8,2882579,1,-1,11,8,74,84,"christian-ferrer-8vT-DgHZDG4-unsplash.jpg","bruce-dixon-3M9WJQVHzog-unsplash.jpg",1,11,8,1,"This photo should be attract everyone",17.275
+"97","aDc5y",9,2903763,1,-1,46,43,71,78,"stefan-stefancik-QXevDflbl8A-unsplash.jpg","raamin-ka-0qJBEzudn5E-unsplash.jpg",1,46,43,1,"I like the background editing",10.211
+"98","AxP3Q",0,494619,1,1,9,0,67,57,"carlos-andres-gomez-vJuk8Y86mRw-unsplash.jpg","abstral-official-cyOKLSgkgCE-unsplash.jpg",1,9,0,1,"Happy",27.198
+"99","AxP3Q",11,591508,1,-1,37,42,64,39,"pavel-anoshin-d0peGya6R5Y-unsplash.jpg","prince-akachi-l3IHXOdMyHQ-unsplash.jpg",0,42,37,1,"sad",7.905
+"100","AxP3Q",15,614120,2,-1,48,7,66,61,"velizar-ivanov-7ktP9yZA1g4-unsplash.jpg","brooke-cagle-HRZUzoX1e6w-unsplash.jpg",1,48,7,1,"sad",3.545
+"101","AxP3Q",18,626904,2,-1,45,12,63,68,"sarah-noltner-pL5ZzPp1zqg-unsplash.jpg","daniel-rigdon-dXmXKPP2L4E-unsplash.jpg",0,12,45,1,"smile",4.568
+"102","AxP3Q",19,634565,2,1,47,25,65,65,"tyler-nix-ZGa9d1a_4tA-unsplash.jpg","joseph-gonzalez-iFgRcqHznqg-unsplash.jpg",0,25,47,1,"smile",2.812
+"103","AxP3Q",2,530454,1,1,8,34,63,72,"bruce-dixon-3M9WJQVHzog-unsplash.jpg","oliver-johnson-1TUIcKob7Zs-unsplash.jpg",0,34,8,1,"Angry",9.161
+"104","AxP3Q",21,643731,2,1,18,1,36,67,"good-faces-xmSWVeGEnJw-unsplash.jpg","aiony-haust-jmATI5Q_YgY-unsplash.jpg",0,1,18,1,"sad",3.125
+"105","AxP3Q",22,649995,2,-1,26,44,37,70,"juri-gianfrancesco-9EZadYaMzk4-unsplash.jpg","rikonavt-HQjfrvdTfak-unsplash.jpg",1,26,44,1,"happy",8.221
+"106","AxP3Q",23,660926,2,1,19,35,68,67,"ha-nguy-n-OFSQ6bHjFjs-unsplash.jpg","oliver-ragfelt-khV4fTy6-D8-unsplash.jpg",0,35,19,1,"sad",19.347
+"107","AxP3Q",4,552440,1,-1,21,28,65,69,"jessica-felicio-_cvwXhGqG-o-unsplash.jpg","justin-chen-J7Cf1Gch49E-unsplash.jpg",0,28,21,1,"smile",5.024
+"108","AxP3Q",5,560737,1,-1,10,39,63,59,"charles-etoroma-95UF6LXe-Lo-unsplash.jpg","philip-martin-5aGUyCW_PJw-unsplash.jpg",1,10,39,1,"smile",3.368
+"109","AxP3Q",8,574086,1,1,23,31,41,72,"joanna-nix-walkup-H4fEMshfwTE-unsplash.jpg","mathilda-khoo-vLR0YP_otCo-unsplash.jpg",1,23,31,1,"style",6.541
+"110","BAPFD",10,915769,1,-1,4,10,79,83,"barna-bartis-2x3vfVxwR7o-unsplash.jpg","charles-etoroma-95UF6LXe-Lo-unsplash.jpg",1,4,10,1,"differend look",17.74
+"111","BAPFD",13,952095,2,1,41,16,80,79,"prince-akachi-i2hoD-C2RUA-unsplash.jpg","giano-currie-5-9YOsmf8IQ-unsplash.jpg",1,41,16,1,"nice click",20.557
+"112","BAPFD",14,976656,2,-1,47,40,83,91,"tyler-nix-ZGa9d1a_4tA-unsplash.jpg","prince-akachi-4Yv84VgQkRM-unsplash.jpg",0,40,47,1,"very good still",27.102
+"113","BAPFD",16,1014456,2,1,13,12,73,78,"erik-lucatero-d2MSDujJl2g-unsplash.jpg","daniel-rigdon-dXmXKPP2L4E-unsplash.jpg",0,12,13,1,"nice click",12.798
+"114","BAPFD",18,1040513,2,1,1,37,71,73,"aiony-haust-jmATI5Q_YgY-unsplash.jpg","pavel-anoshin-d0peGya6R5Y-unsplash.jpg",1,1,37,1,"vry beautiful",12.628
+"115","BAPFD",2,725106,1,1,27,19,90,83,"jurica-koletic-7YVZYZeITc8-unsplash.jpg","ha-nguy-n-OFSQ6bHjFjs-unsplash.jpg",1,27,19,1,"looking very nice",36.078
+"116","BAPFD",20,1060843,2,1,14,29,74,76,"freddy-kearney-o-ioeoATbIM-unsplash.jpg","leilani-angel-K84vnnzxmTQ-unsplash.jpg",1,14,29,1,"very nice",15.773
+"117","BAPFD",23,1090550,2,-1,8,44,85,73,"bruce-dixon-3M9WJQVHzog-unsplash.jpg","rikonavt-HQjfrvdTfak-unsplash.jpg",0,44,8,1,"nice click",24.01
+"118","BAPFD",3,766950,1,-1,7,34,76,73,"brooke-cagle-HRZUzoX1e6w-unsplash.jpg","oliver-johnson-1TUIcKob7Zs-unsplash.jpg",0,34,7,1,"looking good",16.995
+"119","BAPFD",4,789422,1,-1,25,45,87,86,"joseph-gonzalez-iFgRcqHznqg-unsplash.jpg","sarah-noltner-pL5ZzPp1zqg-unsplash.jpg",0,45,25,1,"good and nice",38.615
+"120","BAPFD",5,834157,1,1,22,6,79,83,"jessica-radanavong-mrYkTuAesKE-unsplash.jpg","ben-o-bro-C5XyLljkMrY-unsplash.jpg",0,6,22,1,"natural clike",44.81
+"121","BAPFD",6,884564,1,-1,26,28,83,77,"juri-gianfrancesco-9EZadYaMzk4-unsplash.jpg","justin-chen-J7Cf1Gch49E-unsplash.jpg",0,28,26,1,"nice look",9.582
+"122","c2yi6",1,381206,1,1,29,39,74,63,"leilani-angel-K84vnnzxmTQ-unsplash.jpg","philip-martin-5aGUyCW_PJw-unsplash.jpg",0,39,29,1,"Because I felt the photograph spoke more to more based on the background and the way the subject is posing He seems confident and assured with himself",57.433
+"123","c2yi6",12,838475,2,1,10,23,69,71,"charles-etoroma-95UF6LXe-Lo-unsplash.jpg","joanna-nix-walkup-H4fEMshfwTE-unsplash.jpg",1,10,23,1,"The subjects happiness is infectious It lifts your spirits",47.021
+"124","c2yi6",16,900248,2,-1,41,18,63,65,"prince-akachi-i2hoD-C2RUA-unsplash.jpg","good-faces-xmSWVeGEnJw-unsplash.jpg",1,41,18,1,"The pose of the subject draws your eyes to the picture The colors on her headband are nice to look at",116.66
+"125","c2yi6",19,1035158,2,1,37,3,62,62,"pavel-anoshin-d0peGya6R5Y-unsplash.jpg","art-hauntington-jzY0KRJopEI-unsplash.jpg",1,37,3,1,"I like the intensity the man is giving off It makes me pause and wonder what it is that he is thinking about",33.101
+"126","c2yi6",2,443442,1,-1,16,14,65,66,"giano-currie-5-9YOsmf8IQ-unsplash.jpg","freddy-kearney-o-ioeoATbIM-unsplash.jpg",0,14,16,1,"It seems the subject of the photo wears his soul outwardly Looking at the picture it makes you feel like you know him It connects with you on an intimate level",85.022
+"127","c2yi6",20,1071084,2,1,33,1,62,60,"olena-sergienko-0TSd6uCKTKc-unsplash.jpg","aiony-haust-jmATI5Q_YgY-unsplash.jpg",0,1,33,1,"The subject has a unique beauty that makes me think of long ago royality ",41.701
+"128","c2yi6",21,1115508,2,-1,45,38,73,64,"sarah-noltner-pL5ZzPp1zqg-unsplash.jpg","petr-sevcovic-HzDF-rxlSeM-unsplash.jpg",1,45,38,1,"The colors in the photo are really nice and the pose of the subject goes well with the background",41.166
+"129","c2yi6",23,1164339,2,-1,0,12,73,62,"abstral-official-cyOKLSgkgCE-unsplash.jpg","daniel-rigdon-dXmXKPP2L4E-unsplash.jpg",1,0,12,1,"It seems like the subject has a story to tell and it is engaging to imagine what he may have to say ",46.243
+"130","c2yi6",4,539865,1,1,6,34,62,63,"ben-o-bro-C5XyLljkMrY-unsplash.jpg","oliver-johnson-1TUIcKob7Zs-unsplash.jpg",0,34,6,1,"The subject has a mysterious air about them Its almost as if shes thinking about something very deep and troubling and that stirred my imagination ",53.553
+"131","c2yi6",5,597110,1,1,30,40,61,69,"matheus-ferrero-pg_WCHWSdT8-unsplash.jpg","prince-akachi-4Yv84VgQkRM-unsplash.jpg",0,40,30,1,"The subject seems warm and inviting I like the idea of capturing a photographer holding his camera it just seems so natural",47.088
+"132","c2yi6",6,648325,1,-1,13,42,72,74,"erik-lucatero-d2MSDujJl2g-unsplash.jpg","prince-akachi-l3IHXOdMyHQ-unsplash.jpg",0,42,13,1,"The filter on the photo makes it appear vintage which makes me nastaligic The colors in the photo are easy on the eyes but enough to draw your attention to them I like the expression on the subjects face ",100.553
+"133","c2yi6",8,758309,1,-1,21,4,73,65,"jessica-felicio-_cvwXhGqG-o-unsplash.jpg","barna-bartis-2x3vfVxwR7o-unsplash.jpg",1,21,4,1,"I like the cloudy editing they did to the picture it makes it seem mystical and the subject is telling a story with her expression and it is intriguing ",55.573
+"134","CvY1u",0,540956,1,-1,26,16,64,68,"juri-gianfrancesco-9EZadYaMzk4-unsplash.jpg","giano-currie-5-9YOsmf8IQ-unsplash.jpg",0,16,26,1,"This photograph is more attractive than other",17.735
+"135","CvY1u",1,564737,1,1,33,9,73,71,"olena-sergienko-0TSd6uCKTKc-unsplash.jpg","carlos-andres-gomez-vJuk8Y86mRw-unsplash.jpg",1,33,9,1,"This photograph is more attractive than other",2.514
+"136","CvY1u",10,676802,1,-1,34,28,78,74,"oliver-johnson-1TUIcKob7Zs-unsplash.jpg","justin-chen-J7Cf1Gch49E-unsplash.jpg",1,34,28,1,"This photograph is more attractive than other",3.428
+"137","CvY1u",12,692082,2,1,11,7,62,50,"christian-ferrer-8vT-DgHZDG4-unsplash.jpg","brooke-cagle-HRZUzoX1e6w-unsplash.jpg",1,11,7,1,"This photograph is more attractive than other",2.404
+"138","CvY1u",14,704093,2,1,44,12,59,68,"rikonavt-HQjfrvdTfak-unsplash.jpg","daniel-rigdon-dXmXKPP2L4E-unsplash.jpg",1,44,12,1,"This photograph is more attractive than other",2.938
+"139","CvY1u",15,712312,2,1,29,35,79,61,"leilani-angel-K84vnnzxmTQ-unsplash.jpg","oliver-ragfelt-khV4fTy6-D8-unsplash.jpg",0,35,29,1,"The photo background is amazing",13.123
+"140","CvY1u",19,749808,2,-1,8,4,73,84,"bruce-dixon-3M9WJQVHzog-unsplash.jpg","barna-bartis-2x3vfVxwR7o-unsplash.jpg",0,4,8,1,"The photographer absolutely despel the background",62.077
+"141","CvY1u",2,572986,1,-1,21,49,68,66,"jessica-felicio-_cvwXhGqG-o-unsplash.jpg","vicky-hladynets-_gDoyVv5F4c-unsplash.jpg",1,21,49,1,"This photograph is more attractive than other",2.085
+"142","CvY1u",21,819591,2,-1,3,36,84,76,"art-hauntington-jzY0KRJopEI-unsplash.jpg","ospan-ali-mGdA2fzjWLo-unsplash.jpg",1,3,36,1,"She looks more attractive than another person",20.857
+"143","CvY1u",23,847741,2,1,1,0,66,66,"aiony-haust-jmATI5Q_YgY-unsplash.jpg","abstral-official-cyOKLSgkgCE-unsplash.jpg",1,1,0,1,"This photograph is more attractive than other",2.121
+"144","CvY1u",5,592188,1,1,39,14,66,85,"philip-martin-5aGUyCW_PJw-unsplash.jpg","freddy-kearney-o-ioeoATbIM-unsplash.jpg",0,14,39,1,"The editing of the photograph is attractive",27.117
+"145","CvY1u",7,631347,1,-1,45,10,61,83,"sarah-noltner-pL5ZzPp1zqg-unsplash.jpg","charles-etoroma-95UF6LXe-Lo-unsplash.jpg",1,45,10,1,"The photographer give his full effort to take this photo",31.549
+"146","dhc9M",0,193630,1,-1,45,33,24,61,"sarah-noltner-pL5ZzPp1zqg-unsplash.jpg","olena-sergienko-0TSd6uCKTKc-unsplash.jpg",1,45,33,1,"Faces good",9.869
+"147","dhc9M",1,207345,1,-1,0,13,41,76,"abstral-official-cyOKLSgkgCE-unsplash.jpg","erik-lucatero-d2MSDujJl2g-unsplash.jpg",0,13,0,1,"Superb",4.317
+"148","dhc9M",12,268897,2,-1,19,28,50,26,"ha-nguy-n-OFSQ6bHjFjs-unsplash.jpg","justin-chen-J7Cf1Gch49E-unsplash.jpg",1,19,28,1,"Superb face",4.99
+"149","dhc9M",16,284217,2,-1,41,1,31,29,"prince-akachi-i2hoD-C2RUA-unsplash.jpg","aiony-haust-jmATI5Q_YgY-unsplash.jpg",1,41,1,1,"Black",3.205
+"150","dhc9M",17,289992,2,-1,7,8,75,66,"brooke-cagle-HRZUzoX1e6w-unsplash.jpg","bruce-dixon-3M9WJQVHzog-unsplash.jpg",0,8,7,1,"GFood",2.743
+"151","dhc9M",18,294941,2,1,29,48,30,32,"leilani-angel-K84vnnzxmTQ-unsplash.jpg","velizar-ivanov-7ktP9yZA1g4-unsplash.jpg",0,48,29,1,"Beautry",3.307
+"152","dhc9M",19,300461,2,1,46,3,61,73,"stefan-stefancik-QXevDflbl8A-unsplash.jpg","art-hauntington-jzY0KRJopEI-unsplash.jpg",0,3,46,1,"Dell",5.002
+"153","dhc9M",21,310034,2,-1,16,37,24,75,"giano-currie-5-9YOsmf8IQ-unsplash.jpg","pavel-anoshin-d0peGya6R5Y-unsplash.jpg",1,16,37,1,"wOv",4.55
+"154","dhc9M",3,217299,1,1,24,23,73,63,"joel-mott-LaK153ghdig-unsplash.jpg","joanna-nix-walkup-H4fEMshfwTE-unsplash.jpg",0,23,24,1,"Better",4.052
+"155","dhc9M",5,227326,1,1,34,9,75,70,"oliver-johnson-1TUIcKob7Zs-unsplash.jpg","carlos-andres-gomez-vJuk8Y86mRw-unsplash.jpg",0,9,34,1,"The superb",5.061
+"156","dhc9M",6,238294,1,1,12,32,72,76,"daniel-rigdon-dXmXKPP2L4E-unsplash.jpg","nathan-dumlao-ger61_TX6oI-unsplash.jpg",1,12,32,1,"The best",5.696
+"157","dhc9M",8,249362,1,1,20,35,50,27,"houcine-ncib-B4TjXnI0Y2c-unsplash.jpg","oliver-ragfelt-khV4fTy6-D8-unsplash.jpg",1,20,35,1,"Beauty",5.645
+"158","Gh7vV",0,394629,1,1,38,42,83,68,"petr-sevcovic-HzDF-rxlSeM-unsplash.jpg","prince-akachi-l3IHXOdMyHQ-unsplash.jpg",0,42,38,1,"It has a nice background a calming aesthetic and looks more like a work of art than the other one ",22.355
+"159","Gh7vV",10,559012,1,1,11,17,82,78,"christian-ferrer-8vT-DgHZDG4-unsplash.jpg","gleb-lukomets-paBzWCPN23k-unsplash.jpg",0,17,11,1,"Though I cant exactly tell this woman appears to be a transwoman and transwomen need more representation and aspirational models to inspire their transitions and come into their identities If shes not a transwoman Im sorry for assuming so but either way she conveys a very artistic aesthetic ",71.572
+"160","Gh7vV",14,644908,2,1,0,15,34,64,"abstral-official-cyOKLSgkgCE-unsplash.jpg","gabriel-silverio-u3WmDyKGsrY-unsplash.jpg",1,0,15,1,"The man has a lot of raw expression in his face and looks more authentic than the woman in the other photograph He looks like he has a story to tell ",23.587
+"161","Gh7vV",15,671364,2,1,20,29,62,57,"houcine-ncib-B4TjXnI0Y2c-unsplash.jpg","leilani-angel-K84vnnzxmTQ-unsplash.jpg",1,20,29,1,"The filtering colors and aesthetic create a more artistic eyecatching vibe ",23.66
+"162","Gh7vV",16,697676,2,-1,12,1,45,36,"daniel-rigdon-dXmXKPP2L4E-unsplash.jpg","aiony-haust-jmATI5Q_YgY-unsplash.jpg",0,1,12,1,"The photo is very detailed and less boring than the one on the left Her makeup is very well done and her color scheme is attention grabbing ",27.364
+"163","Gh7vV",18,729949,2,-1,22,21,32,81,"jessica-radanavong-mrYkTuAesKE-unsplash.jpg","jessica-felicio-_cvwXhGqG-o-unsplash.jpg",0,21,22,1,"I love the color scheme her hair her vibe the soft filters really I love everything about this photo ",20.02
+"164","Gh7vV",19,752509,2,-1,25,3,29,30,"joseph-gonzalez-iFgRcqHznqg-unsplash.jpg","art-hauntington-jzY0KRJopEI-unsplash.jpg",0,3,25,1,"She has a soft and pleasant facial expression and does not look too domineering ",19.799
+"165","Gh7vV",2,423621,1,-1,40,44,58,84,"prince-akachi-4Yv84VgQkRM-unsplash.jpg","rikonavt-HQjfrvdTfak-unsplash.jpg",1,40,44,1,"It looks more artistic and also the subject has a more pleasant face Plus it has a nice background color that complements the subjects clothing ",34.61
+"166","Gh7vV",21,777235,2,1,33,16,72,65,"olena-sergienko-0TSd6uCKTKc-unsplash.jpg","giano-currie-5-9YOsmf8IQ-unsplash.jpg",0,16,33,1,"The background colors are everything Plus her hairstyle is a whole vibe and I love those hoops ",18.006
+"167","Gh7vV",4,465154,1,1,14,4,65,45,"freddy-kearney-o-ioeoATbIM-unsplash.jpg","barna-bartis-2x3vfVxwR7o-unsplash.jpg",1,14,4,1,"This man looks like he has a story to tell He looks much more real and authentic than the man in the other photograph Plus the background is more attention grabbing ",28.2
+"168","Gh7vV",7,503204,1,-1,45,24,78,79,"sarah-noltner-pL5ZzPp1zqg-unsplash.jpg","joel-mott-LaK153ghdig-unsplash.jpg",0,24,45,1,"Her expression is lovely the background is great and the print on her outfit really pops You could use this for a travel brochure",22.071
+"169","Gh7vV",9,532308,1,-1,9,18,39,42,"carlos-andres-gomez-vJuk8Y86mRw-unsplash.jpg","good-faces-xmSWVeGEnJw-unsplash.jpg",1,9,18,1,"It has a more artistic aesthetic conveyed in the mans pose and expression plus the background color catches the eye ",23.44
+"170","iDB50",10,1375031,1,-1,33,41,52,73,"olena-sergienko-0TSd6uCKTKc-unsplash.jpg","prince-akachi-i2hoD-C2RUA-unsplash.jpg",0,41,33,1,"The picture looks more exotic and different people like to own things that look rare or exotic The background is blurry so it makes you wonder where the photo was taken The other picture I find not as intriguing or beautiful",158.472
+"171","iDB50",11,1538553,1,1,23,42,66,39,"joanna-nix-walkup-H4fEMshfwTE-unsplash.jpg","prince-akachi-l3IHXOdMyHQ-unsplash.jpg",0,42,23,1,"The photo looks vintage and it almost feels like the women is glaring into my sole The red trees in the background with the black women up front is very contrasting and makes you want to look at the picture more",104.247
+"172","iDB50",12,1715130,2,1,48,43,37,68,"velizar-ivanov-7ktP9yZA1g4-unsplash.jpg","raamin-ka-0qJBEzudn5E-unsplash.jpg",0,43,48,1,"The all black top hat clothing and nail polish is a little different than you usually see It also helps that the women is beautiful and smiling I felt more people would pick a smiling women over a frowning women",143.712
+"173","iDB50",15,1871443,2,-1,39,47,45,37,"philip-martin-5aGUyCW_PJw-unsplash.jpg","tyler-nix-ZGa9d1a_4tA-unsplash.jpg",0,47,39,1,"I felt that it was more photogenic and people would want a black man dressed in nice cloths over one in regular cloths The man looks very dapper and the orange tie grabs your eye more than the orange hat in the other pic",113.067
+"174","iDB50",16,1987764,2,1,30,27,73,68,"matheus-ferrero-pg_WCHWSdT8-unsplash.jpg","jurica-koletic-7YVZYZeITc8-unsplash.jpg",1,30,27,1,"I think this photo would sell more purely for the background and the red lipstick The big green leaves will make the nature lovers happy The women has very white skin and it makes everything around her pop specially the lipstick The other picture just looks like a school photo with not much going on ",218.875
+"175","iDB50",17,2210731,2,1,11,49,75,59,"christian-ferrer-8vT-DgHZDG4-unsplash.jpg","vicky-hladynets-_gDoyVv5F4c-unsplash.jpg",1,11,49,1,"I think this one would sell more because there is a lot more going on in it than the other It has more of a striking pose and a smoulding look that makes you want to get to know her more  The other picture looks like it is washed out in half of it so it does not look like a whole or complete photo",265.383
+"176","iDB50",19,2484067,2,1,45,14,54,64,"sarah-noltner-pL5ZzPp1zqg-unsplash.jpg","freddy-kearney-o-ioeoATbIM-unsplash.jpg",0,14,45,1,"When I see this picture it makes me wonder what kind of life this old man had and all the wisdom he could give I think people would want to look at this picture longer and come up with their own story of who he is",117.533
+"177","iDB50",23,2621192,2,-1,38,6,59,66,"petr-sevcovic-HzDF-rxlSeM-unsplash.jpg","ben-o-bro-C5XyLljkMrY-unsplash.jpg",0,6,38,1,"This one took me a longer to choose because both picture are handsome men smiling But I ultimately went with one on the right because thats where my eyes wanted to go back to The one on the right shows a man genuinely smiling and you can tell its not fake for a picture People like pictures that are natural and not trying too hard ",232.601
+"178","iDB50",4,738424,1,-1,34,10,70,64,"oliver-johnson-1TUIcKob7Zs-unsplash.jpg","charles-etoroma-95UF6LXe-Lo-unsplash.jpg",0,10,34,1,"I like that the background is white because it showcases how happy the man is and the picture invokes happiness in me The picture feels more real and candid The other picture just seems plain like you have seen it many times",147.43
+"179","iDB50",5,889763,1,-1,35,28,68,61,"oliver-ragfelt-khV4fTy6-D8-unsplash.jpg","justin-chen-J7Cf1Gch49E-unsplash.jpg",1,35,28,1,"The male has very striking blue eyes that catch the buyers attention He looks more professional like a model and not a man just taking a cute selfie Its just very eye catching",97.851
+"180","iDB50",6,993881,1,-1,17,26,52,71,"gleb-lukomets-paBzWCPN23k-unsplash.jpg","juri-gianfrancesco-9EZadYaMzk4-unsplash.jpg",1,17,26,1,"I like that she just looks natural in her environment and she doesnt have to try to look like shes looking at anything specific I like the monotone colors and it reminds of a modern Mona Lisa",104.451
+"181","iDB50",8,1107174,1,1,22,40,40,65,"jessica-radanavong-mrYkTuAesKE-unsplash.jpg","prince-akachi-4Yv84VgQkRM-unsplash.jpg",0,40,22,1,"I felt more people would buy it purely for the expression on the mans face and and the cloths he is wearing I feel like its cloths a black man would not usually wear and the colors really stand out with that background The other picture reminds me of any thug you could find in the street and take a picture of ",258.913
+"182","JMSfN",1,323945,1,-1,4,18,68,53,"barna-bartis-2x3vfVxwR7o-unsplash.jpg","good-faces-xmSWVeGEnJw-unsplash.jpg",1,4,18,1,"I thought it looked a little more professional and he had more happiness in his eyes ",16.311
+"183","JMSfN",11,446158,1,1,34,49,63,80,"oliver-johnson-1TUIcKob7Zs-unsplash.jpg","vicky-hladynets-_gDoyVv5F4c-unsplash.jpg",0,49,34,1,"He is radiating happiness The color is good and hes handsome and well put together ",14.962
+"184","JMSfN",15,474191,2,-1,11,37,65,45,"christian-ferrer-8vT-DgHZDG4-unsplash.jpg","pavel-anoshin-d0peGya6R5Y-unsplash.jpg",1,11,37,1,"This looks like a photo you can sell for a magazine or a blog ",11.934
+"185","JMSfN",16,488865,2,-1,3,45,50,60,"art-hauntington-jzY0KRJopEI-unsplash.jpg","sarah-noltner-pL5ZzPp1zqg-unsplash.jpg",1,3,45,1,"She has a unique look and this photo is far more professional looking ",18.391
+"186","JMSfN",20,517777,2,-1,21,31,46,58,"jessica-felicio-_cvwXhGqG-o-unsplash.jpg","mathilda-khoo-vLR0YP_otCo-unsplash.jpg",0,31,21,1,"She looks more interesting her eyes tell you theres a bigger story to be seen through this photo ",18.637
+"187","JMSfN",21,539180,2,1,36,13,46,50,"ospan-ali-mGdA2fzjWLo-unsplash.jpg","erik-lucatero-d2MSDujJl2g-unsplash.jpg",0,13,36,1,"Beautiful eyes I wish the background was different however the eyes intrigue ",19.158
+"188","JMSfN",22,563596,2,1,43,6,71,69,"raamin-ka-0qJBEzudn5E-unsplash.jpg","ben-o-bro-C5XyLljkMrY-unsplash.jpg",0,6,43,1,"The happiness in this photo is overwhelming I think that can be spread by this photo ",15.669
+"189","JMSfN",23,582512,2,1,41,25,66,64,"prince-akachi-i2hoD-C2RUA-unsplash.jpg","joseph-gonzalez-iFgRcqHznqg-unsplash.jpg",1,41,25,1,"She is beautiful the contrast with her head scarf is fantastic ",20.582
+"190","JMSfN",3,346662,1,1,47,29,52,50,"tyler-nix-ZGa9d1a_4tA-unsplash.jpg","leilani-angel-K84vnnzxmTQ-unsplash.jpg",1,47,29,1,"It looks crisp more professional ",7.416
+"191","JMSfN",4,359769,1,1,14,35,50,58,"freddy-kearney-o-ioeoATbIM-unsplash.jpg","oliver-ragfelt-khV4fTy6-D8-unsplash.jpg",0,35,14,1,"The contrast is better instead of a snapshot it looks like someone put more time into creating it ",16.085
+"192","JMSfN",5,380187,1,-1,2,28,54,56,"arjunsyah-TBUA5KHJn6k-unsplash.jpg","justin-chen-J7Cf1Gch49E-unsplash.jpg",1,2,28,1,"He looks happier in his eyes with the sunlight reflecting in back of him",15.17
+"193","JMSfN",8,406656,1,-1,32,44,65,65,"nathan-dumlao-ger61_TX6oI-unsplash.jpg","rikonavt-HQjfrvdTfak-unsplash.jpg",1,32,44,1,"I love the look of this photo  it looks like he just got done surfing in the ocean I love his eyes and his freckled skin He is unique ",28.29
+"194","l0I2Q",0,1550494,1,1,24,26,80,89,"joel-mott-LaK153ghdig-unsplash.jpg","juri-gianfrancesco-9EZadYaMzk4-unsplash.jpg",1,24,26,1,"This was really good everyone like this smile of future with natural beauty",42.692
+"195","l0I2Q",11,1819950,1,-1,29,33,65,87,"leilani-angel-K84vnnzxmTQ-unsplash.jpg","olena-sergienko-0TSd6uCKTKc-unsplash.jpg",0,33,29,1,"when seeing a photograph was awesome with great look more likes will follow on this photograph",49.328
+"196","l0I2Q",12,1879608,2,1,25,44,70,83,"joseph-gonzalez-iFgRcqHznqg-unsplash.jpg","rikonavt-HQjfrvdTfak-unsplash.jpg",0,44,25,1,"This photograph never seen before like this to capture more likeable and more strong in black lives people will sell this more and more good",39.899
+"197","l0I2Q",14,1926327,2,1,14,0,65,76,"freddy-kearney-o-ioeoATbIM-unsplash.jpg","abstral-official-cyOKLSgkgCE-unsplash.jpg",1,14,0,1,"This photograph shows that in the old age you never fall down you want to run more and more",30.91
+"198","l0I2Q",15,1960536,2,1,34,12,84,80,"oliver-johnson-1TUIcKob7Zs-unsplash.jpg","daniel-rigdon-dXmXKPP2L4E-unsplash.jpg",1,34,12,1,"this photograph is more likeable have unique beauty and awesome",26.985
+"199","l0I2Q",16,1991032,2,-1,28,49,74,71,"justin-chen-J7Cf1Gch49E-unsplash.jpg","vicky-hladynets-_gDoyVv5F4c-unsplash.jpg",1,28,49,1,"In this photograph have more uniqueness and awesome more effort with beauty the way of capture the photograph ",62.755
+"200","l0I2Q",2,1600054,1,1,36,5,79,85,"ospan-ali-mGdA2fzjWLo-unsplash.jpg","batel-studio-ttSRjiYG_WM-unsplash.jpg",1,36,5,1,"This photograph was totally black in background with a girl in traditional look",37.91
+"201","l0I2Q",21,2072345,2,-1,43,8,87,72,"raamin-ka-0qJBEzudn5E-unsplash.jpg","bruce-dixon-3M9WJQVHzog-unsplash.jpg",1,43,8,1,"This photograph make more happy always get more happiness when ever you see the photograph always give a smile",38.809
+"202","l0I2Q",22,2115195,2,-1,41,6,73,66,"prince-akachi-i2hoD-C2RUA-unsplash.jpg","ben-o-bro-C5XyLljkMrY-unsplash.jpg",1,41,6,1,"saw this photograph it gives more happy for everything even you in harder life",38.245
+"203","l0I2Q",3,1640991,1,1,27,3,67,73,"jurica-koletic-7YVZYZeITc8-unsplash.jpg","art-hauntington-jzY0KRJopEI-unsplash.jpg",1,27,3,1,"This photograph was make more impression compare to other photograph because the way of looking is really great with confidence",41.91
+"204","l0I2Q",7,1697660,1,-1,2,30,80,65,"arjunsyah-TBUA5KHJn6k-unsplash.jpg","matheus-ferrero-pg_WCHWSdT8-unsplash.jpg",1,2,30,1,"This photograph have more uniqueness because totally have lot of colorful in the photograph with naturally great",53.746
+"205","l0I2Q",9,1758255,1,-1,15,21,85,70,"gabriel-silverio-u3WmDyKGsrY-unsplash.jpg","jessica-felicio-_cvwXhGqG-o-unsplash.jpg",0,21,15,1,"This photograph have more unique compare to others because a girl looking a great with unique style the way of photograph really good",54.726
+"206","mBvvp",0,657231,1,1,34,35,60,55,"oliver-johnson-1TUIcKob7Zs-unsplash.jpg","oliver-ragfelt-khV4fTy6-D8-unsplash.jpg",0,35,34,1,"The picture is very intense and clear",19.465
+"207","mBvvp",11,1079756,1,-1,24,9,44,56,"joel-mott-LaK153ghdig-unsplash.jpg","carlos-andres-gomez-vJuk8Y86mRw-unsplash.jpg",1,24,9,1,"Happiness well captured",16.679
+"208","mBvvp",14,1112686,2,1,39,45,59,56,"philip-martin-5aGUyCW_PJw-unsplash.jpg","sarah-noltner-pL5ZzPp1zqg-unsplash.jpg",0,45,39,1,"Well composed",13.356
+"209","mBvvp",16,1135265,2,1,4,8,44,61,"barna-bartis-2x3vfVxwR7o-unsplash.jpg","bruce-dixon-3M9WJQVHzog-unsplash.jpg",1,4,8,1,"Clear composed",15.774
+"210","mBvvp",20,1168605,2,-1,43,23,57,58,"raamin-ka-0qJBEzudn5E-unsplash.jpg","joanna-nix-walkup-H4fEMshfwTE-unsplash.jpg",0,23,43,1,"Great capture",14.083
+"211","mBvvp",21,1185886,2,-1,7,29,58,53,"brooke-cagle-HRZUzoX1e6w-unsplash.jpg","leilani-angel-K84vnnzxmTQ-unsplash.jpg",0,29,7,1,"clear and sharp",9.428
+"212","mBvvp",22,1199497,2,-1,37,15,58,44,"pavel-anoshin-d0peGya6R5Y-unsplash.jpg","gabriel-silverio-u3WmDyKGsrY-unsplash.jpg",1,37,15,1,"Very intense capture",22.655
+"213","mBvvp",23,1225627,2,1,16,48,56,60,"giano-currie-5-9YOsmf8IQ-unsplash.jpg","velizar-ivanov-7ktP9yZA1g4-unsplash.jpg",1,16,48,1,"Good compose",14.585
+"214","mBvvp",4,698345,1,-1,33,14,63,61,"olena-sergienko-0TSd6uCKTKc-unsplash.jpg","freddy-kearney-o-ioeoATbIM-unsplash.jpg",0,14,33,1,"The emotion is captured very  well",21.576
+"215","mBvvp",5,724148,1,-1,20,36,50,50,"houcine-ncib-B4TjXnI0Y2c-unsplash.jpg","ospan-ali-mGdA2fzjWLo-unsplash.jpg",0,36,20,1,"Good compose",14.25
+"216","mBvvp",7,747286,1,1,1,30,61,57,"aiony-haust-jmATI5Q_YgY-unsplash.jpg","matheus-ferrero-pg_WCHWSdT8-unsplash.jpg",1,1,30,1,"Very clear emotion capture",118.117
+"217","mBvvp",8,869068,1,1,13,22,44,50,"erik-lucatero-d2MSDujJl2g-unsplash.jpg","jessica-radanavong-mrYkTuAesKE-unsplash.jpg",1,13,22,1,"Emotion in eyes",199.655
+"218","NWBJA",0,384408,1,1,43,42,50,53,"raamin-ka-0qJBEzudn5E-unsplash.jpg","prince-akachi-l3IHXOdMyHQ-unsplash.jpg",1,43,42,1,"I like the color palette more",13.974
+"219","NWBJA",11,502405,1,1,44,40,50,47,"rikonavt-HQjfrvdTfak-unsplash.jpg","prince-akachi-4Yv84VgQkRM-unsplash.jpg",1,44,40,1,"her expression is better looks more artistic",21.494
+"220","NWBJA",13,532965,2,1,34,48,50,43,"oliver-johnson-1TUIcKob7Zs-unsplash.jpg","velizar-ivanov-7ktP9yZA1g4-unsplash.jpg",1,34,48,1,"better background the yellow compliments her features well",21.28
+"221","NWBJA",14,556753,2,-1,0,10,35,50,"abstral-official-cyOKLSgkgCE-unsplash.jpg","charles-etoroma-95UF6LXe-Lo-unsplash.jpg",0,10,0,1,"he has a better expression the smile makes me happy",16.12
+"222","NWBJA",19,584949,2,-1,3,23,57,50,"art-hauntington-jzY0KRJopEI-unsplash.jpg","joanna-nix-walkup-H4fEMshfwTE-unsplash.jpg",1,3,23,1,"she is really pretty",11.413
+"223","NWBJA",20,599516,2,-1,46,38,50,55,"stefan-stefancik-QXevDflbl8A-unsplash.jpg","petr-sevcovic-HzDF-rxlSeM-unsplash.jpg",0,38,46,1,"I really like his smile and dimples ",12.095
+"224","NWBJA",22,616490,2,-1,22,7,36,50,"jessica-radanavong-mrYkTuAesKE-unsplash.jpg","brooke-cagle-HRZUzoX1e6w-unsplash.jpg",0,7,22,1,"she has a better vibe and the color palette is better",20.786
+"225","NWBJA",23,639962,2,1,20,28,50,39,"houcine-ncib-B4TjXnI0Y2c-unsplash.jpg","justin-chen-J7Cf1Gch49E-unsplash.jpg",1,20,28,1,"better lighting I also like her eyes and freckles",22.617
+"226","NWBJA",3,408758,1,1,6,35,46,55,"ben-o-bro-C5XyLljkMrY-unsplash.jpg","oliver-ragfelt-khV4fTy6-D8-unsplash.jpg",0,35,6,1,"he has nice eyes it made an impression on me",20.338
+"227","NWBJA",4,433110,1,-1,16,18,42,50,"giano-currie-5-9YOsmf8IQ-unsplash.jpg","good-faces-xmSWVeGEnJw-unsplash.jpg",0,18,16,1,"the minimal color palette is more aesthetic",20.296
+"228","NWBJA",6,459350,1,-1,30,37,45,41,"matheus-ferrero-pg_WCHWSdT8-unsplash.jpg","pavel-anoshin-d0peGya6R5Y-unsplash.jpg",1,30,37,1,"I like the leaf background more",15.664
+"229","NWBJA",7,477875,1,1,27,29,50,41,"jurica-koletic-7YVZYZeITc8-unsplash.jpg","leilani-angel-K84vnnzxmTQ-unsplash.jpg",0,29,27,1,"He gives off a better vibe",12.64
+"230","OgF5m",1,478226,1,-1,47,35,55,37,"tyler-nix-ZGa9d1a_4tA-unsplash.jpg","oliver-ragfelt-khV4fTy6-D8-unsplash.jpg",1,47,35,1,"It was just my first instinct This photo stood out to me more",28.773
+"231","OgF5m",11,678691,1,-1,26,31,36,42,"juri-gianfrancesco-9EZadYaMzk4-unsplash.jpg","mathilda-khoo-vLR0YP_otCo-unsplash.jpg",0,31,26,1,"This photo looks less fake and less staged to me ",13.742
+"232","OgF5m",14,706490,2,-1,12,23,63,41,"daniel-rigdon-dXmXKPP2L4E-unsplash.jpg","joanna-nix-walkup-H4fEMshfwTE-unsplash.jpg",0,23,12,1,"This one looks more natural ",14.956
+"233","OgF5m",16,727428,2,1,36,21,60,64,"ospan-ali-mGdA2fzjWLo-unsplash.jpg","jessica-felicio-_cvwXhGqG-o-unsplash.jpg",0,21,36,1,"I like the color in this one and the cloudy stuff in front of her",27.256
+"234","OgF5m",17,757945,2,-1,18,30,54,36,"good-faces-xmSWVeGEnJw-unsplash.jpg","matheus-ferrero-pg_WCHWSdT8-unsplash.jpg",1,18,30,1,"I think this person looks less staged",25.104
+"235","OgF5m",18,786956,2,1,13,44,64,62,"erik-lucatero-d2MSDujJl2g-unsplash.jpg","rikonavt-HQjfrvdTfak-unsplash.jpg",1,13,44,1,"The lighting looks more natural in this one",23.326
+"236","OgF5m",19,813291,2,1,45,46,61,58,"sarah-noltner-pL5ZzPp1zqg-unsplash.jpg","stefan-stefancik-QXevDflbl8A-unsplash.jpg",0,46,45,1,"This one just caught my attention more",13.639
+"237","OgF5m",2,511594,1,-1,37,22,55,58,"pavel-anoshin-d0peGya6R5Y-unsplash.jpg","jessica-radanavong-mrYkTuAesKE-unsplash.jpg",1,37,22,1,"I think the person in this photo looks more natural and it looks more candid",18.436
+"238","OgF5m",23,838976,2,1,33,32,41,65,"olena-sergienko-0TSd6uCKTKc-unsplash.jpg","nathan-dumlao-ger61_TX6oI-unsplash.jpg",0,32,33,1,"I think this guys unique features make this photo stand out more",21.439
+"239","OgF5m",3,534070,1,-1,48,19,62,38,"velizar-ivanov-7ktP9yZA1g4-unsplash.jpg","ha-nguy-n-OFSQ6bHjFjs-unsplash.jpg",0,19,48,1,"Again I think this photo looks more like a candid shot and I like that",28.745
+"240","OgF5m",7,581421,1,1,9,0,39,59,"carlos-andres-gomez-vJuk8Y86mRw-unsplash.jpg","abstral-official-cyOKLSgkgCE-unsplash.jpg",0,0,9,1,"The person in this phot looks more natural and I just like the lighting more",32.897
+"241","OgF5m",8,619014,1,1,39,17,54,63,"philip-martin-5aGUyCW_PJw-unsplash.jpg","gleb-lukomets-paBzWCPN23k-unsplash.jpg",1,39,17,1,"I like the background more I feel like it makes me feel like I know him a little better",46.37
+"242","Ooi3v",0,311389,1,-1,17,16,61,53,"gleb-lukomets-paBzWCPN23k-unsplash.jpg","giano-currie-5-9YOsmf8IQ-unsplash.jpg",1,17,16,1,"The composition is more interesting and has a more classic color scheme",28.61
+"243","Ooi3v",11,455383,1,-1,1,21,59,58,"aiony-haust-jmATI5Q_YgY-unsplash.jpg","jessica-felicio-_cvwXhGqG-o-unsplash.jpg",0,21,1,1,"The smoke effect in the foreground and background are more interesting",28.046
+"244","Ooi3v",14,498333,2,1,36,7,59,50,"ospan-ali-mGdA2fzjWLo-unsplash.jpg","brooke-cagle-HRZUzoX1e6w-unsplash.jpg",1,36,7,1,"The womans outfit and accessories against the black background",20.398
+"245","Ooi3v",16,524765,2,1,4,30,54,49,"barna-bartis-2x3vfVxwR7o-unsplash.jpg","matheus-ferrero-pg_WCHWSdT8-unsplash.jpg",0,30,4,1,"The other photo looks too formal and boring",26.871
+"246","Ooi3v",17,554327,2,-1,34,31,53,58,"oliver-johnson-1TUIcKob7Zs-unsplash.jpg","mathilda-khoo-vLR0YP_otCo-unsplash.jpg",0,31,34,1,"The contrast emotion and headscarf",39.926
+"247","Ooi3v",18,598019,2,-1,2,29,61,52,"arjunsyah-TBUA5KHJn6k-unsplash.jpg","leilani-angel-K84vnnzxmTQ-unsplash.jpg",1,2,29,1,"The sunlight peering through and the other photo looks like a website photo",20.977
+"248","Ooi3v",20,625388,2,1,38,19,51,61,"petr-sevcovic-HzDF-rxlSeM-unsplash.jpg","ha-nguy-n-OFSQ6bHjFjs-unsplash.jpg",0,19,38,1,"The background and it looks less like a website photo or headshot",25.295
+"249","Ooi3v",22,658438,2,1,18,44,58,61,"good-faces-xmSWVeGEnJw-unsplash.jpg","rikonavt-HQjfrvdTfak-unsplash.jpg",0,44,18,1,"The contrast blurred background and her looking away from the camera",34.491
+"250","Ooi3v",3,351968,1,1,12,33,56,56,"daniel-rigdon-dXmXKPP2L4E-unsplash.jpg","olena-sergienko-0TSd6uCKTKc-unsplash.jpg",1,12,33,1,"I enjoy the lighting and colors more",12.992
+"251","Ooi3v",5,371581,1,1,47,48,53,54,"tyler-nix-ZGa9d1a_4tA-unsplash.jpg","velizar-ivanov-7ktP9yZA1g4-unsplash.jpg",0,48,47,1,"The other photo looks like a stock or business photo",19.213
+"252","Ooi3v",6,394236,1,-1,23,20,50,58,"joanna-nix-walkup-H4fEMshfwTE-unsplash.jpg","houcine-ncib-B4TjXnI0Y2c-unsplash.jpg",0,20,23,1,"The freckles and detail give it an extra flair",18.497
+"253","Ooi3v",9,423590,1,-1,41,27,55,50,"prince-akachi-i2hoD-C2RUA-unsplash.jpg","jurica-koletic-7YVZYZeITc8-unsplash.jpg",1,41,27,1,"The color of the womans scarf mixed with the background",24.413
+"254","PKUhO",0,1040905,1,-1,12,14,64,56,"daniel-rigdon-dXmXKPP2L4E-unsplash.jpg","freddy-kearney-o-ioeoATbIM-unsplash.jpg",0,14,12,1,"Old man in the picture has some symbolic aspect to it plus more feeling can be depicted from the picture",81.851
+"255","PKUhO",11,1375757,1,1,21,33,52,45,"jessica-felicio-_cvwXhGqG-o-unsplash.jpg","olena-sergienko-0TSd6uCKTKc-unsplash.jpg",0,33,21,1,"The female depicted in the picture has an innocent look to her the gaze in her eyes is one that you could look at and dive into thoughts",54.696
+"256","PKUhO",12,1443192,2,1,16,0,70,28,"giano-currie-5-9YOsmf8IQ-unsplash.jpg","abstral-official-cyOKLSgkgCE-unsplash.jpg",0,0,16,1,"There is more thoughts and emotions that go into looking at the face and sunken eyes of an old man who has lived a good life and has gone through a lot of things during that period",83.361
+"257","PKUhO",13,1529693,2,1,47,8,59,53,"tyler-nix-ZGa9d1a_4tA-unsplash.jpg","bruce-dixon-3M9WJQVHzog-unsplash.jpg",0,8,47,1,"I love the cool dark seat setting in the background and how the person in the photo gels well with it",67.495
+"258","PKUhO",18,1611504,2,-1,6,5,50,60,"ben-o-bro-C5XyLljkMrY-unsplash.jpg","batel-studio-ttSRjiYG_WM-unsplash.jpg",0,5,6,1,"The authentic smile and how whatever she has on mixes well the the color background",56.648
+"259","PKUhO",19,1670686,2,-1,29,26,32,65,"leilani-angel-K84vnnzxmTQ-unsplash.jpg","juri-gianfrancesco-9EZadYaMzk4-unsplash.jpg",0,26,29,1,"I love how the photo depicts a dude interacting with nature reaching out touching the plant and how his hair nicely falls by his side",74.38
+"260","PKUhO",20,1747905,2,1,7,1,69,58,"brooke-cagle-HRZUzoX1e6w-unsplash.jpg","aiony-haust-jmATI5Q_YgY-unsplash.jpg",1,7,1,1,"A moment captured of genuine happiness and a smile that speaks a thousand words",60.135
+"261","PKUhO",21,1810697,2,-1,31,42,35,60,"mathilda-khoo-vLR0YP_otCo-unsplash.jpg","prince-akachi-l3IHXOdMyHQ-unsplash.jpg",1,31,42,1,"A sense of hope after years of suffering was what I felt while looking at this picture hence sure a lot of people will feel the same",56.97
+"262","PKUhO",3,1133468,1,1,35,11,51,68,"oliver-ragfelt-khV4fTy6-D8-unsplash.jpg","christian-ferrer-8vT-DgHZDG4-unsplash.jpg",0,11,35,1,"I love how the red background coincides with the head gear she has on her",52.478
+"263","PKUhO",5,1192185,1,1,4,44,55,29,"barna-bartis-2x3vfVxwR7o-unsplash.jpg","rikonavt-HQjfrvdTfak-unsplash.jpg",1,4,44,1,"The facial features shout out a lot especially because of the dark black background",36.225
+"264","PKUhO",7,1234884,1,-1,34,36,55,62,"oliver-johnson-1TUIcKob7Zs-unsplash.jpg","ospan-ali-mGdA2fzjWLo-unsplash.jpg",0,36,34,1,"I love to see more to a picture other than the facial representation The type of clothing and necklace reflects upon an interesting culture",68.745
+"265","PKUhO",9,1309380,1,-1,22,19,28,29,"jessica-radanavong-mrYkTuAesKE-unsplash.jpg","ha-nguy-n-OFSQ6bHjFjs-unsplash.jpg",1,22,19,1,"He has a gangster look to him and the background for me is more appealing compared to the other picture",60.15
+"266","PzDjg",1,2012322,1,-1,22,25,92,92,"jessica-radanavong-mrYkTuAesKE-unsplash.jpg","joseph-gonzalez-iFgRcqHznqg-unsplash.jpg",0,25,22,1,"more attractive",11.98
+"267","PzDjg",10,2076748,1,1,0,45,90,90,"abstral-official-cyOKLSgkgCE-unsplash.jpg","sarah-noltner-pL5ZzPp1zqg-unsplash.jpg",0,45,0,1,"attractive",3.639
+"268","PzDjg",14,2108870,2,1,9,40,92,85,"carlos-andres-gomez-vJuk8Y86mRw-unsplash.jpg","prince-akachi-4Yv84VgQkRM-unsplash.jpg",1,9,40,1,"attractive",3.791
+"269","PzDjg",16,2120126,2,1,37,24,93,87,"pavel-anoshin-d0peGya6R5Y-unsplash.jpg","joel-mott-LaK153ghdig-unsplash.jpg",0,24,37,1,"attractive  ",8.593
+"270","PzDjg",19,2141263,2,-1,30,29,86,87,"matheus-ferrero-pg_WCHWSdT8-unsplash.jpg","leilani-angel-K84vnnzxmTQ-unsplash.jpg",0,29,30,1,"attractive",3.713
+"271","PzDjg",20,2189571,2,-1,41,8,91,89,"prince-akachi-i2hoD-C2RUA-unsplash.jpg","bruce-dixon-3M9WJQVHzog-unsplash.jpg",1,41,8,1,"attractive",5.362
+"272","PzDjg",20,2185706,2,-1,41,8,91,89,"prince-akachi-i2hoD-C2RUA-unsplash.jpg","bruce-dixon-3M9WJQVHzog-unsplash.jpg",NA,NA,NA,1,"attractive",5.362
+"273","PzDjg",20,2171698,2,-1,41,8,91,89,"prince-akachi-i2hoD-C2RUA-unsplash.jpg","bruce-dixon-3M9WJQVHzog-unsplash.jpg",NA,NA,NA,1,"attractive",5.362
+"274","PzDjg",20,2156697,2,-1,41,8,91,89,"prince-akachi-i2hoD-C2RUA-unsplash.jpg","bruce-dixon-3M9WJQVHzog-unsplash.jpg",NA,NA,NA,1,"attractive",5.362
+"275","PzDjg",21,2198720,2,-1,16,42,90,92,"giano-currie-5-9YOsmf8IQ-unsplash.jpg","prince-akachi-l3IHXOdMyHQ-unsplash.jpg",1,16,42,1,"attractive",5.363
+"276","PzDjg",23,2210472,2,-1,39,13,87,85,"philip-martin-5aGUyCW_PJw-unsplash.jpg","erik-lucatero-d2MSDujJl2g-unsplash.jpg",1,39,13,1,"attractive",2.587
+"277","PzDjg",3,2030857,1,1,46,11,88,92,"stefan-stefancik-QXevDflbl8A-unsplash.jpg","christian-ferrer-8vT-DgHZDG4-unsplash.jpg",0,11,46,1,"attractive",8.496
+"278","PzDjg",4,2043530,1,1,27,34,86,92,"jurica-koletic-7YVZYZeITc8-unsplash.jpg","oliver-johnson-1TUIcKob7Zs-unsplash.jpg",0,34,27,1,"attractive",5.346
+"279","PzDjg",6,2055822,1,1,6,7,92,92,"ben-o-bro-C5XyLljkMrY-unsplash.jpg","brooke-cagle-HRZUzoX1e6w-unsplash.jpg",1,6,7,1,"attractive",2.884
+"280","PzDjg",7,2062773,1,-1,31,26,92,86,"mathilda-khoo-vLR0YP_otCo-unsplash.jpg","juri-gianfrancesco-9EZadYaMzk4-unsplash.jpg",0,26,31,1,"attractive",2.616
+"281","QGgHx",1,18360885,1,1,15,39,39,60,"gabriel-silverio-u3WmDyKGsrY-unsplash.jpg","philip-martin-5aGUyCW_PJw-unsplash.jpg",1,15,39,1,"I chose to sell this photograph because the female individual in the image captures the attention of the viewer through her vibrant smile and rich red hair color to compliment the red lipstick that she is wearing ",56.552
+"282","QGgHx",10,18612712,1,-1,32,11,33,34,"nathan-dumlao-ger61_TX6oI-unsplash.jpg","christian-ferrer-8vT-DgHZDG4-unsplash.jpg",1,32,11,1,"The closeup capture in this image catches the attention of the viewer due to the sharp but friendly stare exuding from the male subject pictured",52.488
+"283","QGgHx",12,18672471,2,-1,16,19,61,35,"giano-currie-5-9YOsmf8IQ-unsplash.jpg","ha-nguy-n-OFSQ6bHjFjs-unsplash.jpg",1,16,19,1,"The model in the photo has taken the time to prepare her hair and makeup for this capture Overall her appearance is professional and visually appealing ",32.421
+"284","QGgHx",13,18707699,2,1,30,3,34,58,"matheus-ferrero-pg_WCHWSdT8-unsplash.jpg","art-hauntington-jzY0KRJopEI-unsplash.jpg",0,3,30,1,"The close up capture provides an emphasis on every feature of the female individual captured in this photo Overall this makes for a sharp photo",52.321
+"285","QGgHx",14,18762758,2,1,13,47,37,35,"erik-lucatero-d2MSDujJl2g-unsplash.jpg","tyler-nix-ZGa9d1a_4tA-unsplash.jpg",1,13,47,1,"The blurry background aids in emphasizing the closeup feature of the male individuals curious stare This basic detail captures the viewers attention towards the stare of the male subject pictured ",52.517
+"286","QGgHx",17,18822920,2,-1,17,21,34,44,"gleb-lukomets-paBzWCPN23k-unsplash.jpg","jessica-felicio-_cvwXhGqG-o-unsplash.jpg",1,17,21,1,"There is a certain essence of antiquity that is present in the scene of this photo which makes it appear as a classic ",25.243
+"287","QGgHx",2,18420470,1,1,12,41,38,59,"daniel-rigdon-dXmXKPP2L4E-unsplash.jpg","prince-akachi-i2hoD-C2RUA-unsplash.jpg",1,12,41,1,"The female individual featured in this image appears to be posing for the picture In addition she has clearly taken time to do her hair and makeup because her hair falls nicely and her skin is flawless",58.546
+"288","QGgHx",20,18855750,2,-1,0,10,44,39,"abstral-official-cyOKLSgkgCE-unsplash.jpg","charles-etoroma-95UF6LXe-Lo-unsplash.jpg",1,0,10,1,"This image provides a closeup of the general facial expression of the older male individual that represents the elderly general public population",42.407
+"289","QGgHx",21,18900881,2,1,23,9,40,36,"joanna-nix-walkup-H4fEMshfwTE-unsplash.jpg","carlos-andres-gomez-vJuk8Y86mRw-unsplash.jpg",1,23,9,1,"The female individual pictured is posing in such a way that is gripping through her curious stare The background of the image is also subtly blurred in order to bring more emphasized attention towards the womans expression",54.73
+"290","QGgHx",6,18491016,1,-1,40,38,40,39,"prince-akachi-4Yv84VgQkRM-unsplash.jpg","petr-sevcovic-HzDF-rxlSeM-unsplash.jpg",1,40,38,1,"This image presents a like able and friendly individual that is displaying a subtly comical gesture in order to welcome the viewer",38.991
+"291","QGgHx",7,18533156,1,1,27,22,40,34,"jurica-koletic-7YVZYZeITc8-unsplash.jpg","jessica-radanavong-mrYkTuAesKE-unsplash.jpg",1,27,22,1,"This image provides a close up and high definition shot of the individual captured The high definition of the individuals face makes for a sharper appeal overall",32.998
+"292","QGgHx",9,18572181,1,-1,25,24,39,42,"joseph-gonzalez-iFgRcqHznqg-unsplash.jpg","joel-mott-LaK153ghdig-unsplash.jpg",0,24,25,1,"The background and smile of the individual featured in the image makes the scene appear as though something fun is going on which captures the attention of the viewer ",37.856
+"293","qZmtG",10,348882,1,-1,12,24,66,67,"daniel-rigdon-dXmXKPP2L4E-unsplash.jpg","joel-mott-LaK153ghdig-unsplash.jpg",0,24,12,1,"She has a great smile and the background is compelling",10.595
+"294","qZmtG",12,368527,2,1,32,19,67,45,"nathan-dumlao-ger61_TX6oI-unsplash.jpg","ha-nguy-n-OFSQ6bHjFjs-unsplash.jpg",1,32,19,1,"Its a much more interesting shot and his skin tone is unique",14.436
+"295","qZmtG",14,391773,2,-1,14,30,41,41,"freddy-kearney-o-ioeoATbIM-unsplash.jpg","matheus-ferrero-pg_WCHWSdT8-unsplash.jpg",1,14,30,1,"The detail on his face is much more pronounced than hers",14.18
+"296","qZmtG",15,408982,2,-1,10,33,62,61,"charles-etoroma-95UF6LXe-Lo-unsplash.jpg","olena-sergienko-0TSd6uCKTKc-unsplash.jpg",0,33,10,1,"The darker background is compelling",14.205
+"297","qZmtG",20,436053,2,1,25,2,50,52,"joseph-gonzalez-iFgRcqHznqg-unsplash.jpg","arjunsyah-TBUA5KHJn6k-unsplash.jpg",1,25,2,1,"The picture is in greater focus and features a more attractive man",14.135
+"298","qZmtG",21,453290,2,-1,36,44,73,59,"ospan-ali-mGdA2fzjWLo-unsplash.jpg","rikonavt-HQjfrvdTfak-unsplash.jpg",0,44,36,1,"Her pose is more interesting",6.933
+"299","qZmtG",22,463326,2,1,1,47,70,64,"aiony-haust-jmATI5Q_YgY-unsplash.jpg","tyler-nix-ZGa9d1a_4tA-unsplash.jpg",0,47,1,1,"The photo is sharp",10.039
+"300","qZmtG",5,260288,1,-1,41,11,62,72,"prince-akachi-i2hoD-C2RUA-unsplash.jpg","christian-ferrer-8vT-DgHZDG4-unsplash.jpg",0,11,41,1,"Her look is more confident and interesting",18.337
+"301","qZmtG",6,283377,1,-1,20,16,62,59,"houcine-ncib-B4TjXnI0Y2c-unsplash.jpg","giano-currie-5-9YOsmf8IQ-unsplash.jpg",1,20,16,1,"Her gaze at the camera is very intense",15.792
+"302","qZmtG",7,305454,1,1,17,29,67,42,"gleb-lukomets-paBzWCPN23k-unsplash.jpg","leilani-angel-K84vnnzxmTQ-unsplash.jpg",1,17,29,1,"I think the woman will be more desirable",12.16
+"303","qZmtG",8,321608,1,1,46,15,72,73,"stefan-stefancik-QXevDflbl8A-unsplash.jpg","gabriel-silverio-u3WmDyKGsrY-unsplash.jpg",0,15,46,1,"Her smile in this picture is infectious and the colors are nice",12.901
+"304","qZmtG",9,337857,1,1,5,49,61,68,"batel-studio-ttSRjiYG_WM-unsplash.jpg","vicky-hladynets-_gDoyVv5F4c-unsplash.jpg",0,49,5,1,"He looks very confident",7.482
+"305","rHMtE",1,1720616,1,1,30,44,68,62,"matheus-ferrero-pg_WCHWSdT8-unsplash.jpg","rikonavt-HQjfrvdTfak-unsplash.jpg",1,30,44,1,"Because I liked it",21.413
+"306","rHMtE",10,1911466,1,1,38,31,63,55,"petr-sevcovic-HzDF-rxlSeM-unsplash.jpg","mathilda-khoo-vLR0YP_otCo-unsplash.jpg",1,38,31,1,"I liked it",11.353
+"307","rHMtE",12,1932686,2,1,7,35,55,69,"brooke-cagle-HRZUzoX1e6w-unsplash.jpg","oliver-ragfelt-khV4fTy6-D8-unsplash.jpg",1,7,35,1,"I liked it",5.444
+"308","rHMtE",14,1944416,2,1,34,28,55,56,"oliver-johnson-1TUIcKob7Zs-unsplash.jpg","justin-chen-J7Cf1Gch49E-unsplash.jpg",0,28,34,1,"I liked it",6.622
+"309","rHMtE",16,1958498,2,-1,16,27,69,69,"giano-currie-5-9YOsmf8IQ-unsplash.jpg","jurica-koletic-7YVZYZeITc8-unsplash.jpg",0,27,16,1,"Simply I liked it",7.708
+"310","rHMtE",18,1973366,2,-1,11,40,64,63,"christian-ferrer-8vT-DgHZDG4-unsplash.jpg","prince-akachi-4Yv84VgQkRM-unsplash.jpg",1,11,40,1,"I liked it",4.094
+"311","rHMtE",21,1992176,2,-1,12,48,67,58,"daniel-rigdon-dXmXKPP2L4E-unsplash.jpg","velizar-ivanov-7ktP9yZA1g4-unsplash.jpg",1,12,48,1,"I liked it",5.499
+"312","rHMtE",23,2005975,2,-1,20,36,68,60,"houcine-ncib-B4TjXnI0Y2c-unsplash.jpg","ospan-ali-mGdA2fzjWLo-unsplash.jpg",1,20,36,1,"I liked it",4.012
+"313","rHMtE",5,1757358,1,1,17,26,62,56,"gleb-lukomets-paBzWCPN23k-unsplash.jpg","juri-gianfrancesco-9EZadYaMzk4-unsplash.jpg",0,26,17,1,"It was my opinion",98.321
+"314","rHMtE",7,1863150,1,1,1,9,56,58,"aiony-haust-jmATI5Q_YgY-unsplash.jpg","carlos-andres-gomez-vJuk8Y86mRw-unsplash.jpg",1,1,9,1,"Looks so good",11.043
+"315","rHMtE",8,1876146,1,-1,18,45,46,66,"good-faces-xmSWVeGEnJw-unsplash.jpg","sarah-noltner-pL5ZzPp1zqg-unsplash.jpg",1,18,45,1,"Looks attractive",15.451
+"316","rHMtE",9,1894974,1,-1,13,49,59,61,"erik-lucatero-d2MSDujJl2g-unsplash.jpg","vicky-hladynets-_gDoyVv5F4c-unsplash.jpg",0,49,13,1,"Simply I liked it",12.655
+"317","rwXAf",0,227762,1,1,12,9,11,11,"daniel-rigdon-dXmXKPP2L4E-unsplash.jpg","carlos-andres-gomez-vJuk8Y86mRw-unsplash.jpg",1,12,9,1,"woman",6.393
+"318","rwXAf",10,301458,1,-1,19,6,12,9,"ha-nguy-n-OFSQ6bHjFjs-unsplash.jpg","ben-o-bro-C5XyLljkMrY-unsplash.jpg",0,6,19,1,"people like black people",9.08
+"319","rwXAf",16,332994,2,1,7,35,8,18,"brooke-cagle-HRZUzoX1e6w-unsplash.jpg","oliver-ragfelt-khV4fTy6-D8-unsplash.jpg",1,7,35,1,"womanz",7.361
+"320","rwXAf",18,349014,2,-1,25,22,7,28,"joseph-gonzalez-iFgRcqHznqg-unsplash.jpg","jessica-radanavong-mrYkTuAesKE-unsplash.jpg",1,25,22,1,"the other person looks crazy maybe yakuza",15.092
+"321","rwXAf",19,368161,2,1,43,44,26,7,"raamin-ka-0qJBEzudn5E-unsplash.jpg","rikonavt-HQjfrvdTfak-unsplash.jpg",1,43,44,1,"white not black",5.232
+"322","rwXAf",2,240530,1,-1,18,27,6,19,"good-faces-xmSWVeGEnJw-unsplash.jpg","jurica-koletic-7YVZYZeITc8-unsplash.jpg",0,27,18,1,"white not black",8.976
+"323","rwXAf",21,380194,2,1,2,15,7,15,"arjunsyah-TBUA5KHJn6k-unsplash.jpg","gabriel-silverio-u3WmDyKGsrY-unsplash.jpg",0,15,2,1,"female",4.455
+"324","rwXAf",22,388386,2,1,33,40,12,8,"olena-sergienko-0TSd6uCKTKc-unsplash.jpg","prince-akachi-4Yv84VgQkRM-unsplash.jpg",1,33,40,1,"female",3.448
+"325","rwXAf",23,396118,2,1,8,36,27,16,"bruce-dixon-3M9WJQVHzog-unsplash.jpg","ospan-ali-mGdA2fzjWLo-unsplash.jpg",0,36,8,1,"female",4.203
+"326","rwXAf",6,260162,1,-1,0,17,17,23,"abstral-official-cyOKLSgkgCE-unsplash.jpg","gleb-lukomets-paBzWCPN23k-unsplash.jpg",0,17,0,1,"female not male",11.8
+"327","rwXAf",8,277041,1,-1,30,34,13,22,"matheus-ferrero-pg_WCHWSdT8-unsplash.jpg","oliver-johnson-1TUIcKob7Zs-unsplash.jpg",1,30,34,1,"that hat looks cool",9.257
+"328","rwXAf",9,289122,1,-1,28,49,13,12,"justin-chen-J7Cf1Gch49E-unsplash.jpg","vicky-hladynets-_gDoyVv5F4c-unsplash.jpg",1,28,49,1,"i want to punch him",9.752
+"329","SAcSz",1,2232555,1,1,14,42,69,70,"freddy-kearney-o-ioeoATbIM-unsplash.jpg","prince-akachi-l3IHXOdMyHQ-unsplash.jpg",1,14,42,1,"Happy face",27.926
+"330","SAcSz",10,2347316,1,-1,27,16,71,72,"jurica-koletic-7YVZYZeITc8-unsplash.jpg","giano-currie-5-9YOsmf8IQ-unsplash.jpg",0,16,27,1,"modern",5.311
+"331","SAcSz",13,2375825,2,1,30,26,69,69,"matheus-ferrero-pg_WCHWSdT8-unsplash.jpg","juri-gianfrancesco-9EZadYaMzk4-unsplash.jpg",1,30,26,1,"modern",6.12
+"332","SAcSz",17,2398927,2,1,45,35,72,68,"sarah-noltner-pL5ZzPp1zqg-unsplash.jpg","oliver-ragfelt-khV4fTy6-D8-unsplash.jpg",1,45,35,1,"look handsome",11.24
+"333","SAcSz",19,2421219,2,-1,37,23,74,71,"pavel-anoshin-d0peGya6R5Y-unsplash.jpg","joanna-nix-walkup-H4fEMshfwTE-unsplash.jpg",0,23,37,1,"nature",10.007
+"334","SAcSz",20,2433091,2,-1,47,48,76,71,"tyler-nix-ZGa9d1a_4tA-unsplash.jpg","velizar-ivanov-7ktP9yZA1g4-unsplash.jpg",0,48,47,1,"modern",8.02
+"335","SAcSz",22,2451697,2,-1,19,15,75,70,"ha-nguy-n-OFSQ6bHjFjs-unsplash.jpg","gabriel-silverio-u3WmDyKGsrY-unsplash.jpg",1,19,15,1,"happy face",8.398
+"336","SAcSz",23,2465269,2,-1,18,2,78,70,"good-faces-xmSWVeGEnJw-unsplash.jpg","arjunsyah-TBUA5KHJn6k-unsplash.jpg",1,18,2,1,"modern",6.396
+"337","SAcSz",3,2272909,1,1,34,9,78,71,"oliver-johnson-1TUIcKob7Zs-unsplash.jpg","carlos-andres-gomez-vJuk8Y86mRw-unsplash.jpg",0,9,34,1,"look handsome",9.058
+"338","SAcSz",4,2288436,1,1,5,4,71,75,"batel-studio-ttSRjiYG_WM-unsplash.jpg","barna-bartis-2x3vfVxwR7o-unsplash.jpg",1,5,4,1,"modern",6.788
+"339","SAcSz",8,2315945,1,1,33,31,69,72,"olena-sergienko-0TSd6uCKTKc-unsplash.jpg","mathilda-khoo-vLR0YP_otCo-unsplash.jpg",1,33,31,1,"modern",10.244
+"340","SAcSz",9,2333838,1,-1,0,7,71,75,"abstral-official-cyOKLSgkgCE-unsplash.jpg","brooke-cagle-HRZUzoX1e6w-unsplash.jpg",0,7,0,1,"happy face",8.343
+"341","sNtxH",1,755650,1,-1,42,41,57,62,"prince-akachi-l3IHXOdMyHQ-unsplash.jpg","prince-akachi-i2hoD-C2RUA-unsplash.jpg",0,41,42,1,"I like the bright colors on her scarf",19.067
+"342","sNtxH",10,918362,1,1,16,33,65,67,"giano-currie-5-9YOsmf8IQ-unsplash.jpg","olena-sergienko-0TSd6uCKTKc-unsplash.jpg",1,16,33,1,"Love the background It goes very well with her expression",19.826
+"343","sNtxH",14,958962,2,-1,1,20,65,78,"aiony-haust-jmATI5Q_YgY-unsplash.jpg","houcine-ncib-B4TjXnI0Y2c-unsplash.jpg",1,1,20,1,"Very good make up and nice pose",19.388
+"344","sNtxH",15,982628,2,1,29,39,70,62,"leilani-angel-K84vnnzxmTQ-unsplash.jpg","philip-martin-5aGUyCW_PJw-unsplash.jpg",0,39,29,1,"Natural and his expression is worth alot",30.462
+"345","sNtxH",18,1024920,2,-1,11,24,64,64,"christian-ferrer-8vT-DgHZDG4-unsplash.jpg","joel-mott-LaK153ghdig-unsplash.jpg",1,11,24,1,"The background and clothing colors make this a piece of art",32.061
+"346","sNtxH",19,1062352,2,-1,21,8,76,59,"jessica-felicio-_cvwXhGqG-o-unsplash.jpg","bruce-dixon-3M9WJQVHzog-unsplash.jpg",0,8,21,1,"Very expressive and original pose",21.21
+"347","sNtxH",20,1087683,2,-1,5,12,70,79,"batel-studio-ttSRjiYG_WM-unsplash.jpg","daniel-rigdon-dXmXKPP2L4E-unsplash.jpg",1,5,12,1,"So authentic and the expression is priceless",15.208
+"348","sNtxH",21,1107239,2,-1,48,17,76,69,"velizar-ivanov-7ktP9yZA1g4-unsplash.jpg","gleb-lukomets-paBzWCPN23k-unsplash.jpg",0,17,48,1,"Reminds me of a painting",15.337
+"349","sNtxH",3,786855,1,1,22,19,67,60,"jessica-radanavong-mrYkTuAesKE-unsplash.jpg","ha-nguy-n-OFSQ6bHjFjs-unsplash.jpg",0,19,22,1,"Very expressive photo",16.794
+"350","sNtxH",5,812090,1,1,18,45,82,73,"good-faces-xmSWVeGEnJw-unsplash.jpg","sarah-noltner-pL5ZzPp1zqg-unsplash.jpg",1,18,45,1,"This photo is mysterious",26.853
+"351","sNtxH",6,844343,1,1,44,26,82,68,"rikonavt-HQjfrvdTfak-unsplash.jpg","juri-gianfrancesco-9EZadYaMzk4-unsplash.jpg",1,44,26,1,"The hat and face are a perfect match and gives the photo great synergy",33.524
+"352","sNtxH",7,882894,1,1,43,34,66,66,"raamin-ka-0qJBEzudn5E-unsplash.jpg","oliver-johnson-1TUIcKob7Zs-unsplash.jpg",1,43,34,1,"Clarity and beautiful shot taken",22.259
+"353","sNyXJ",10,701933,1,-1,42,0,57,47,"prince-akachi-l3IHXOdMyHQ-unsplash.jpg","abstral-official-cyOKLSgkgCE-unsplash.jpg",1,42,0,1,"I like her hair",5.811
+"354","sNyXJ",11,710517,1,-1,31,26,59,42,"mathilda-khoo-vLR0YP_otCo-unsplash.jpg","juri-gianfrancesco-9EZadYaMzk4-unsplash.jpg",1,31,26,1,"She is prettyn",7.231
+"355","sNyXJ",12,724477,2,1,25,27,41,42,"joseph-gonzalez-iFgRcqHznqg-unsplash.jpg","jurica-koletic-7YVZYZeITc8-unsplash.jpg",0,27,25,1,"He looks kind",7.074
+"356","sNyXJ",16,743124,2,1,20,5,57,62,"houcine-ncib-B4TjXnI0Y2c-unsplash.jpg","batel-studio-ttSRjiYG_WM-unsplash.jpg",1,20,5,1,"She is pretty",7.573
+"357","sNyXJ",18,758198,2,-1,24,11,58,60,"joel-mott-LaK153ghdig-unsplash.jpg","christian-ferrer-8vT-DgHZDG4-unsplash.jpg",0,11,24,1,"She looks intense",6.112
+"358","sNyXJ",20,770589,2,1,22,44,44,52,"jessica-radanavong-mrYkTuAesKE-unsplash.jpg","rikonavt-HQjfrvdTfak-unsplash.jpg",0,44,22,1,"She looks like a model",14.026
+"359","sNyXJ",22,795629,2,1,41,17,53,62,"prince-akachi-i2hoD-C2RUA-unsplash.jpg","gleb-lukomets-paBzWCPN23k-unsplash.jpg",0,17,41,1,"It looks like art",9.64
+"360","sNyXJ",23,808156,2,1,48,47,61,41,"velizar-ivanov-7ktP9yZA1g4-unsplash.jpg","tyler-nix-ZGa9d1a_4tA-unsplash.jpg",1,48,47,1,"she looks like jessie buckley",11.354
+"361","sNyXJ",4,641996,1,-1,45,13,46,44,"sarah-noltner-pL5ZzPp1zqg-unsplash.jpg","erik-lucatero-d2MSDujJl2g-unsplash.jpg",1,45,13,1,"I dont like the pic on the right staring at me",14.452
+"362","sNyXJ",5,659444,1,-1,39,49,47,44,"philip-martin-5aGUyCW_PJw-unsplash.jpg","vicky-hladynets-_gDoyVv5F4c-unsplash.jpg",0,49,39,1,"I dont like the red hat",13.865
+"363","sNyXJ",8,681765,1,1,14,9,41,44,"freddy-kearney-o-ioeoATbIM-unsplash.jpg","carlos-andres-gomez-vJuk8Y86mRw-unsplash.jpg",1,14,9,1,"He looks fun",8.838
+"364","sNyXJ",9,693188,1,-1,36,23,57,45,"ospan-ali-mGdA2fzjWLo-unsplash.jpg","joanna-nix-walkup-H4fEMshfwTE-unsplash.jpg",1,36,23,1,"She is pretty",6.328
+"365","SZfNj",1,212537,1,1,18,31,41,45,"good-faces-xmSWVeGEnJw-unsplash.jpg","mathilda-khoo-vLR0YP_otCo-unsplash.jpg",0,31,18,1,"There is more art and human suffering in this one and will draw more buyers",17.548
+"366","SZfNj",10,312181,1,1,6,29,55,44,"ben-o-bro-C5XyLljkMrY-unsplash.jpg","leilani-angel-K84vnnzxmTQ-unsplash.jpg",1,6,29,1,"More happiness and sheer emotion is conveyed",9.216
+"367","SZfNj",12,334674,2,1,44,10,40,53,"rikonavt-HQjfrvdTfak-unsplash.jpg","charles-etoroma-95UF6LXe-Lo-unsplash.jpg",0,10,44,1,"The emotion is more vibrant the background more attractive",15.259
+"368","SZfNj",13,353440,2,-1,4,19,43,46,"barna-bartis-2x3vfVxwR7o-unsplash.jpg","ha-nguy-n-OFSQ6bHjFjs-unsplash.jpg",0,19,4,1,"The emotions are more raw and the subject more attractive",14.047
+"369","SZfNj",16,377019,2,-1,17,13,50,42,"gleb-lukomets-paBzWCPN23k-unsplash.jpg","erik-lucatero-d2MSDujJl2g-unsplash.jpg",1,17,13,1,"The subject is much more beautiful and her choice of outfit is interesting",15.56
+"370","SZfNj",17,396451,2,-1,16,21,50,40,"giano-currie-5-9YOsmf8IQ-unsplash.jpg","jessica-felicio-_cvwXhGqG-o-unsplash.jpg",1,16,21,1,"The subject is more interesting and bold",12.377
+"371","SZfNj",20,419905,2,1,47,39,54,40,"tyler-nix-ZGa9d1a_4tA-unsplash.jpg","philip-martin-5aGUyCW_PJw-unsplash.jpg",0,39,47,1,"The city in the background is much more interesting than the plain background in the other",17.302
+"372","SZfNj",21,440831,2,1,37,43,43,55,"pavel-anoshin-d0peGya6R5Y-unsplash.jpg","raamin-ka-0qJBEzudn5E-unsplash.jpg",0,43,37,1,"The subject is much more kind and attractive",12.695
+"373","SZfNj",5,245016,1,-1,5,27,43,55,"batel-studio-ttSRjiYG_WM-unsplash.jpg","jurica-koletic-7YVZYZeITc8-unsplash.jpg",1,5,27,1,"This one has more color and vibrancy",9.751
+"374","SZfNj",6,258218,1,1,40,7,46,41,"prince-akachi-4Yv84VgQkRM-unsplash.jpg","brooke-cagle-HRZUzoX1e6w-unsplash.jpg",0,7,40,1,"The sheer emotion shown in this one is moving",12.732
+"375","SZfNj",7,274862,1,-1,15,8,55,42,"gabriel-silverio-u3WmDyKGsrY-unsplash.jpg","bruce-dixon-3M9WJQVHzog-unsplash.jpg",1,15,8,1,"She is the more attractive subject and her freckles stand out",14.28
+"376","SZfNj",9,296871,1,-1,22,30,41,47,"jessica-radanavong-mrYkTuAesKE-unsplash.jpg","matheus-ferrero-pg_WCHWSdT8-unsplash.jpg",0,30,22,1,"The background and subject are more interesting",11.855
+"377","tMhNR",1,4099028,1,1,36,37,28,24,"ospan-ali-mGdA2fzjWLo-unsplash.jpg","pavel-anoshin-d0peGya6R5Y-unsplash.jpg",1,36,37,1,"look is so nice",23.234
+"378","tMhNR",10,4212014,1,-1,42,21,33,78,"prince-akachi-l3IHXOdMyHQ-unsplash.jpg","jessica-felicio-_cvwXhGqG-o-unsplash.jpg",1,42,21,1,"i like very much hair ",18.851
+"379","tMhNR",12,4239974,2,-1,48,20,78,22,"velizar-ivanov-7ktP9yZA1g4-unsplash.jpg","houcine-ncib-B4TjXnI0Y2c-unsplash.jpg",1,48,20,1,"look is very nice",15.111
+"380","tMhNR",13,4258829,2,1,35,11,35,75,"oliver-ragfelt-khV4fTy6-D8-unsplash.jpg","christian-ferrer-8vT-DgHZDG4-unsplash.jpg",0,11,35,1,"dress is very hot",14.871
+"381","tMhNR",14,4276854,2,1,4,45,72,75,"barna-bartis-2x3vfVxwR7o-unsplash.jpg","sarah-noltner-pL5ZzPp1zqg-unsplash.jpg",0,45,4,1,"specs is very beautiful ",18.847
+"382","tMhNR",15,4299695,2,-1,16,9,23,75,"giano-currie-5-9YOsmf8IQ-unsplash.jpg","carlos-andres-gomez-vJuk8Y86mRw-unsplash.jpg",0,9,16,1,"look is so hot",8.449
+"383","tMhNR",16,4311213,2,1,14,28,28,63,"freddy-kearney-o-ioeoATbIM-unsplash.jpg","justin-chen-J7Cf1Gch49E-unsplash.jpg",0,28,14,1,"i like hair",13.415
+"384","tMhNR",17,4328219,2,-1,47,31,74,73,"tyler-nix-ZGa9d1a_4tA-unsplash.jpg","mathilda-khoo-vLR0YP_otCo-unsplash.jpg",0,31,47,1,"i like very much look",20.14
+"385","tMhNR",4,4134383,1,1,44,39,76,31,"rikonavt-HQjfrvdTfak-unsplash.jpg","philip-martin-5aGUyCW_PJw-unsplash.jpg",1,44,39,1,"very attractive ",12.75
+"386","tMhNR",7,4157193,1,1,19,12,74,73,"ha-nguy-n-OFSQ6bHjFjs-unsplash.jpg","daniel-rigdon-dXmXKPP2L4E-unsplash.jpg",1,19,12,1,"look is good",16.532
+"387","tMhNR",8,4182541,1,-1,23,15,77,25,"joanna-nix-walkup-H4fEMshfwTE-unsplash.jpg","gabriel-silverio-u3WmDyKGsrY-unsplash.jpg",0,15,23,1,"look is very attractive ",14.408
+"388","tMhNR",9,4200261,1,-1,13,18,73,76,"erik-lucatero-d2MSDujJl2g-unsplash.jpg","good-faces-xmSWVeGEnJw-unsplash.jpg",1,13,18,1,"very nice",8.164
+"389","uNe1z",1,993824,1,1,47,43,63,76,"tyler-nix-ZGa9d1a_4tA-unsplash.jpg","raamin-ka-0qJBEzudn5E-unsplash.jpg",0,43,47,1,"because this photo look beautiful",58.137
+"390","uNe1z",10,1186515,1,-1,36,16,77,69,"ospan-ali-mGdA2fzjWLo-unsplash.jpg","giano-currie-5-9YOsmf8IQ-unsplash.jpg",1,36,16,1,"this photo is good tradition ",22.181
+"391","uNe1z",11,1211816,1,1,12,13,73,69,"daniel-rigdon-dXmXKPP2L4E-unsplash.jpg","erik-lucatero-d2MSDujJl2g-unsplash.jpg",1,12,13,1,"this photo look was so gorgeous ",25.383
+"392","uNe1z",13,1246511,2,1,7,37,58,65,"brooke-cagle-HRZUzoX1e6w-unsplash.jpg","pavel-anoshin-d0peGya6R5Y-unsplash.jpg",1,7,37,1,"this photo is look better then other ",27.557
+"393","uNe1z",15,1280256,2,-1,4,22,56,60,"barna-bartis-2x3vfVxwR7o-unsplash.jpg","jessica-radanavong-mrYkTuAesKE-unsplash.jpg",1,4,22,1,"his look like to smart ",17.989
+"394","uNe1z",18,1311816,2,1,27,2,70,59,"jurica-koletic-7YVZYZeITc8-unsplash.jpg","arjunsyah-TBUA5KHJn6k-unsplash.jpg",1,27,2,1,"this photo was so good ",16.196
+"395","uNe1z",2,1055305,1,-1,29,10,77,42,"leilani-angel-K84vnnzxmTQ-unsplash.jpg","charles-etoroma-95UF6LXe-Lo-unsplash.jpg",1,29,10,1,"this photo is look smart",40.206
+"396","uNe1z",20,1338104,2,-1,1,9,72,77,"aiony-haust-jmATI5Q_YgY-unsplash.jpg","carlos-andres-gomez-vJuk8Y86mRw-unsplash.jpg",1,1,9,1,"this girl was beautiful to look the image",22.907
+"397","uNe1z",22,1368416,2,1,15,8,70,74,"gabriel-silverio-u3WmDyKGsrY-unsplash.jpg","bruce-dixon-3M9WJQVHzog-unsplash.jpg",0,8,15,1,"this photo is smart look ",14.356
+"398","uNe1z",23,1386947,2,-1,24,30,63,71,"joel-mott-LaK153ghdig-unsplash.jpg","matheus-ferrero-pg_WCHWSdT8-unsplash.jpg",1,24,30,1,"i like the smile of the image ",20.66
+"399","uNe1z",3,1101686,1,-1,40,19,75,60,"prince-akachi-4Yv84VgQkRM-unsplash.jpg","ha-nguy-n-OFSQ6bHjFjs-unsplash.jpg",1,40,19,1,"the photo was so nice style ",36.442
+"400","uNe1z",8,1159422,1,1,39,20,61,47,"philip-martin-5aGUyCW_PJw-unsplash.jpg","houcine-ncib-B4TjXnI0Y2c-unsplash.jpg",1,39,20,1,"the photo look like the nature",19.655
+"401","vRFa3",0,409262,1,1,14,47,55,42,"freddy-kearney-o-ioeoATbIM-unsplash.jpg","tyler-nix-ZGa9d1a_4tA-unsplash.jpg",1,14,47,1,"It evokes more emotions",13.413
+"402","vRFa3",10,543201,1,1,23,18,40,55,"joanna-nix-walkup-H4fEMshfwTE-unsplash.jpg","good-faces-xmSWVeGEnJw-unsplash.jpg",0,18,23,1,"The angle of the face is more interesting",9.428
+"403","vRFa3",12,562663,2,-1,29,12,44,47,"leilani-angel-K84vnnzxmTQ-unsplash.jpg","daniel-rigdon-dXmXKPP2L4E-unsplash.jpg",1,29,12,1,"The angle of the face is better and the man seems to be thinking more interesting thoughts",22.639
+"404","vRFa3",13,588953,2,-1,2,25,54,43,"arjunsyah-TBUA5KHJn6k-unsplash.jpg","joseph-gonzalez-iFgRcqHznqg-unsplash.jpg",1,2,25,1,"The subject has more a more interesting facial structure and the lighting is cooler",36.988
+"405","vRFa3",17,638601,2,-1,24,42,46,58,"joel-mott-LaK153ghdig-unsplash.jpg","prince-akachi-l3IHXOdMyHQ-unsplash.jpg",0,42,24,1,"The eyecontact with the camera is compelling",13.781
+"406","vRFa3",19,658986,2,1,40,19,57,43,"prince-akachi-4Yv84VgQkRM-unsplash.jpg","ha-nguy-n-OFSQ6bHjFjs-unsplash.jpg",1,40,19,1,"The photo has better saturation and lighting",18.854
+"407","vRFa3",22,692251,2,1,39,41,43,55,"philip-martin-5aGUyCW_PJw-unsplash.jpg","prince-akachi-i2hoD-C2RUA-unsplash.jpg",1,39,41,1,"The mans seems to have a more interesting emotional expression",26.226
+"408","vRFa3",23,721658,2,-1,21,33,55,59,"jessica-felicio-_cvwXhGqG-o-unsplash.jpg","olena-sergienko-0TSd6uCKTKc-unsplash.jpg",1,21,33,1,"I like the look of tension on her face and the smokey effects I also like how her hair looks like a heart on the pink background",33.218
+"409","vRFa3",3,433348,1,-1,5,16,56,52,"batel-studio-ttSRjiYG_WM-unsplash.jpg","giano-currie-5-9YOsmf8IQ-unsplash.jpg",0,16,5,1,"The model has more interesting eye contact with the camera",25.146
+"410","vRFa3",4,461553,1,1,31,9,58,45,"mathilda-khoo-vLR0YP_otCo-unsplash.jpg","carlos-andres-gomez-vJuk8Y86mRw-unsplash.jpg",1,31,9,1,"The subject looks mysterious and the photo makes me want to discern her emotions",25.236
+"411","vRFa3",6,495023,1,1,45,22,56,42,"sarah-noltner-pL5ZzPp1zqg-unsplash.jpg","jessica-radanavong-mrYkTuAesKE-unsplash.jpg",1,45,22,1,"It has a more interesting angle and facial expression",18.867
+"412","vRFa3",9,526625,1,-1,8,34,42,46,"bruce-dixon-3M9WJQVHzog-unsplash.jpg","oliver-johnson-1TUIcKob7Zs-unsplash.jpg",0,34,8,1,"The eye contact is more compelling",12.206
+"413","WIgBv",0,873008,1,-1,49,43,92,95,"vicky-hladynets-_gDoyVv5F4c-unsplash.jpg","raamin-ka-0qJBEzudn5E-unsplash.jpg",0,43,49,1,"Nice",34.494
+"414","WIgBv",1,922828,1,1,31,26,94,93,"mathilda-khoo-vLR0YP_otCo-unsplash.jpg","juri-gianfrancesco-9EZadYaMzk4-unsplash.jpg",1,31,26,1,"cute",11.212
+"415","WIgBv",1,919073,1,1,31,26,94,93,"mathilda-khoo-vLR0YP_otCo-unsplash.jpg","juri-gianfrancesco-9EZadYaMzk4-unsplash.jpg",NA,NA,NA,1,"cute",11.212
+"416","WIgBv",10,1037214,1,-1,10,27,87,88,"charles-etoroma-95UF6LXe-Lo-unsplash.jpg","jurica-koletic-7YVZYZeITc8-unsplash.jpg",0,27,10,1,"cute smile",17.69
+"417","WIgBv",11,1060614,1,-1,12,48,93,95,"daniel-rigdon-dXmXKPP2L4E-unsplash.jpg","velizar-ivanov-7ktP9yZA1g4-unsplash.jpg",1,12,48,1,"cute girl",11.458
+"418","WIgBv",12,1080539,2,-1,25,6,93,90,"joseph-gonzalez-iFgRcqHznqg-unsplash.jpg","ben-o-bro-C5XyLljkMrY-unsplash.jpg",1,25,6,1,"nice dimple",18.007
+"419","WIgBv",13,1105820,2,1,22,39,89,91,"jessica-radanavong-mrYkTuAesKE-unsplash.jpg","philip-martin-5aGUyCW_PJw-unsplash.jpg",1,22,39,1,"yung",5.673
+"420","WIgBv",18,1135596,2,-1,1,5,88,91,"aiony-haust-jmATI5Q_YgY-unsplash.jpg","batel-studio-ttSRjiYG_WM-unsplash.jpg",1,1,5,1,"nice",9.915
+"421","WIgBv",19,1151892,2,1,11,32,93,88,"christian-ferrer-8vT-DgHZDG4-unsplash.jpg","nathan-dumlao-ger61_TX6oI-unsplash.jpg",1,11,32,1,"nice",9.02
+"422","WIgBv",21,1170575,2,1,29,9,94,87,"leilani-angel-K84vnnzxmTQ-unsplash.jpg","carlos-andres-gomez-vJuk8Y86mRw-unsplash.jpg",0,9,29,1,"handsome",14.293
+"423","WIgBv",22,1190669,2,1,34,45,91,90,"oliver-johnson-1TUIcKob7Zs-unsplash.jpg","sarah-noltner-pL5ZzPp1zqg-unsplash.jpg",0,45,34,1,"handsome",13.638
+"424","WIgBv",4,954444,1,-1,3,24,92,95,"art-hauntington-jzY0KRJopEI-unsplash.jpg","joel-mott-LaK153ghdig-unsplash.jpg",1,3,24,1,"cute smile",20.873
+"425","WIgBv",7,993552,1,1,23,37,94,86,"joanna-nix-walkup-H4fEMshfwTE-unsplash.jpg","pavel-anoshin-d0peGya6R5Y-unsplash.jpg",0,37,23,1,"handsome",28.069
+"426","WJ2Nv",0,346122,1,1,1,12,57,45,"aiony-haust-jmATI5Q_YgY-unsplash.jpg","daniel-rigdon-dXmXKPP2L4E-unsplash.jpg",1,1,12,1,"This photograph more closely resembles a classical painting so I feel as though the perceived value would be higher",17.368
+"427","WJ2Nv",12,521111,2,1,24,22,61,65,"joel-mott-LaK153ghdig-unsplash.jpg","jessica-radanavong-mrYkTuAesKE-unsplash.jpg",0,22,24,1,"This photograph has a better contrast between the background and the subject so I think it would be more visually interesting and sell for more",26.952
+"428","WJ2Nv",16,559468,2,1,33,19,43,43,"olena-sergienko-0TSd6uCKTKc-unsplash.jpg","ha-nguy-n-OFSQ6bHjFjs-unsplash.jpg",0,19,33,1,"The other photo looks like a headshot for modeling or acting gigs The photo that I chose could be more versatile so I think would be likely to sell for more money at the auction",26.688
+"429","WJ2Nv",18,591120,2,-1,25,2,61,42,"joseph-gonzalez-iFgRcqHznqg-unsplash.jpg","arjunsyah-TBUA5KHJn6k-unsplash.jpg",0,2,25,1,"The subject in this photograph is more unique looking and visually interesting",14.315
+"430","WJ2Nv",2,369476,1,-1,21,8,41,57,"jessica-felicio-_cvwXhGqG-o-unsplash.jpg","bruce-dixon-3M9WJQVHzog-unsplash.jpg",0,8,21,1,"The photograph on the right looks more clear and higher quality and I can see it being more versatile and therefore sell for more",33.239
+"431","WJ2Nv",21,613435,2,-1,35,4,68,41,"oliver-ragfelt-khV4fTy6-D8-unsplash.jpg","barna-bartis-2x3vfVxwR7o-unsplash.jpg",1,35,4,1,"This photo has better contrast between the foreground and the background and the person is more attractive than the person in the other photograph",27.764
+"432","WJ2Nv",22,645911,2,-1,26,41,59,41,"juri-gianfrancesco-9EZadYaMzk4-unsplash.jpg","prince-akachi-i2hoD-C2RUA-unsplash.jpg",1,26,41,1,"Overall this picture is more interesting The other photograph is very drab and plain and would not sell for as much",19.852
+"433","WJ2Nv",23,669882,2,1,45,28,42,50,"sarah-noltner-pL5ZzPp1zqg-unsplash.jpg","justin-chen-J7Cf1Gch49E-unsplash.jpg",1,45,28,1,"These photographs are pretty similar so I chose the photograph with the person that I found to be more attractive",20.219
+"434","WJ2Nv",3,406249,1,-1,37,36,61,60,"pavel-anoshin-d0peGya6R5Y-unsplash.jpg","ospan-ali-mGdA2fzjWLo-unsplash.jpg",0,36,37,1,"The clothes in this photograph make it resemble a painting or old artwork so I believe it will sell for more",23.006
+"435","WJ2Nv",4,433389,1,1,47,9,43,53,"tyler-nix-ZGa9d1a_4tA-unsplash.jpg","carlos-andres-gomez-vJuk8Y86mRw-unsplash.jpg",1,47,9,1,"The other photograph just looks like a profile picture and would not be very useful for any other applications The photo on the left could be used for advertisements or magazines and so would be worth more",31.102
+"436","WJ2Nv",6,470313,1,-1,3,0,46,47,"art-hauntington-jzY0KRJopEI-unsplash.jpg","abstral-official-cyOKLSgkgCE-unsplash.jpg",0,0,3,1,"This photo is more visually interesting than the other",12.666
+"437","WJ2Nv",8,488788,1,1,14,16,43,62,"freddy-kearney-o-ioeoATbIM-unsplash.jpg","giano-currie-5-9YOsmf8IQ-unsplash.jpg",1,14,16,1,"This photograph features a more unique looking person so it would have a higher perceived value",15.785
+"438","wP5Q8",0,506315,1,-1,18,30,50,59,"good-faces-xmSWVeGEnJw-unsplash.jpg","matheus-ferrero-pg_WCHWSdT8-unsplash.jpg",0,30,18,1,"The leaves in the background makes the image seem more lively than a plain background",59.767
+"439","wP5Q8",10,940108,1,-1,43,13,70,56,"raamin-ka-0qJBEzudn5E-unsplash.jpg","erik-lucatero-d2MSDujJl2g-unsplash.jpg",1,43,13,1,"The subject is more interesting",56.389
+"440","wP5Q8",12,1021115,2,-1,42,15,65,71,"prince-akachi-l3IHXOdMyHQ-unsplash.jpg","gabriel-silverio-u3WmDyKGsrY-unsplash.jpg",1,42,15,1,"I like the vintage look",39.927
+"441","wP5Q8",14,1068493,2,1,17,6,73,50,"gleb-lukomets-paBzWCPN23k-unsplash.jpg","ben-o-bro-C5XyLljkMrY-unsplash.jpg",1,17,6,1,"The subject makes me wonder what they are thinking",58.707
+"442","wP5Q8",15,1130938,2,1,26,8,63,43,"juri-gianfrancesco-9EZadYaMzk4-unsplash.jpg","bruce-dixon-3M9WJQVHzog-unsplash.jpg",1,26,8,1,"Its slightly more interesting than the alternative photo",49.7
+"443","wP5Q8",16,1185341,2,-1,36,19,73,55,"ospan-ali-mGdA2fzjWLo-unsplash.jpg","ha-nguy-n-OFSQ6bHjFjs-unsplash.jpg",1,36,19,1,"The foreign style of dress is captivating and gives a mysterious vibe",68.004
+"444","wP5Q8",18,1259896,2,1,28,41,53,67,"justin-chen-J7Cf1Gch49E-unsplash.jpg","prince-akachi-i2hoD-C2RUA-unsplash.jpg",0,41,28,1,"The alternative image doesnt make me feel anything",41.763
+"445","wP5Q8",23,1323318,2,1,9,33,66,70,"carlos-andres-gomez-vJuk8Y86mRw-unsplash.jpg","olena-sergienko-0TSd6uCKTKc-unsplash.jpg",0,33,9,1,"The way the subject looks at the viewer evokes stronger emotions ",120.795
+"446","wP5Q8",5,589009,1,1,31,23,53,72,"mathilda-khoo-vLR0YP_otCo-unsplash.jpg","joanna-nix-walkup-H4fEMshfwTE-unsplash.jpg",1,31,23,1,"This picture evokes a stronger emotion when you look in the subjects eyes",56.356
+"447","wP5Q8",6,649661,1,1,40,5,46,60,"prince-akachi-4Yv84VgQkRM-unsplash.jpg","batel-studio-ttSRjiYG_WM-unsplash.jpg",1,40,5,1,"The other image looks generic",27.567
+"448","wP5Q8",7,680643,1,-1,37,45,57,47,"pavel-anoshin-d0peGya6R5Y-unsplash.jpg","sarah-noltner-pL5ZzPp1zqg-unsplash.jpg",1,37,45,1,"The aesthetic of the image gives it a vintage look",91.226
+"449","wP5Q8",9,781922,1,-1,49,27,60,52,"vicky-hladynets-_gDoyVv5F4c-unsplash.jpg","jurica-koletic-7YVZYZeITc8-unsplash.jpg",1,49,27,1,"The alternative image doesnt bring out any emotions",154.413
+"450","WUJ86",1,265635,1,1,18,11,54,57,"good-faces-xmSWVeGEnJw-unsplash.jpg","christian-ferrer-8vT-DgHZDG4-unsplash.jpg",1,18,11,1,"it is a better natural picture and pose",24.139
+"451","WUJ86",11,447411,1,-1,4,32,64,62,"barna-bartis-2x3vfVxwR7o-unsplash.jpg","nathan-dumlao-ger61_TX6oI-unsplash.jpg",0,32,4,1,"he looks refreshed and happy just a peace",28.335
+"452","WUJ86",13,490483,2,1,33,10,50,51,"olena-sergienko-0TSd6uCKTKc-unsplash.jpg","charles-etoroma-95UF6LXe-Lo-unsplash.jpg",0,10,33,1,"i like that the white wall makes everything pop out the man looks as if he is enjoying life",32.86
+"453","WUJ86",14,528316,2,1,23,49,82,57,"joanna-nix-walkup-H4fEMshfwTE-unsplash.jpg","vicky-hladynets-_gDoyVv5F4c-unsplash.jpg",1,23,49,1,"she seems on a mission to accomplish something the background is great too",42.636
+"454","WUJ86",15,574940,2,-1,0,35,50,47,"abstral-official-cyOKLSgkgCE-unsplash.jpg","oliver-ragfelt-khV4fTy6-D8-unsplash.jpg",0,35,0,1,"good headshot colors not clashing with the background",36.509
+"455","WUJ86",19,630882,2,1,20,19,53,71,"houcine-ncib-B4TjXnI0Y2c-unsplash.jpg","ha-nguy-n-OFSQ6bHjFjs-unsplash.jpg",0,19,20,1,"do not like the background but I like that he still seems natural in the environment",54.199
+"456","WUJ86",20,688887,2,-1,14,48,54,46,"freddy-kearney-o-ioeoATbIM-unsplash.jpg","velizar-ivanov-7ktP9yZA1g4-unsplash.jpg",0,48,14,1,"she has so many things to say and feelings i wonder what she is thinking",29.432
+"457","WUJ86",22,727315,2,1,38,28,66,67,"petr-sevcovic-HzDF-rxlSeM-unsplash.jpg","justin-chen-J7Cf1Gch49E-unsplash.jpg",0,28,38,1,"like the lighting and sharpness of the picture",27.994
+"458","WUJ86",4,305043,1,-1,2,22,55,59,"arjunsyah-TBUA5KHJn6k-unsplash.jpg","jessica-radanavong-mrYkTuAesKE-unsplash.jpg",0,22,2,1,"i think this was presented better",24.917
+"459","WUJ86",5,337339,1,-1,44,36,65,47,"rikonavt-HQjfrvdTfak-unsplash.jpg","ospan-ali-mGdA2fzjWLo-unsplash.jpg",0,36,44,1,"plain yet simple and says 1000 words",24.805
+"460","WUJ86",7,371915,1,-1,29,30,50,65,"leilani-angel-K84vnnzxmTQ-unsplash.jpg","matheus-ferrero-pg_WCHWSdT8-unsplash.jpg",0,30,29,1,"i like the background better",14.023
+"461","WUJ86",9,398907,1,1,9,31,74,49,"carlos-andres-gomez-vJuk8Y86mRw-unsplash.jpg","mathilda-khoo-vLR0YP_otCo-unsplash.jpg",0,31,9,1,"the has a story to tell her eyes says it all and the background really brings them out",38.635
+"462","Xcmcr",10,896103,1,-1,31,40,89,27,"mathilda-khoo-vLR0YP_otCo-unsplash.jpg","prince-akachi-4Yv84VgQkRM-unsplash.jpg",1,31,40,1,"very clear",11.676
+"463","Xcmcr",11,910621,1,1,46,28,79,88,"stefan-stefancik-QXevDflbl8A-unsplash.jpg","justin-chen-J7Cf1Gch49E-unsplash.jpg",1,46,28,1,"good to see",10.445
+"464","Xcmcr",12,928365,2,-1,6,35,85,87,"ben-o-bro-C5XyLljkMrY-unsplash.jpg","oliver-ragfelt-khV4fTy6-D8-unsplash.jpg",0,35,6,1,"beautifull",11.576
+"465","Xcmcr",13,945596,2,1,19,11,87,73,"ha-nguy-n-OFSQ6bHjFjs-unsplash.jpg","christian-ferrer-8vT-DgHZDG4-unsplash.jpg",0,11,19,1,"nice ",5.575
+"466","Xcmcr",15,961272,2,-1,22,15,24,24,"jessica-radanavong-mrYkTuAesKE-unsplash.jpg","gabriel-silverio-u3WmDyKGsrY-unsplash.jpg",1,22,15,1,"good",7.416
+"467","Xcmcr",17,976462,2,-1,27,10,68,26,"jurica-koletic-7YVZYZeITc8-unsplash.jpg","charles-etoroma-95UF6LXe-Lo-unsplash.jpg",1,27,10,1,"nice",5.849
+"468","Xcmcr",19,988685,2,1,1,4,69,78,"aiony-haust-jmATI5Q_YgY-unsplash.jpg","barna-bartis-2x3vfVxwR7o-unsplash.jpg",1,1,4,1,"nice",8.362
+"469","Xcmcr",21,1005111,2,1,44,8,84,86,"rikonavt-HQjfrvdTfak-unsplash.jpg","bruce-dixon-3M9WJQVHzog-unsplash.jpg",0,8,44,1,"good",7.008
+"470","Xcmcr",3,813129,1,-1,7,41,87,84,"brooke-cagle-HRZUzoX1e6w-unsplash.jpg","prince-akachi-i2hoD-C2RUA-unsplash.jpg",1,7,41,1,"very clear",16.012
+"471","Xcmcr",4,834524,1,1,34,49,88,86,"oliver-johnson-1TUIcKob7Zs-unsplash.jpg","vicky-hladynets-_gDoyVv5F4c-unsplash.jpg",0,49,34,1,"nice",8.049
+"472","Xcmcr",5,847222,1,-1,38,3,70,76,"petr-sevcovic-HzDF-rxlSeM-unsplash.jpg","art-hauntington-jzY0KRJopEI-unsplash.jpg",0,3,38,1,"nice photo",10.685
+"473","Xcmcr",8,870867,1,1,30,24,88,75,"matheus-ferrero-pg_WCHWSdT8-unsplash.jpg","joel-mott-LaK153ghdig-unsplash.jpg",0,24,30,1,"nice backround",11.077
+"474","Y1QFI",10,2030954,1,-1,23,25,42,63,"joanna-nix-walkup-H4fEMshfwTE-unsplash.jpg","joseph-gonzalez-iFgRcqHznqg-unsplash.jpg",0,25,23,1,"Looks confident",10.606
+"475","Y1QFI",11,2044638,1,-1,20,0,62,58,"houcine-ncib-B4TjXnI0Y2c-unsplash.jpg","abstral-official-cyOKLSgkgCE-unsplash.jpg",0,0,20,1,"Looks good",9.527
+"476","Y1QFI",13,2061752,2,1,42,8,42,59,"prince-akachi-l3IHXOdMyHQ-unsplash.jpg","bruce-dixon-3M9WJQVHzog-unsplash.jpg",0,8,42,1,"Looks good compose",15.872
+"477","Y1QFI",15,2083106,2,-1,49,22,43,46,"vicky-hladynets-_gDoyVv5F4c-unsplash.jpg","jessica-radanavong-mrYkTuAesKE-unsplash.jpg",1,49,22,1,"Good lighting",11.644
+"478","Y1QFI",17,2100125,2,-1,28,30,62,42,"justin-chen-J7Cf1Gch49E-unsplash.jpg","matheus-ferrero-pg_WCHWSdT8-unsplash.jpg",1,28,30,1,"Great visible",15.775
+"479","Y1QFI",18,2119309,2,-1,39,40,61,62,"philip-martin-5aGUyCW_PJw-unsplash.jpg","prince-akachi-4Yv84VgQkRM-unsplash.jpg",1,39,40,1,"Good compose",386.899
+"480","Y1QFI",19,2508963,2,1,32,6,41,62,"nathan-dumlao-ger61_TX6oI-unsplash.jpg","ben-o-bro-C5XyLljkMrY-unsplash.jpg",0,6,32,1,"Good smile",7.058
+"481","Y1QFI",2,1964362,1,-1,10,24,54,50,"charles-etoroma-95UF6LXe-Lo-unsplash.jpg","joel-mott-LaK153ghdig-unsplash.jpg",0,24,10,1,"Smiling",8.221
+"482","Y1QFI",23,2527084,2,1,47,26,58,42,"tyler-nix-ZGa9d1a_4tA-unsplash.jpg","juri-gianfrancesco-9EZadYaMzk4-unsplash.jpg",1,47,26,1,"Clear image",7.658
+"483","Y1QFI",4,1979883,1,1,34,17,56,44,"oliver-johnson-1TUIcKob7Zs-unsplash.jpg","gleb-lukomets-paBzWCPN23k-unsplash.jpg",1,34,17,1,"Clear",8.902
+"484","Y1QFI",6,1994870,1,1,33,9,42,42,"olena-sergienko-0TSd6uCKTKc-unsplash.jpg","carlos-andres-gomez-vJuk8Y86mRw-unsplash.jpg",1,33,9,1,"Good looking",7.544
+"485","Y1QFI",8,2008048,1,1,48,43,43,43,"velizar-ivanov-7ktP9yZA1g4-unsplash.jpg","raamin-ka-0qJBEzudn5E-unsplash.jpg",0,43,48,1,"Looks professional ",17.027
+"486","y72qN",0,443667,1,-1,6,43,46,59,"ben-o-bro-C5XyLljkMrY-unsplash.jpg","raamin-ka-0qJBEzudn5E-unsplash.jpg",1,6,43,1,"The lighting and highlight of his features it is also cheerful",41.873
+"487","y72qN",14,839348,2,-1,1,46,65,76,"aiony-haust-jmATI5Q_YgY-unsplash.jpg","stefan-stefancik-QXevDflbl8A-unsplash.jpg",0,46,1,1,"The photo creates a connection between the model and the person viewing it",32.469
+"488","y72qN",16,882073,2,1,29,3,78,42,"leilani-angel-K84vnnzxmTQ-unsplash.jpg","art-hauntington-jzY0KRJopEI-unsplash.jpg",1,29,3,1,"It looks natural",11.607
+"489","y72qN",17,901561,2,-1,38,25,49,67,"petr-sevcovic-HzDF-rxlSeM-unsplash.jpg","joseph-gonzalez-iFgRcqHznqg-unsplash.jpg",1,38,25,1,"It looks natural Though the lighting looks dim there is no intense effort put into making this photo perfect",43.035
+"490","y72qN",18,950394,2,-1,33,30,39,78,"olena-sergienko-0TSd6uCKTKc-unsplash.jpg","matheus-ferrero-pg_WCHWSdT8-unsplash.jpg",1,33,30,1,"Can be used for ecommerce purposes",18.558
+"491","y72qN",21,979999,2,-1,26,12,72,63,"juri-gianfrancesco-9EZadYaMzk4-unsplash.jpg","daniel-rigdon-dXmXKPP2L4E-unsplash.jpg",1,26,12,1,"It is mysterious A moment in time we just stop to appreciate nature ",28.98
+"492","y72qN",22,1012631,2,1,23,48,69,55,"joanna-nix-walkup-H4fEMshfwTE-unsplash.jpg","velizar-ivanov-7ktP9yZA1g4-unsplash.jpg",0,48,23,1,"The connection with the model and her eyes The eyes are the window to the soul ",27.014
+"493","y72qN",3,515570,1,1,0,4,33,35,"abstral-official-cyOKLSgkgCE-unsplash.jpg","barna-bartis-2x3vfVxwR7o-unsplash.jpg",0,4,0,1,"I could see this photograph used for a variety of purposes I see it used in presentations or for business trainings",99.459
+"494","y72qN",4,623266,1,1,47,35,67,32,"tyler-nix-ZGa9d1a_4tA-unsplash.jpg","oliver-ragfelt-khV4fTy6-D8-unsplash.jpg",1,47,35,1,"It has charisma",16.852
+"495","y72qN",5,647813,1,-1,37,11,73,34,"pavel-anoshin-d0peGya6R5Y-unsplash.jpg","christian-ferrer-8vT-DgHZDG4-unsplash.jpg",0,11,37,1,"I could see it used for ecommerce purposes",22.104
+"496","y72qN",7,683221,1,1,45,41,39,64,"sarah-noltner-pL5ZzPp1zqg-unsplash.jpg","prince-akachi-i2hoD-C2RUA-unsplash.jpg",1,45,41,1,"The portrait view allows you to focus on the model It commands the attention as it is mystique",60.933
+"497","y72qN",9,756822,1,1,13,5,32,32,"erik-lucatero-d2MSDujJl2g-unsplash.jpg","batel-studio-ttSRjiYG_WM-unsplash.jpg",1,13,5,1,"The model stands out from the background There is a level of intimacy with it",47.944
+"498","YJmUD",0,1256462,1,-1,36,31,41,73,"ospan-ali-mGdA2fzjWLo-unsplash.jpg","mathilda-khoo-vLR0YP_otCo-unsplash.jpg",0,31,36,1,"It looks more dramatic like it has more of a story behind it",55.909
+"499","YJmUD",1,1318877,1,-1,20,37,61,39,"houcine-ncib-B4TjXnI0Y2c-unsplash.jpg","pavel-anoshin-d0peGya6R5Y-unsplash.jpg",0,37,20,1,"It just looks better to me",18.505
+"500","YJmUD",11,1451330,1,1,39,10,61,43,"philip-martin-5aGUyCW_PJw-unsplash.jpg","charles-etoroma-95UF6LXe-Lo-unsplash.jpg",1,39,10,1,"I love the background of this one and his outfit in it is perfect",33.269
+"501","YJmUD",14,1495815,2,-1,1,33,55,42,"aiony-haust-jmATI5Q_YgY-unsplash.jpg","olena-sergienko-0TSd6uCKTKc-unsplash.jpg",0,33,1,1,"I just think it looks bettern",10.392
+"502","YJmUD",15,1510734,2,-1,3,6,63,73,"art-hauntington-jzY0KRJopEI-unsplash.jpg","ben-o-bro-C5XyLljkMrY-unsplash.jpg",0,6,3,1,"It makes me feel like I want to know his story",21.609
+"503","YJmUD",19,1547539,2,1,35,22,41,59,"oliver-ragfelt-khV4fTy6-D8-unsplash.jpg","jessica-radanavong-mrYkTuAesKE-unsplash.jpg",1,35,22,1,"His eyes look dramatic in this photo and I like the wall color",33.48
+"504","YJmUD",20,1589943,2,-1,49,45,45,32,"vicky-hladynets-_gDoyVv5F4c-unsplash.jpg","sarah-noltner-pL5ZzPp1zqg-unsplash.jpg",1,49,45,1,"I like that it is bright",7.11
+"505","YJmUD",21,1600922,2,-1,44,4,66,63,"rikonavt-HQjfrvdTfak-unsplash.jpg","barna-bartis-2x3vfVxwR7o-unsplash.jpg",1,44,4,1,"I think she looks very beautiful and radiant right here",14.519
+"506","YJmUD",23,1621625,2,1,24,29,36,58,"joel-mott-LaK153ghdig-unsplash.jpg","leilani-angel-K84vnnzxmTQ-unsplash.jpg",1,24,29,1,"I like the palm trees in the background",9.792
+"507","YJmUD",7,1371513,1,1,48,30,35,56,"velizar-ivanov-7ktP9yZA1g4-unsplash.jpg","matheus-ferrero-pg_WCHWSdT8-unsplash.jpg",0,30,48,1,"I like the greenery better with this photograph",17.3
+"508","YJmUD",8,1394862,1,1,0,25,36,54,"abstral-official-cyOKLSgkgCE-unsplash.jpg","joseph-gonzalez-iFgRcqHznqg-unsplash.jpg",1,0,25,1,"I like that it looks like it has an outdoor background",26.581
+"509","YJmUD",9,1428056,1,1,46,12,50,36,"stefan-stefancik-QXevDflbl8A-unsplash.jpg","daniel-rigdon-dXmXKPP2L4E-unsplash.jpg",1,46,12,1,"I think it has good color tones",12.941

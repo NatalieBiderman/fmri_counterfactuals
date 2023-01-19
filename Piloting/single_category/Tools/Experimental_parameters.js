@@ -1,6 +1,6 @@
 // =========== Experiment parameters  ===========
 
-var curr_category         = "People"
+var curr_category         = "Scenes"
 var image_folder          = "Stimuli/Experimental_stims/" + curr_category + "/";
 var n_ratings             = 50;
 var n_pairs               = 12;//10;
