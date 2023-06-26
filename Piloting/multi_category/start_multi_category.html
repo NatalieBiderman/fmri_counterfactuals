@@ -31,7 +31,6 @@ var is_scanner                = "mturk";
 var show_no_response          = 1;
 var onset                     = 0;
 var duration                  = 0;
-var block_counter             = 0;
 var run_full_exp              = 1;
 var fixed_confirmation        = 0;
 
@@ -604,7 +603,9 @@ var rating_trial = {
       subID = Ratings[0].PID;
       if (is_scanner == "scanner"){
         save_local_data(data_folder+'Ratings/ratings_data_sub_'+subID+".csv", convertToCSV(Ratings));
-      } else {
+        save_local_data(data_folder+'All_data/all_data_sub_'+subID+".csv", jsPsych.data.get().ignore('stimulus').csv());
+        } else {
+        save_server_data(data_folder+'All_data/all_data_sub_'+subID+".csv", jsPsych.data.get().ignore('stimulus').csv());
         save_server_data(data_folder+'Ratings/ratings_data_sub_'+subID+".csv", convertToCSV(Ratings));
       }
 
@@ -648,7 +649,9 @@ var rating_trial = {
       subID = Deliberation[0].PID;
       if (is_scanner == "scanner"){
         save_local_data(data_folder+'Deliberation/deliberation_data_sub_'+subID+".csv", convertToCSV(Deliberation));
-      } else {
+        save_local_data(data_folder+'All_data/all_data_sub_'+subID+".csv", jsPsych.data.get().ignore('stimulus').csv());
+        } else {
+        save_server_data(data_folder+'All_data/all_data_sub_'+subID+".csv", jsPsych.data.get().ignore('stimulus').csv());
         save_server_data(data_folder+'Deliberation/deliberation_data_sub_'+subID+".csv", convertToCSV(Deliberation));
       }
     } //if last trials
@@ -859,7 +862,9 @@ for (t = 0; t < n_localizer_trials; t++){
         if (is_scanner == "scanner"){
           save_local_data(data_folder+'Localizer/localizer_sub_'+subID+".csv", convertToCSV(Localizer));
           save_local_data(data_folder+'Events/events_sub_'+subID+".csv", convertToCSV(events));
-        } else {
+          save_local_data(data_folder+'All_data/all_data_sub_'+subID+".csv", jsPsych.data.get().ignore('stimulus').csv());
+          } else {
+          save_server_data(data_folder+'All_data/all_data_sub_'+subID+".csv", jsPsych.data.get().ignore('stimulus').csv());
           save_server_data(data_folder+'Localizer/localizer_sub_'+subID+".csv", convertToCSV(Localizer));
           save_server_data(data_folder+'Events/events_sub_'+subID+".csv", convertToCSV(events));
         }
@@ -1011,11 +1016,6 @@ for (t = 0; t < n_deliberation_trials; t++) {
       data.right_path = Deliberation[data.index].right_path;
       data.left_rating = Deliberation[data.index].left_rating;
       data.right_rating = Deliberation[data.index].right_rating;
-
-      // add to block counter
-      if (Deliberation[data.index].is_practice == 0){
-        block_counter = block_counter + 1;
-      }
 
       // save onset and duration
       if (Deliberation[data.index].stim_type == "original"){
@@ -1591,7 +1591,9 @@ var end_deliberation_phase = {
       save_local_data(data_folder+'Memory/memory_sub_'+subID+".csv", convertToCSV(Memory));
       save_local_data(data_folder+'Final_ratings/final_ratings_sub_'+subID+".csv", convertToCSV(Final_ratings));
       save_local_data(data_folder+'Outcome_estimation/outcome_estimation_sub_'+subID+".csv", convertToCSV(Outcome_estimation));
-    } else {
+      save_local_data(data_folder+'All_data/all_data_sub_'+subID+".csv", jsPsych.data.get().ignore('stimulus').csv());
+      } else {
+      save_server_data(data_folder+'All_data/all_data_sub_'+subID+".csv", jsPsych.data.get().ignore('stimulus').csv());
       save_server_data(data_folder+'Deliberation/deliberation_sub_'+subID+".csv", convertToCSV(Deliberation));
       save_server_data(data_folder+'clean_Deliberation/clean_deliberation_sub_'+subID+".csv", convertToCSV(clean_Deliberation));
       save_server_data(data_folder+'Events/events_sub_'+subID+".csv", convertToCSV(events));
@@ -1931,7 +1933,9 @@ var end_outcome_learning_phase = {
      if (is_scanner == "scanner"){
        save_local_data(data_folder+'Outcome_learning/outcome_learning_data_sub_'+subID+".csv", convertToCSV(Outcome_learning));
        save_local_data(data_folder+'Events/events_sub_'+subID+".csv", convertToCSV(events));
-     } else {
+       save_local_data(data_folder+'All_data/all_data_sub_'+subID+".csv", jsPsych.data.get().ignore('stimulus').csv());
+       } else {
+       save_server_data(data_folder+'All_data/all_data_sub_'+subID+".csv", jsPsych.data.get().ignore('stimulus').csv());
        save_server_data(data_folder+'Outcome_learning/outcome_learning_data_sub_'+subID+".csv", convertToCSV(Outcome_learning));
        save_server_data(data_folder+'Events/events_sub_'+subID+".csv", convertToCSV(events));
      }
@@ -2273,7 +2277,9 @@ var end_final_decisions_phase = {
     if (is_scanner == "scanner"){
       save_local_data(data_folder+'Final_decisions/final_decisions_sub_'+subID+".csv", convertToCSV(Final_decisions));
       save_local_data(data_folder+'Events/events_sub_'+subID+".csv", convertToCSV(events));
-    } else {
+      save_local_data(data_folder+'All_data/all_data_sub_'+subID+".csv", jsPsych.data.get().ignore('stimulus').csv());
+      } else {
+      save_server_data(data_folder+'All_data/all_data_sub_'+subID+".csv", jsPsych.data.get().ignore('stimulus').csv());
       save_server_data(data_folder+'Final_decisions/final_decisions_sub_'+subID+".csv", convertToCSV(Final_decisions));
       save_server_data(data_folder+'Events/events_sub_'+subID+".csv", convertToCSV(events));
     }
@@ -2591,7 +2597,9 @@ for (t = 0; t < n_memory_trials; t++) {
       if (is_scanner == "scanner"){
         save_local_data(data_folder+'Memory/memory_sub_'+subID+".csv", convertToCSV(Memory));
         save_local_data(data_folder+'Events/events_sub_'+subID+".csv", convertToCSV(events));
-      } else {
+        save_local_data(data_folder+'All_data/all_data_sub_'+subID+".csv", jsPsych.data.get().ignore('stimulus').csv());
+        } else {
+        save_server_data(data_folder+'All_data/all_data_sub_'+subID+".csv", jsPsych.data.get().ignore('stimulus').csv());
         save_server_data(data_folder+'Memory/memory_sub_'+subID+".csv", convertToCSV(Memory));
         save_server_data(data_folder+'Events/events_sub_'+subID+".csv", convertToCSV(events));
       }
@@ -2906,7 +2914,9 @@ for (t = 0; t < n_outcome_estimation_trials; t++){
         if (is_scanner == "scanner"){
           save_local_data(data_folder+'Outcome_estimation/outcome_estimation_sub_'+subID+".csv", convertToCSV(Outcome_estimation));
           save_local_data(data_folder+'Events/events_sub_'+subID+".csv", convertToCSV(events));
-        } else {
+          save_local_data(data_folder+'All_data/all_data_sub_'+subID+".csv", jsPsych.data.get().ignore('stimulus').csv());
+          } else {
+          save_server_data(data_folder+'All_data/all_data_sub_'+subID+".csv", jsPsych.data.get().ignore('stimulus').csv());
           save_server_data(data_folder+'Outcome_estimation/outcome_estimation_sub_'+subID+".csv", convertToCSV(Outcome_estimation));
           save_server_data(data_folder+'Events/events_sub_'+subID+".csv", convertToCSV(events));
         }
@@ -3021,7 +3031,9 @@ for (t = 0; t < n_final_ratings_trials; t++){
       if (data.index == n_final_ratings_trials-1){
         if (is_scanner == "scanner"){
           save_local_data(data_folder+'Final_ratings/final_ratings_sub_'+subID+".csv", convertToCSV(Final_ratings));
-        } else {
+          save_local_data(data_folder+'All_data/all_data_sub_'+subID+".csv", jsPsych.data.get().ignore('stimulus').csv());
+          } else {
+          save_server_data(data_folder+'All_data/all_data_sub_'+subID+".csv", jsPsych.data.get().ignore('stimulus').csv());
           save_server_data(data_folder+'Final_ratings/final_ratings_sub_'+subID+".csv", convertToCSV(Final_ratings));
         }
       }
@@ -3029,6 +3041,7 @@ for (t = 0; t < n_final_ratings_trials; t++){
   } // rating_trial
 final_ratings_timeline.timeline.push(final_ratings_trial);
 } // for trials
+
 
 // =============================================================================
 //                               END EXPERIMENT
@@ -3040,7 +3053,7 @@ if (is_scanner == "scanner"){
       choices: keys_start_block,
       response_ends_trial: true,
       data: {ttype: 'end_experiment'},
-      stimulus:  "You have completed the experiment. Thank you for participating!"+
+      stimulus:  "You have completed the experiment in the fMRI scanner. Thank you for participating!"+
                  "<br>Please remain still for one more minute while we complete a final scan.</br>"+
                  "<br>We will be coming in to get you very shortly.</br>"
       } // end_task
@@ -3130,9 +3143,9 @@ if (is_scanner == "scanner"){
      }
 
 
-//timeline.push(setup_timeline, ratings_timeline, localizer_timeline, deliberation_timeline, outcome_learning_timeline, final_decisions_timeline, memory_timeline, outcome_estimation_timeline);
-timeline.push(setup_timeline)
-timeline = timeline.concat(end_task);
+timeline.push(setup_timeline, ratings_timeline, localizer_timeline, deliberation_timeline, outcome_learning_timeline, final_decisions_timeline, memory_timeline, outcome_estimation_timeline);
+//timeline.push(setup_timeline)
+//timeline = timeline.concat(end_task);
 
 if (is_scanner=="scanner"){
   timeline.push(end_task, final_ratings_timeline, end_scan_day)
