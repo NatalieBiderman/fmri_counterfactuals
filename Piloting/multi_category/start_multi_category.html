@@ -1,0 +1,3171 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Columbia University Psychology Experiment</title>
+    <script src="jspsych-6.0.5/jspsych.js"></script>
+    <script src="Tools/Functions.js"></script>
+    <script src="Tools/jQuery.js"></script>
+    <script src="jspsych-6.0.5/plugins/jspsych-html-keyboard-response.js"></script>
+    <script src="jspsych-6.0.5/plugins/jspsych-instructions.js"></script>
+    <script src="jspsych-6.0.5/plugins/jspsych-image-keyboard-response.js"></script>
+    <script src="jspsych-6.0.5/plugins/jspsych-survey-text.js"></script>
+    <script src="jspsych-6.0.5/plugins/jspsych-survey-likert.js"></script>
+    <script src="jspsych-6.0.5/plugins/jspsych-survey-multi-choice.js"></script>
+    <script src="jspsych-6.0.5/plugins/jspsych-html-slider-response.js"></script>
+    <script src="jspsych-6.0.5/plugins/jspsych-fullscreen.js"></script>
+    <script src="jspsych-6.0.5/plugins/jspsych-html-button-response.js"></script>
+    <link href="jspsych-6.0.5/css/jspsych.css" rel="stylesheet" type="text/css"></link>
+    <link href="Tools/myCSSstyle.css" rel="stylesheet" type="text/css"></link>
+    <style> </style>
+  </head>
+  <body> </body>
+  <script>
+
+
+// =============================================================================
+// SET PARAMETERS
+// =============================================================================
+
+var is_debug                  = 0;
+var is_scanner                = "mturk";
+var show_no_response          = 1;
+var onset                     = 0;
+var duration                  = 0;
+var block_counter             = 0;
+var run_full_exp              = 1;
+var fixed_confirmation        = 0;
+
+var n_categories              = 4;
+var n_exemplars_per_car       = 6;
+var n_ratings_trials          = 48; // 12 items per category
+var n_localizer_trials        = 20*4*3 + 6; // 20 images per block, 4 categories, 3 repetitions of each category, 6 practice trials.
+var n_deliberation_pairs      = 12;
+var n_deliberation_practice   = 4;
+var n_deliberation_reps       = 4;
+var n_deliberation_trials     = n_deliberation_pairs * n_deliberation_reps * 2 + n_deliberation_practice; // 76, 12 pairs, 4 repetitions, scramble + original trial, 4 practice
+var n_outcome_learning_trials = 72 + 4 ; // 12 items, repeated 6 times + 4 practice trials .
+var n_final_decisions_trials  = 288 + 4; // 36 unique chosen pairs, 36 unique unchosen pairs, repeated 4 times + 4 times
+var n_memory_trials           = 24*4 + 3; // 12 old and 12 recombined, 3 practice
+var n_outcome_estimation_trials = 24*4 + 3; // 12 chosen and 12 unchosen items. repeated 4 times.
+var n_final_ratings_trials    = 96; // all 49 images and 48 scrambled images as well
+
+var n_localizer_runs          = 1;
+var n_deliberation_runs       = 2;
+var n_outcome_learning_runs   = 2;
+var n_final_decisions_runs    = 4;
+var n_memory_runs             = 1;
+var n_outcome_estimation_runs = 1;
+
+var localizer_missed_trials_cutoff          = 10;
+var deliberation_missed_trials_cutoff       = 4;
+var outcome_learning_missed_trials_cutoff   = 10;
+var final_decisions_missed_trials_cutoff    = 10;
+var memory_missed_trials_cutoff             = 10;
+var outcome_estimation_missed_trials_cutoff = 10;
+
+var deliberation_bonus       = 1.5;
+var max_bonus_final_decisions = 2;
+if (is_scanner=="scanner"){deliberation_bonus = 2.5; max_bonus_final_decisions = 10;}
+var reward_per_correct_reponse = max_bonus_final_decisions/((n_final_decisions_trials-4)/2); // we only reward for chosen trials
+
+var timing_max_del_choice    = 3000; // maximum time to make a decision in deliberation phase
+if (is_debug==1){timing_max_del_choice=1000;}
+var timing_max_scramble_prompt = 1000;
+var timing_confirmation      = 500;
+var timing_warning           = 300; // if people are too slow in the deliberation phase they get a warning
+var timing_show_chosen       = 1500; // presentation of chosen item in the outcome learning phase
+var timing_show_outcome      = 1500; // max time of presentation of the outcome in the outcome learning phase
+var timing_feedback          = 1000;
+var timing_max_final_decisions = 1500;
+var timing_max_memory        = 1500;
+var timing_max_outcome_estimation = 1500;
+
+var repeat_localizer_practice = 0;
+var repeat_deliberation_practice = 0;
+var repeat_outcome_learning_practice = 0;
+var repeat_final_decisions_practice = 0;
+var repeat_memory_practice = 0;
+var repeat_outcome_estimation_practice = 0;
+
+var timeline                  = [];
+var setup_timeline            = { timeline: []}; // for scanner to include subject id and age
+var ratings_timeline          = { timeline: []};
+var localizer_timeline        = { timeline: []};
+var deliberation_timeline     = { timeline: []};
+var outcome_learning_timeline = { timeline: []};
+var final_decisions_timeline  = { timeline: []};
+var memory_timeline           = { timeline: []};
+var final_ratings_timeline    = { timeline: []};
+var outcome_estimation_timeline = { timeline: []};
+var events = [];
+
+// assign decision keys
+if (is_scanner == "scanner") {
+  var keys_task = ['2', '3']; // 2 - left, 3 - right
+  var continue_key_text = "pointer finger"
+  var continue_key = '2';
+  var keys_start_block = 'S'
+  var max_extra = 10;
+} else {
+  var keys_task = ['D', 'K']; // D - left, K - right
+  var continue_key_text = "D key"
+  var continue_key = 'D'
+  var keys_start_block = 'D'
+  var max_extra = 3.5;
+}
+var keys_start_run          = ['t'];
+
+var data_folder             = '../Data/Individual_data/'
+var int_data_folder         = '../Data/Interactive_data/'
+var tools_folder            = 'Tools'
+
+var not_enough_deliberation_choices_logical = 0;
+
+// =============================================================================
+// PRE LOAD TASK IMAGES
+// =============================================================================
+
+// Functions for loading the CSV files that contained optimized jitter durations
+function csvJSON(csv) {
+   var lines = csv.split('\n');
+   lines.pop(); //remove last line
+   var result = [];
+   var headers = lines[0].split(',');
+   for (var i = 1; i < lines.length; i++) {
+     var obj = {};
+     var currentline = lines[i].split(',');
+     for (var j = 0; j < headers.length; j++) {
+         curr_header = headers[j].split('"').join('');
+         obj[curr_header] = currentline[j].split('"').join('');
+       }
+     result.push(obj);
+   }
+   return result;
+}
+
+  function readTextFile(file, callback) {
+     var rawFile = new XMLHttpRequest();
+     rawFile.overrideMimeType("application/json");
+     rawFile.open("GET", file, false);
+     rawFile.onreadystatechange = function() {
+         if (rawFile.readyState === 4 && rawFile.status == "200") {
+             callback(rawFile.responseText);
+         }
+     }
+     rawFile.send(null);
+  }
+
+function convertToCSV(arr) {
+  const array = [Object.keys(arr[0])].concat(arr)
+
+  return array.map(it => {
+    return Object.values(it).toString()
+  }).join('\n')
+}
+
+function convert_cols_to_number(array, num_cols){
+  for (i=0; i<num_cols.length; i++){
+    array.forEach((element, index) => {array[index][num_cols[i]] = Number(array[index][num_cols[i]])});
+  }
+  return array;
+}
+
+function convert_cols_to_nan(array, nan_cols){
+  for (i=0; i<nan_cols.length; i++){
+    array.forEach((element, index) => {array[index][nan_cols[i]] = NaN});
+  }
+  return array;
+}
+
+function load_df(phase_folder, phase_csv, num_cols, nan_cols, subID){
+  var df_csv; readTextFile('Task_sequences/'+phase_folder+'/'+phase_csv+'_v'+counterbalanced_df+'.csv', function(text){df_csv = text;});
+  var df = csvJSON(df_csv);
+  df = convert_cols_to_number(df, num_cols);
+  df = convert_cols_to_nan(df, nan_cols);
+  // add subject id
+  for (i=0; i<df.length; i++){df[i].PID = subID;}
+  return df
+}
+
+function find_run_change(df){
+  var transition_trials = [];
+  for (i=0; i<df.length-1; i++){
+    if (df[i].run != df[i+1].run & df[i].practice == 0){
+      transition_trials = transition_trials.concat(i)
+    }
+  }
+  return transition_trials
+}
+
+// find end practice trial
+function find_end_practice(df){
+  var transition_trials = [];
+  for (i=0; i<df.length-1; i++){
+    if (df[i].practice != df[i+1].practice){
+      transition_trials = transition_trials.concat(i)
+    }
+  }
+  return transition_trials
+}
+
+  // load task images
+  var exp_stims_csv; readTextFile("Stimuli/Stim_csv/experimental_stimuli.csv", function(text){exp_stims_csv = text;});
+  var exp_stims = csvJSON(exp_stims_csv);
+  exp_stims = convert_cols_to_number(exp_stims, ["index"])
+
+  // load practice images
+  var practice_stims_csv; readTextFile("Stimuli/Stim_csv/practice_stimuli.csv", function(text){practice_stims_csv = text;});
+  var practice_stims = csvJSON(practice_stims_csv);
+
+  // load localizer images
+  var localizer_stims_csv; readTextFile("Stimuli/Stim_csv/localizer_stimuli.csv", function(text){localizer_stims_csv = text;});
+  var localizer_stims = csvJSON(localizer_stims_csv);
+
+  // load instructions images
+  var instructions_stims_csv; readTextFile("Stimuli/Stim_csv/instructions_stimuli.csv", function(text){instructions_stims_csv = text;});
+  var instructions_stims = csvJSON(instructions_stims_csv);
+  if (is_scanner=="scanner"){
+    instructions_stims = instructions_stims.filter(a => a.scanner == "scanner")
+  } else {
+    instructions_stims = instructions_stims.filter(a => a.scanner == "mturk")
+  }
+
+  // concatenate all images for preloading
+  reward_stimuli = ['Stimuli/Reward_stim/dollar_bill.jpeg',
+                    'Stimuli/Reward_stim/scrambled_dollar_bill.jpeg',
+                    'Stimuli/Reward_stim/100bill.jpeg',
+                    'Stimuli/Reward_stim/scrambled_100bill.jpeg'];
+
+  experimental_stimuli = exp_stims.map(a => a.path);
+  practice_stimuli = practice_stims.map(a => a.path);
+  instructions_stimuli = instructions_stims.map(a => a.path);
+  localizer_stimuli = localizer_stims.map(a => a.path);
+  images = practice_stimuli.concat(reward_stimuli,experimental_stimuli,instructions_stimuli, localizer_stimuli);
+
+// =============================================================================
+// ASSIGN QUIZ QUESTIONS AND ANSWERS
+// =============================================================================
+
+  var quiz_qs = {
+    rating:
+      [{prompt: "True or False: You will rate the following photographs according to how much you like them",
+      options: ["True", "False"]},
+      {prompt: "You will rate photographs by using: ",
+      options: ["Mouse","Two optional keys"]}],
+    localizer:
+      [{prompt: "True or False: We will show you photographs breifly, and you are asked to respond to each photograph",
+      options: ["True","False"]},
+      {prompt: "Which key should you press if a red dot appears on the photograph?",
+       options: ["Index finger","Middle finger"]},
+      {prompt: "Which key should you press for photographs without a red dot?",
+       options: ["Index finger","Middle finger"]}],
+    deliberation:
+      [{prompt: "True or False: You will now choose photographs for an auction, and your goal is to make decisions that will maximize your profits from the auction",
+      options: ['True','False']},
+      {prompt: "True or False: You will practice the decisions a few times before the final round of decisions",
+      options: ["True", "False"]},
+      {prompt: "What should you do when two scrambled images show up?",
+      options: ["Wait until an arrow comes up and then select the image the arrow is pointing at", "Press one of the keys to select either the left or right scrambled images"]},
+      {prompt: "How should you decide between two photographs?",
+      options: ["Consider carefully and take your time (up to 3 seconds)","Do it as quickly as possible"]},
+      {prompt: "What key should you press to choose the photograph/scrambled image on the left?",
+      options: ["Index finger","Middle finger"]}],
+   reward:
+      [{prompt: "True or False: You will now find out the results of the auction.",
+      options: ['True','False']},
+      {prompt: "True or False: Your chosen photographs could either result in a gain or in no gain",
+      options: ["True", "False"]},
+      {prompt: "What should you do when you see a photograph?",
+      options: ["Do not press a key","Press a relevant key"]},
+      {prompt: "What should you do if you see a $100 bill?",
+      options: ["Do not press a key","Press the index finger to signal a gain outcome"]},
+      {prompt: "What should you do if you see a scrambled image?",
+      options: ["Do not press a key","Press the middle finger to signal a no gain outcome"]}],
+    final_decisions:
+      [{prompt: "True or False: You will now make more decisions between photographs to prepare a portfolio of high-valued photographs",
+      options: ['True','False']},
+      {prompt: "What key should you press to choose the photograph on the right?",
+      options: ["Index finger","Middle finger"]}],
+    memory:
+      [{prompt: "You will now be asked what you remember from which phase of the experiment?",
+      options: ["Decisions made in the beginning of the experiment","Decisions made in the end of the experiment"]},
+      {prompt: "Recombined photographs are:",
+      options: ["Random photographs you haven't seen before", "Photographs you have seen before but they were not paired together"]},
+      {prompt: "What key should you press to indicate an intact pair?",
+      options: ["Index finger","Middle finger"]}],
+    final_ratings:
+      [{prompt: "True or False: You will now rate again how much you like the following photographs",
+      options: ["True","False"]},
+      {prompt: "Your responses should be made using:",
+      options: ["Mouse","Two optional keys"]}],
+    outcome_estimation:
+      [{prompt: "True or False: After you made decisions about which photographs should go on auction and learned their profits, the remaining photographs (those you did not choose) also went on auction.",
+      options: ["True","False"]},
+      {prompt: "True or False: You will now be asked what the auction outcomes were for the photographs you previously chose and those you did not choose to go on auction.",
+       options: ["True","False"]},
+      {prompt: "Which key should you press to estimate a no gain outcome?",
+       options: ["Index finger","Middle finger"]}]
+     };
+
+var quiz_answers = {
+    rating: ["True", "Mouse"],
+    localizer: ["True", "Middle finger","Index finger"],
+    deliberation: ["True", "True", "Wait until an arrow comes up and then select the image the arrow is pointing at","Consider carefully and take your time (up to 3 seconds)", "Index finger"],
+    reward: ["True", "True", "Do not press a key", "Press the index finger to signal a gain outcome", "Press the middle finger to signal a no gain outcome"],
+    final_decisions: ["True", "Middle finger"],
+    memory: ["Decisions made in the beginning of the experiment", "Photographs you have seen before but they were not paired together", "Index finger"],
+    final_ratings: ["True", "Mouse"],
+    outcome_estimation: ["True", "True", "Middle finger"]};
+
+if (is_scanner == "mturk"){
+  quiz_qs.localizer[1].options = ["D", "K"];
+  quiz_qs.localizer[2].options = ["D", "K"];
+  quiz_answers.localizer[1] = "K";
+  quiz_answers.localizer[2] = "D";
+  quiz_qs.deliberation[3].options = ["D", "K"];
+  quiz_answers.deliberation[3] = "D";
+  quiz_qs.reward[3].options = ["Do not press a key","Press the D key to signal a gain outcome"];
+  quiz_answers.reward[3] = "Press the D key to signal a gain outcome";
+  quiz_qs.reward[4].options = ["Do not press a key","Press the K key to signal a no gain outcome"];
+  quiz_answers.reward[4] = "Press the K key to signal a no gain outcome";
+  quiz_qs.final_decisions[1].options = ["D", "K"];
+  quiz_answers.final_decisions[1] = "K";
+  quiz_qs.memory[2].options = ["D", "K"];
+  quiz_answers.memory[2] = "D";
+  quiz_qs.outcome_estimation[2].options = ["D", "K"];
+  quiz_answers.outcome_estimation[2] = "K";
+}
+
+// =============================================================================
+// DEFINE CSS FOR TRIALS
+// =============================================================================
+
+var decisions_stims       = '<table class="table">\
+                            <tr><td> <img class="object" src="{0}"</img></td>\
+                            <td class="scramble_prompt">{1}</td>\
+                            <td><img class="object" src="{2}"></img></td></tr></table>';
+var choice_confirm_stims  = '<table class="table"><tr>\
+                            <td> <img class="{0}" src="{1}"</img> </td>\
+                            <td class="scramble_prompt"></td>\
+                            <td> <img class="{2}" src="{3}"></img> </td></tr></table>';
+var fixation_stim         = '<table class="table"><tr>\
+                            <td class="object"> </td>\
+                            <td class="fixation">+</td>\
+                            <td class="object"> </td></tr></table>';
+var fixation_localizer    = '<table class="table"><tr>\
+                            <td class="object"> </td>\
+                            <td class="fixation">{0}</td>\
+                            <td class="object"></td></tr></table>';
+var single_stim           = '<table class="table"><tr>\
+                            <td class="object"><img class="object" src="{0}"/></td></tr></table>';
+var localizer_stim        = '<table class="table"><tr>\
+                            <td class="localizer"><img class="localizer" src="{0}"/><div id="{1}" style="top:{2}%; left:{3}%"></div></td></tr></table>';
+var reward_stim           = '<table class="table"><tr>\
+                            <td class="reward"><img class="reward" src="{0}"/></td></tr></table>';
+
+
+// TODO: emphesize that the stimuli in the practice trials were randomly chosen from the internet and were onlt meant to pracrtice pressing the buttons
+
+// =============================================================================
+// SETUP
+// =============================================================================
+
+var fullscreen = {
+  type: 'fullscreen',
+  fullscreen_mode: true,
+  on_start: function(trial){
+    if (is_scanner=="mturk"){
+      trial.message = '<p>Welcome to our study!<br>' +
+      'Our study requires your undivided attention throughout the entire experiment.</br>'+
+      'Please note that exiting full screen mode, responding randomly, or responding to fewer than 90% of trials will cause your HIT to be rejected.<br></br>'+
+      'To switch to full screen and start the experiment, please press the button below.</p>'
+    }
+  },
+  data: {ttype: 'full_screen', start_time: timeStamp()}
+}
+
+// retreive subject id
+var get_id_trial = {
+  type: 'survey-text',
+  questions: [{prompt: 'insert subject ID', columns: 10, rows: 1},
+              {prompt: 'insert subject age', columns: 10, rows: 1}],
+  data: {ttype: 'get_id'},
+  on_start: function(trial){
+    if (is_scanner == "scanner"){
+      trial.questions = [{prompt: 'insert subject ID', columns: 10, rows: 1},
+                         {prompt: 'insert subject age', columns: 10, rows: 1},
+                         {prompt: 'insert subject gender (MALE/FEMALE/OTHER)', columns: 10, rows: 1}]
+    } else {
+      trial.questions = [{prompt: 'please insert your age', columns: 10, rows: 1},
+                         {prompt: 'please insert your gender (MALE/FEMALE/OTHER)', columns: 10, rows: 1}]
+    }
+  },
+  on_finish: function(data){
+
+    // =========================================================================
+    // GET SUBJECT ID
+    // =========================================================================
+
+    if (is_scanner == "scanner"){
+      var subID = Number(jsPsych.data.get().filter({ttype: 'get_id'}).last(1).values()[0].responses.split('"')[3]);
+    } else {
+      var subID = Math.floor(Math.random() * 90000) + 10000;
+    }
+    data.PID = subID;
+    data.age = Number(jsPsych.data.get().filter({ttype: 'get_id'}).last(1).values()[0].responses.split('"')[7]);
+    data.gender = jsPsych.data.get().filter({ttype: 'get_id'}).last(1).values()[0].responses.split('"')[11];
+    jsPsych.data.addProperties({age: data.age, PID: data.PID, gender: data.gender})
+
+    // =========================================================================
+    // LOAD ALL PREMADE DATA FRAMES AND DETECT PRACTICE AND BLOCK CHANGES
+    // =========================================================================
+
+    if (run_full_exp == 1){
+
+      counterbalanced_df = (subID % 4) + 1; // we use the subject id to assign the relevant df
+      //if (subID % 2 == 1) {counterbalanced_df = "a"} else {counterbalanced_df = "b"}; // we use the subject id to assign the relevant df
+      Ratings = load_df("Ratings", "ratings", ["iti", "trial", "stimulus_index"], [], subID);
+      Deliberation = load_df("Deliberation", "deliberation", ["iti","long_iti","simulation","version","practice", "block", "run", "no_response", "trial", "scramble_screen_time"], ["chosen_category", "chosen_stimulus", "scramble_acc", "unchosen_category", "unchosen_stimulus","left_chosen","rt","chosen_path","unchosen_path"], subID);
+      Outcome_learning = load_df("Outcome_learning", "outcome_learning", ["iti", "isi","block","long_iti","simulation","version","trial","practice", "run"], ["response", "response_acc", "response_rt", "stimulus"], subID);
+      Final_decisions = load_df("Final_decisions", "final_decisions", ["block", "long_iti","simulation","version", "iti", "gain_left", "trial","practice", "run", "no_response"], ["higher_outcome_chosen", "left_chosen", "rt"], subID);
+      Memory = load_df("Memory", "memory", ["run","trial","block", "long_iti","simulation","version", "iti", "practice", "old_pair","chosen_left"], ["pair_acc", "pair_response", "pair_rt"], subID);
+      Final_ratings = load_df("Final_ratings", "final_ratings", ["iti", "trial", "stimulus_index"], ["new_rating", "rt"], subID);
+      Outcome_estimation = load_df("Outcome_estimation", "outcome_estimation", ["trial","run","block","iti","long_iti","simulation","version"], ["confidence_response", "confidence_rt", "outcome_response", "outcome_rt","outcome_acc"], subID);
+      Localizer = load_df("Localizer", "localizer", ["trial","run","long_iti","simulation","version","iti","is_odd_ball","practice","stimulus_duration"], ["response", "rt"], subID);
+    }
+
+    run_change_deliberation = find_run_change(Deliberation)
+    run_change_outcome_learning = find_run_change(Outcome_learning)
+    run_change_final_decisions = find_run_change(Final_decisions)
+    run_change_memory = find_run_change(Memory)
+    run_change_outcome_estimation = find_run_change(Outcome_estimation)
+    run_change_localizer = find_run_change(Localizer)
+
+    end_practice_deliberation = find_end_practice(Deliberation)
+    end_practice_outcome_learning = find_end_practice(Outcome_learning)
+    end_practice_final_decisions = find_end_practice(Final_decisions)
+    end_practice_memory = find_end_practice(Memory)
+    end_practice_outcome_estimation = find_end_practice(Outcome_estimation)
+    end_practice_localizer = find_end_practice(Localizer)
+
+  }
+};
+
+setup_timeline.timeline.push(fullscreen, get_id_trial);
+
+// =============================================================================
+// CREATE GENERAL TRIALS TO BE USED THROUGHOUT THE TASK
+// =============================================================================
+
+// ------------------------------- start run -----------------------------------
+
+var start_run = {
+    type: 'html-keyboard-response',
+    stimulus: "{0}",
+    choices: keys_start_run,
+    response_ends_trial: true,
+    data: {ttype: "start_run"},
+    trial_duration:null,
+    on_start: function(trial){
+      if (is_scanner=="scanner"){
+        start_run_prompt = "Please remember to stay as still as possible throughout the scan.</br></br>The task will begin shortly..."
+      } else {
+        start_run_prompt = "Please press the T key to start"
+      }
+      trial.stimulus = String.format(trial.stimulus, start_run_prompt);
+    },
+    on_finish: function(data){
+      onset = 0; // restart onset in the beginning of every run
+      // add columns to data})
+    }
+}
+
+// ----------------------------- practice over ---------------------------------
+
+var practice_over = {
+    type: 'html-keyboard-response',
+    data: {ttype: 'practice_over'},
+    stimulus: "The practice block is over <br></br>"+
+              "You will now start the actual task.</br></br>{0}",
+    choices: keys_start_block,
+    response_ends_trial: true,
+    on_start: function(trial){
+      if (is_scanner=="scanner"){
+        practice_over_prompt = "" // subjects do not press anything here.
+        trial.stimulus = String.format(trial.stimulus, practice_over_prompt);
+      } else {
+        practice_over_prompt = "When you are ready to start, please press the "+keys_start_block
+        trial.stimulus = String.format(trial.stimulus, practice_over_prompt);
+      }
+    }
+}
+
+// ------------------------------ instructions ---------------------------------
+
+// repeat instructions screen
+var missed_instruction_checkup = {
+      type: 'html-keyboard-response',
+      data: {ttype: 'missed_instruction_checkup'},
+      stimulus: "Sorry, you missed one or more questions.</br></br>"+
+                "Please press the "+continue_key_text+" to repeat the instructions.",
+      choices: keys_task[0],
+      response_ends_trial: true,
+      on_finish: function(data){
+        data.missed_checkup = 1
+      } // on_finish
+    } // missed_instruction_checkup
+
+  // If participants pass the comprehension check, they can start the phase.
+  // For scanned participants, this appears immediately after the quiz end.
+  var passed_instructions_practice = {
+      type: 'html-keyboard-response',
+      stimulus: "We will now start a few practice trials to get you acquainted with the task.</br></br>{0}",
+      choices: keys_start_block,
+      response_ends_trial: true,
+      trial_duration:null,
+      on_start: function(trial){
+        if (is_scanner=="scanner"){
+          passed_instructions_prompt = "" // subjects do not press anything here.
+          trial.stimulus = String.format(trial.stimulus, passed_instructions_prompt);
+        } else {
+          passed_instructions_prompt = "When you are ready to start, please press the "+keys_start_block
+          trial.stimulus = String.format(trial.stimulus, passed_instructions_prompt);
+        }
+      }
+  }
+
+  var passed_instructions_no_practice = {
+      type: 'html-keyboard-response',
+      stimulus: "We will now start the task.</br></br>{0}",
+      choices: keys_start_block,
+      response_ends_trial: true,
+      trial_duration:null,
+      on_start: function(trial){
+        if (is_scanner=="scanner"){
+          passed_instructions_prompt = "" // subjects do not press anything here.
+          trial.stimulus = String.format(trial.stimulus, passed_instructions_prompt);
+        } else {
+          passed_instructions_prompt = "When you are ready to start, please press the "+keys_start_block
+          trial.stimulus = String.format(trial.stimulus, passed_instructions_prompt);
+        }
+      }
+  }
+
+// =============================================================================
+//                               RATINGS
+// =============================================================================
+
+// ------------------------------ Instructions ---------------------------------
+
+// Rating instructions
+var rating_instructions = {
+      type: 'instructions',
+      pages: [
+        '<div><img class="instructions" src="Stimuli/Instructions/'+is_scanner+'/Rating.png"</img></div>',
+        '<div><img class="instructions" src="Stimuli/Instructions/'+is_scanner+'/start_quiz.png"</img></div>'],
+      data: {ttype: "ratings_instructions"},
+      show_clickable_nav: true};
+
+// activate function to present a looping quiz (loops until you get all answers correctly)
+repeat_rating_instructions = present_quiz_instructions(rating_instructions, 'rating_comprehension_check', quiz_qs.rating, quiz_answers.rating)
+
+// push the repeated quiz and also present next screens after they get it correctly.
+ratings_timeline.timeline.push(repeat_rating_instructions,passed_instructions_no_practice)
+
+// --------------------------------- Trial -------------------------------------
+
+// Ratings trial
+for (t = 0; t < n_ratings_trials; t++){
+// var rating_trial = [];
+var rating_trial = {
+  type: 'html-slider-response',
+  data: {ttype: 'rating',
+         index: t},
+  stimulus: '<img class="object" src="{0}" />',
+  labels: ['Not at all', 'Very much'],
+  prompt: '<p>How much do you like this photograph?</p>',
+  response_ends_trial: true,
+  on_start: function(trial){
+    trial.data.stimulus_index = Ratings[trial.data.index].stimulus_index;
+    trial.data.path = Ratings[trial.data.index].path;
+    trial.stimulus = String.format(trial.stimulus, trial.data.path);
+  },
+  on_finish: function(data){
+
+    // save rt and responses and Ratings data set
+    var curr_ind = jsPsych.data.get().last(1).values()[0].index;
+    Ratings[curr_ind].rating = Number(jsPsych.data.get().last(1).values()[0].response);
+    Ratings[curr_ind].rt = jsPsych.data.get().last(1).values()[0].rt;
+
+    // if this is the last trial we want to save the data and create a delbireaion matrix for the subject.
+    if (jsPsych.data.get().last(1).values()[0].index == [n_ratings_trials - 1]){
+
+      // save Ratings data set
+      subID = Ratings[0].PID;
+      if (is_scanner == "scanner"){
+        save_local_data(data_folder+'Ratings/ratings_data_sub_'+subID+".csv", convertToCSV(Ratings));
+      } else {
+        save_server_data(data_folder+'Ratings/ratings_data_sub_'+subID+".csv", convertToCSV(Ratings));
+      }
+
+      // select randomly images from every category
+      var categories = [... new Set(Ratings.map(a => a.category))]; // find unique categories we use
+      var chosen_stims = [];
+      for (c=0; c<categories.length; c++){
+        curr_category = Ratings.filter(a => a.category == categories[c]);
+        // randomly select 6 exemplars per category
+        shuffle(curr_category);
+        chosen_stims = chosen_stims.concat(curr_category.slice(0,n_exemplars_per_car))
+      }
+      // add images to deliberation matrix
+      deliberation_pairs = Deliberation.filter(a=>a.stim_type == "original" & a.practice==0 & a.block==1).map((a) => [a.pair_id, a.left_category, a.right_category]);
+      for (t=0; t<deliberation_pairs.length; t++){
+        chosen_left_index = Number(chosen_stims.filter(a => a.category == deliberation_pairs[t][1])[0].stimulus_index)
+        chosen_right_index = Number(chosen_stims.filter(a => a.category == deliberation_pairs[t][2])[0].stimulus_index)
+        deliberation_pairs[t][3] = chosen_left_index; deliberation_pairs[t][4] = chosen_right_index;
+        // remove from chosen_stims matrix
+        chosen_stims = chosen_stims.filter(a => a.stimulus_index != chosen_left_index & a.stimulus_index != chosen_right_index)
+      }
+      for (t=0; t<Deliberation.length; t++){
+        if (Deliberation[t].practice==0){
+          Deliberation[t].left_stimulus = deliberation_pairs.filter(a => a[0]==Deliberation[t].pair_id)[0][3];
+          Deliberation[t].right_stimulus = deliberation_pairs.filter(a => a[0]==Deliberation[t].pair_id)[0][4];
+          if (Deliberation[t].stim_type == "scramble"){
+            Deliberation[t].left_path = exp_stims.filter(a => a.stim == 'scrambled_'+exp_stims.filter(a => a.index == Deliberation[t].left_stimulus)[0].stim)[0].path
+            Deliberation[t].right_path = exp_stims.filter(a => a.stim == 'scrambled_'+exp_stims.filter(a => a.index == Deliberation[t].right_stimulus)[0].stim)[0].path
+            Deliberation[t].left_rating = NaN;
+            Deliberation[t].right_rating = NaN;
+          } else {
+            Deliberation[t].left_path = exp_stims.filter(a => a.index == Deliberation[t].left_stimulus)[0].path;
+            Deliberation[t].right_path = exp_stims.filter(a => a.index == Deliberation[t].right_stimulus)[0].path;
+            Deliberation[t].left_rating = Ratings.filter(a => a.stimulus_index == Deliberation[t].left_stimulus)[0].rating;
+            Deliberation[t].right_rating = Ratings.filter(a => a.stimulus_index == Deliberation[t].right_stimulus)[0].rating;
+          }
+        }
+      }
+
+      // save Deliberation data set
+      subID = Deliberation[0].PID;
+      if (is_scanner == "scanner"){
+        save_local_data(data_folder+'Deliberation/deliberation_data_sub_'+subID+".csv", convertToCSV(Deliberation));
+      } else {
+        save_server_data(data_folder+'Deliberation/deliberation_data_sub_'+subID+".csv", convertToCSV(Deliberation));
+      }
+    } //if last trials
+  } // on_finish
+} // rating_trial
+ratings_timeline.timeline.push(rating_trial);
+} // for trials
+
+// =============================================================================
+//                               LOCALIZER
+// =============================================================================
+
+// ------------------------------ Instructions ---------------------------------
+
+// LOCALIZER instructions
+var localizer_instructions = {
+      type: 'instructions',
+      pages: [
+        '<div><img class="instructions" src="Stimuli/Instructions/'+is_scanner+'/Localizer1.png"</img></div>',
+        '<div><img class="instructions" src="Stimuli/Instructions/'+is_scanner+'/Localizer2.png"</img></div>',
+        '<div><img class="instructions" src="Stimuli/Instructions/'+is_scanner+'/start_quiz.png"</img></div>'],
+      data: {ttype: "localizer_instructions"},
+      show_clickable_nav: true};
+
+// activate function to present a looping quiz (loops until you get all answers correctly)
+repeat_localizer_instructions = present_quiz_instructions(localizer_instructions, 'localizer_comprehension_check', quiz_qs.localizer, quiz_answers.localizer)
+
+// push the repeated quiz and also present next screens after they get it correctly.
+localizer_timeline.timeline.push(repeat_localizer_instructions,passed_instructions_no_practice)
+
+// --------------------------------- Trial -------------------------------------
+
+for (t = 0; t < n_localizer_trials; t++){
+
+  var localizer_trial = {
+      type: 'html-keyboard-response',
+      data: {ttype: 'localizer',
+             index: t},
+      stimulus: localizer_stim,
+      choices: keys_task,
+      response_ends_trial: false,
+      on_start: function(trial){
+        // decide whether to present a circle
+        if (Localizer[trial.data.index].is_odd_ball == 1){
+          id = "circle"
+        } else {
+          id = "no-circle"
+        }
+        // randomize the position of the circle
+        top_position = shuffle([10,20,30,40,50,60,70,80,90])[1];
+        left_position = shuffle([10,20,30,40,50,60,70,80,90])[1];
+        trial.stimulus = String.format(trial.stimulus, Localizer[trial.data.index].path, id, top_position, left_position); // full path
+        trial.trial_duration = Localizer[trial.data.index].stimulus_duration;
+      },
+      on_finish: function(data){
+
+        data.run = Localizer[data.index].run;
+        data.task = Localizer[data.index].task;
+        data.isi = Localizer[data.index].isi;
+        data.is_odd_ball = Localizer[data.index].is_odd_ball;
+        data.path = Localizer[data.index].path;
+
+        if(data.key_press == jsPsych.pluginAPI.convertKeyCharacterToKeyCode(keys_task[0])) { // 'up' (gain) was chosen
+          data.response = 0;
+        } else if (data.key_press == jsPsych.pluginAPI.convertKeyCharacterToKeyCode(keys_task[1])){ // 'down' (no gain) was chosen
+          data.response = 1;
+        }
+
+        if (data.key_press == null){
+          data.no_response = 1;
+          data.response = NaN;
+          data.rt = NaN;
+          if (Localizer[data.index].practice == 1){
+            repeat_localizer_practice = 1;
+          }
+        } else {
+          data.no_response = 0;
+          if (Localizer[data.index].practice == 1){
+            repeat_localizer_practice = 0;
+          }
+        }
+
+        if (data.response == data.is_odd_ball){
+          data.acc = 1;
+        } else {
+          data.acc = 0;
+        }
+``
+        Localizer[data.index].no_response = data.no_response;
+        Localizer[data.index].rt = data.rt;
+        Localizer[data.index].response = data.response;
+        Localizer[data.index].acc = data.acc;
+
+        // assign trial duration to onset and duration
+        duration = Localizer[data.index].stimulus_duration/1000;
+
+        data.duration = duration;
+        data.onset = onset;
+        curr_event = {PID: jsPsych.data.get().filter({ttype: 'get_id'}).last(1).values()[0].PID, phase: "localizer", run: Localizer[data.index].run, trial: data.index, event: "stimulus", onset: data.onset, duration: data.duration}
+        events.push(curr_event);
+        onset = onset + duration;
+
+      } // on_finish
+    } // outcome_estimation_trial
+
+// ------------------------------------ iti ------------------------------------
+
+    var iti_localizer_trial = {
+        type: 'html-keyboard-response',
+        stimulus: fixation_localizer,
+        choices: jsPsych.NO_KEYS,
+        data: {ttype: 'iti_localizer', index: t},
+        on_start: function(trial){
+          // assign fixation for the long iti between blocks, and nothing in between stimuli
+          if (Localizer[trial.data.index].iti < 1000){
+            trial.stimulus = String.format(trial.stimulus, ""); // no fixation
+          } else {
+            trial.stimulus = String.format(trial.stimulus, "+"); // no fixation
+          }
+          // assign trial duration
+          trial_duration = Localizer[trial.data.index].iti;
+          trial.trial_duration = trial_duration;
+
+          // add run info
+          trial.data.run = Localizer[trial.data.index].run;
+
+          // assign trial duration to onset and duration
+          duration = trial_duration/1000;
+          trial.data.duration = duration;
+          trial.data.onset = onset;
+          curr_event = {PID: jsPsych.data.get().filter({ttype: 'get_id'}).last(1).values()[0].PID, phase: "localizer", run: Localizer[trial.data.index].run, trial: trial.data.index, event: "iti", onset: trial.data.onset, duration: trial.data.duration}
+          events.push(curr_event);
+          onset = onset + duration;
+        } // on_start
+      } //
+
+// ------------------------- practice block over -------------------------------
+
+    var if_localizer_practice_over = {
+      timeline: [practice_over, start_run],
+      conditional_function: function(){
+        curr_ind = jsPsych.data.get().filter({ttype: 'localizer'}).last(1).values()[0].index;
+        if (end_practice_localizer.includes(curr_ind) & repeat_localizer_practice==0) {
+           return true; } else { return false }
+      } // conditional_function
+    } // if_deliberation_practice_over
+
+// ---------------------------- block over -------------------------------------
+
+    // present block over text
+    var localizer_run_over_trial = {
+        type: 'html-keyboard-response',
+        data: {ttype: 'localizer_run_over',
+               index: t},
+        stimulus: "Round {0} (out of {1}) is over</br></br>"+
+                  "{2}" +
+                  "{3}",
+        choices: keys_start_block,
+        response_ends_trial: true,
+      on_start: function(trial){
+
+        // run number
+        run_number = jsPsych.data.get().filter({ttype: 'localizer'}).last(1).values()[0].run;
+
+        // check how many trials the subjects had missed
+        missed_trials = Localizer.map(a=>a.no_response).reduce((partialSum, a) => partialSum + a, 0);
+        if (missed_trials > localizer_missed_trials_cutoff){
+          missed_trials_prompt = "We have noticed you didn't respond on time in a few trials, please make sure to respond on time on every trial"
+        } else {
+          missed_trials_prompt = ""
+        }
+
+        if (is_scanner=="scanner"){
+          start_prompt = "" // subjects do not press anything here.
+        } else {
+          start_prompt = "When you are ready to start the next round, please press the "+keys_start_block;
+        }
+        trial.stimulus = String.format(trial.stimulus, run_number, n_outcome_estimation_runs, missed_trials_prompt, start_prompt);
+      } // on_start
+    } // final_decisions_run_over_trial
+
+    var if_localizer_run_over_trial = {
+        timeline: [localizer_run_over_trial, start_run],
+        conditional_function: function(){
+          // we don't present the end of block screen for the last block.
+          if (run_change_localizer.includes(jsPsych.data.get().filter({ttype: 'localizer'}).last(1).values()[0].index)){
+            return true;
+          } else { return false; } // the next block is similar to the current one
+        }
+      } // if_run_over
+
+// -------------------------- end current phase --------------------------------
+
+    var end_localizer_phase = {
+      type: "html-keyboard-response",
+      choices: keys_start_block,
+      data: {ttype: 'end_localizer_phase'},
+      stimulus: "The current phase has ended</br></br>"+
+                "{0}",
+      on_start: function(trial){
+        if (is_scanner=="scanner"){
+          start_prompt = "" // subjects do not press anything here.
+        } else {
+          start_prompt = "When you are ready to continue, please press the "+keys_start_block;
+        }
+        trial.stimulus = String.format(trial.stimulus, start_prompt);
+        subID = Deliberation[0].PID;
+        if (is_scanner == "scanner"){
+          save_local_data(data_folder+'Localizer/localizer_sub_'+subID+".csv", convertToCSV(Localizer));
+          save_local_data(data_folder+'Events/events_sub_'+subID+".csv", convertToCSV(events));
+        } else {
+          save_server_data(data_folder+'Localizer/localizer_sub_'+subID+".csv", convertToCSV(Localizer));
+          save_server_data(data_folder+'Events/events_sub_'+subID+".csv", convertToCSV(events));
+        }
+      }
+     };
+
+    var if_end_localizer_phase = {
+       timeline: [end_localizer_phase],
+       conditional_function: function(){
+         // we don't present the end of block screen for the last block.
+         if (jsPsych.data.get().filter({ttype: 'localizer'}).last(1).values()[0].index == (n_localizer_trials-1)){
+           return true;
+         } else { return false; } // the next block is similar to the current one
+       }
+     } // if_run_over
+
+// ----- repeat the entire trial for no responses in practice trials only ------
+
+    var repeat_localizer_trial = {
+     timeline: [localizer_trial, iti_localizer_trial, if_localizer_practice_over, if_localizer_run_over_trial, if_end_localizer_phase],
+     loop_function: function(){
+       if (repeat_localizer_practice == 1){
+         return true;
+       } else {
+         return false;
+       } // else
+     } // loop_function function
+    } // repeat_deliberation_trial
+
+    localizer_timeline.timeline.push(repeat_localizer_trial)
+
+  } // outcome_estimation test loop
+
+
+// =============================================================================
+//                               DELIBERATION
+// =============================================================================
+
+// ------------------------------ Instructions ---------------------------------
+
+// Rating instructions
+var deliberation_instructions = {
+      type: 'instructions',
+      pages: [
+        '<div><img class="instructions" src="Stimuli/Instructions/'+is_scanner+'/Deliberation1.png"</img></div>',
+        '<div><img class="instructions" src="Stimuli/Instructions/'+is_scanner+'/Deliberation2.png"</img></div>',
+        '<div><img class="instructions" src="Stimuli/Instructions/'+is_scanner+'/Deliberation3.png"</img></div>',
+        '<div><img class="instructions" src="Stimuli/Instructions/'+is_scanner+'/Deliberation4.png"</img></div>',
+        '<div><img class="instructions" src="Stimuli/Instructions/'+is_scanner+'/Deliberation5.png"</img></div>',
+        '<div><img class="instructions" src="Stimuli/Instructions/'+is_scanner+'/Deliberation6.png"</img></div>',
+        '<div><img class="instructions" src="Stimuli/Instructions/'+is_scanner+'/start_quiz.png"</img></div>'],
+      data: {ttype: "deliberation_instructions"},
+      show_clickable_nav: true};
+
+// activate function to present a looping quiz (loops until you get all answers correctly)
+repeat_deliberation_instructions = present_quiz_instructions(deliberation_instructions, 'deliberation_comprehension_check', quiz_qs.deliberation, quiz_answers.deliberation)
+
+// push the repeated quiz and also present next screens after they get it correctly.
+deliberation_timeline.timeline.push(repeat_deliberation_instructions,passed_instructions_practice)
+
+// -------------------------- deliberation trial -------------------------------
+
+// Delibeartion trial
+
+for (t = 0; t < n_deliberation_trials; t++) {
+
+  deliberation_trial = {
+    type: 'html-keyboard-response',
+    data: {ttype: 'deliberation',
+           index: t},
+    stimulus: decisions_stims,
+    choices: keys_task,
+    response_ends_trial: true,
+    trial_duration: timing_max_del_choice,
+    on_start: function(trial){
+      // decide which stimuli to present
+      trial.stimulus = String.format(trial.stimulus ,Deliberation[trial.data.index].left_path, "" ,Deliberation[trial.data.index].right_path);
+      if (Deliberation[trial.data.index].stim_type == "scramble"){
+        trial.data.response_ends_trial = false;
+        trial.data.trial_duration = (Deliberation[trial.data.index].scramble_screen_time)
+      }
+    },
+    on_finish: function(data){
+
+      // register choices if this is an original trial
+      if (Deliberation[data.index].stim_type == "original"){
+        if(data.key_press == jsPsych.pluginAPI.convertKeyCharacterToKeyCode(keys_task[0])) { // left was chosen
+          data.left_chosen = 1;
+          data.chosen_stimulus = Deliberation[data.index].left_stimulus;
+          data.unchosen_stimulus = Deliberation[data.index].right_stimulus;
+          data.chosen_category = Deliberation[data.index].left_category;
+          data.unchosen_category = Deliberation[data.index].right_category;
+          data.chosen_rating = Deliberation[data.index].left_rating;
+          data.unchosen_rating = Deliberation[data.index].right_rating;
+          data.chosen_path = Deliberation[data.index].left_path;
+          data.unchosen_path = Deliberation[data.index].right_path;
+        } else if (data.key_press == jsPsych.pluginAPI.convertKeyCharacterToKeyCode(keys_task[1])){
+          data.left_chosen = 0;
+          data.chosen_stimulus = Deliberation[data.index].right_stimulus;
+          data.unchosen_stimulus = Deliberation[data.index].left_stimulus;
+          data.chosen_category = Deliberation[data.index].right_category;
+          data.unchosen_category = Deliberation[data.index].left_category;
+          data.chosen_rating = Deliberation[data.index].right_rating;
+          data.unchosen_rating = Deliberation[data.index].left_rating;
+          data.chosen_path = Deliberation[data.index].right_path;
+          data.unchosen_path = Deliberation[data.index].left_path;
+        } // else
+
+        Deliberation[data.index].left_chosen = data.left_chosen;
+        Deliberation[data.index].chosen_stimulus = data.chosen_stimulus;
+        Deliberation[data.index].unchosen_stimulus = data.unchosen_stimulus;
+        Deliberation[data.index].chosen_category = data.chosen_category;
+        Deliberation[data.index].unchosen_category = data.unchosen_category;
+        Deliberation[data.index].chosen_path = data.chosen_path;
+        Deliberation[data.index].unchosen_path = data.unchosen_path;
+        Deliberation[data.index].chosen_rating = data.chosen_rating;
+        Deliberation[data.index].unchosen_rating = data.unchosen_rating;
+        Deliberation[data.index].rt = data.rt;
+      }
+
+      // register no response, and assign a variable to repeat a practice trial
+      if (!jsPsych.data.get().filter({ttype: 'deliberation'}).last(1).values()[0].key_press){
+        Deliberation[data.index].no_response = 1;
+        data.no_response = 1;
+        if (Deliberation[data.index].practice == 1){
+          repeat_deliberation_practice = 1;
+        }
+      } else {
+        data.no_response = 0;
+        if (Deliberation[data.index].practice == 1){
+          repeat_deliberation_practice = 0;
+        }
+      }
+
+      // save columns for data frame
+      data.pair_id = Deliberation[data.index].pair_id;
+      data.practice = Deliberation[data.index].practice;
+      data.scramble_screen_time = Deliberation[data.index].scramble_screen_time;
+      data.scramble_instructed_side = Deliberation[data.index].scramble_instructed_side;
+      data.stim_type = Deliberation[data.index].stim_type;
+      data.iti = Deliberation[data.index].iti;
+      data.block = Deliberation[data.index].block;
+      data.run = Deliberation[data.index].run;
+      data.left_stimulus = Deliberation[data.index].left_stimulus;
+      data.right_stimulus = Deliberation[data.index].right_stimulus;
+      data.left_category = Deliberation[data.index].left_category;
+      data.right_category = Deliberation[data.index].right_category;
+      data.left_path = Deliberation[data.index].left_path;
+      data.right_path = Deliberation[data.index].right_path;
+      data.left_rating = Deliberation[data.index].left_rating;
+      data.right_rating = Deliberation[data.index].right_rating;
+
+      // add to block counter
+      if (Deliberation[data.index].is_practice == 0){
+        block_counter = block_counter + 1;
+      }
+
+      // save onset and duration
+      if (Deliberation[data.index].stim_type == "original"){
+        if (data.key_press === null){
+          duration = timing_max_del_choice/1000;
+        } else {
+          duration = data.rt/1000;
+        }
+        event = "choice"
+      } else if (Deliberation[data.index].stim_type == "scramble"){
+        duration = Deliberation[data.index].scramble_screen_time/1000;
+        event = "scramble"
+      }
+
+      // add events info
+      data.onset = onset;
+      data.duration = duration;
+      curr_event = {PID: jsPsych.data.get().filter({ttype: 'get_id'}).last(1).values()[0].PID, phase: "deliberation", run: Deliberation[data.index].run, trial: data.index, event: event, onset: data.onset, duration: data.duration}
+      events.push(curr_event);
+      onset = onset + duration;
+
+      // update block info
+      block = data.block;
+
+    } // on_finish
+  } // deliberation_trial
+
+// TODO: decide how to relate to practice trials (add "end_practice" column? )
+
+// -------------------------- scramble instruction -----------------------------
+
+var scramble_prompt_trial = {
+    type: 'html-keyboard-response',
+    data: {ttype: 'scramble_prompt',
+           index: t},
+    stimulus: decisions_stims, // change this
+    choices: keys_task,
+    //trial_duration: timing_max_scramble_prompt,
+    response_ends_trial: true,
+    on_start: function(trial){
+
+      // add block info
+      trial.data.block = jsPsych.data.get().filter({ttype: 'deliberation'}).last(1).values()[0].block;
+
+      // trial duration
+      trial.trial_duration = timing_max_del_choice - Deliberation[trial.data.index].scramble_screen_time; // total scramble time should be 3 (including scramble + prompt + confirmation)
+
+      // build stim
+      if (Deliberation[trial.data.index].scramble_instructed_side == "left"){
+        scramble_img = "<=";
+      } else {
+        scramble_img = "=>";
+      }
+      trial.stimulus = String.format(trial.stimulus ,Deliberation[trial.data.index].left_path, scramble_img ,Deliberation[trial.data.index].right_path);
+    },
+    on_finish: function(data){
+
+      // register choices if this is an original trial
+      var curr_choice = NaN;
+      if(data.key_press == jsPsych.pluginAPI.convertKeyCharacterToKeyCode(keys_task[0])) { // left was chosen
+        curr_choice = "left";
+        data.left_chosen = 1;
+        data.chosen_stimulus = Deliberation[data.index].left_stimulus;
+        data.unchosen_stimulus = Deliberation[data.index].right_stimulus;
+        data.chosen_category = Deliberation[data.index].left_category;
+        data.unchosen_category = Deliberation[data.index].right_category;
+        Deliberation[data.index].left_chosen = 1;
+        Deliberation[data.index].chosen_stimulus = Deliberation[data.index].left_stimulus;
+        Deliberation[data.index].unchosen_stimulus = Deliberation[data.index].right_stimulus;
+        Deliberation[data.index].chosen_category = Deliberation[data.index].left_category;
+        Deliberation[data.index].unchosen_category = Deliberation[data.index].right_category;
+        Deliberation[data.index].chosen_path = Deliberation[data.index].left_path;
+        Deliberation[data.index].unchosen_path = Deliberation[data.index].right_path;
+      } else if (data.key_press == jsPsych.pluginAPI.convertKeyCharacterToKeyCode(keys_task[1])){
+        curr_choice = "right";
+        data.left_chosen = 0;
+        data.chosen_stimulus = Deliberation[data.index].right_stimulus;
+        data.unchosen_stimulus = Deliberation[data.index].left_stimulus;
+        data.chosen_category = Deliberation[data.index].right_category;
+        data.unchosen_category = Deliberation[data.index].left_category;
+        Deliberation[data.index].left_chosen = 0;
+        Deliberation[data.index].chosen_stimulus = Deliberation[data.index].right_stimulus;
+        Deliberation[data.index].unchosen_stimulus = Deliberation[data.index].left_stimulus;
+        Deliberation[data.index].chosen_category = Deliberation[data.index].right_category;
+        Deliberation[data.index].unchosen_category = Deliberation[data.index].left_category;
+        Deliberation[data.index].chosen_path = Deliberation[data.index].right_path;
+        Deliberation[data.index].unchosen_path = Deliberation[data.index].left_path;
+      } // else
+
+      // compute accuracy for scramble choice
+      if (curr_choice == Deliberation[data.index].scramble_instructed_side){
+        data.scramble_acc = 1;
+        Deliberation[data.index].scramble_acc = 1;
+      } else {
+        data.scramble_acc = 0;
+        Deliberation[data.index].scramble_acc = 0;
+      }
+
+      if (!data.key_press){
+        Deliberation[data.index].no_response = 1;
+        data.scramble_no_response = 1;
+        if (Deliberation[data.index].practice == 1){
+          repeat_deliberation_practice = 1;
+        }
+      } else {
+        data.no_response = 0;
+        Deliberation[data.index].no_response = 0;
+        Deliberation[data.index].rt = data.rt;
+        if (Deliberation[data.index].practice == 1){
+          repeat_deliberation_practice = 0;
+        }
+      }
+
+      // assign trial duration to onset and duration
+      if (data.key_press){
+        duration = data.rt/1000;
+      } else {
+        duration = (timing_max_del_choice - Deliberation[data.index].scramble_screen_time)/1000;
+      }
+      data.duration = duration;
+      data.onset = onset;
+      curr_event = {PID: jsPsych.data.get().filter({ttype: 'get_id'}).last(1).values()[0].PID, phase: "deliberation", run: Deliberation[data.index].run, trial: data.index, event: "scramble_prompt", onset: data.onset, duration: data.duration}
+      events.push(curr_event);
+      onset = onset + duration;
+    }
+  } // scramble_prompt_trial
+
+  // present scramble_prompt_trial only for scrambled trials
+  var if_scramble_prompt = {
+  timeline: [scramble_prompt_trial],
+  conditional_function: function(){
+    if (jsPsych.data.get().filter({ttype: 'deliberation'}).last(1).values()[0].stim_type == "scramble"){
+      return true;
+    } else {
+      return false;
+    } // else
+  } // conditional function
+} // if_confirmation
+
+
+// ------------------------------- confirmation --------------------------------
+
+  deliberation_confirmation_trial = {
+    type: 'html-keyboard-response',
+    data: {ttype: 'deliberation_confirmation',
+           index: t},
+    stimulus: choice_confirm_stims,
+    choices: jsPsych.NO_KEYS,
+    response_ends_trial: true,
+    on_start: function(trial){
+
+      decision_rt = Deliberation[trial.data.index].rt;
+      if (Deliberation[trial.data.index].stim_type == "original"){
+        trial_duration = timing_max_del_choice - decision_rt;
+        event = "choice_confirmation"
+      } else {
+        trial_duration = timing_max_del_choice - decision_rt - Deliberation[trial.data.index].scramble_screen_time;
+        event = "scramble_confirmation"
+      }
+      trial.trial_duration = trial_duration;
+
+      // add block info
+      trial.data.block = jsPsych.data.get().filter({ttype: 'deliberation'}).last(1).values()[0].block;
+
+      // assign trial duration to onset and duration
+      duration = trial_duration/1000;
+      trial.data.duration = duration;
+      trial.data.onset = onset;
+      curr_event = {PID: jsPsych.data.get().filter({ttype: 'get_id'}).last(1).values()[0].PID, phase: "deliberation", run: Deliberation[trial.data.index].run, trial: trial.data.index, event: event, onset: trial.data.onset, duration: trial.data.duration}
+      events.push(curr_event);
+      onset = onset + duration;
+
+      // decide on which stimulus recieves a confirmation rectangle
+      if (Deliberation[trial.data.index].left_chosen==1){
+        trial.stimulus = String.format(trial.stimulus, "object confirm" ,Deliberation[trial.data.index].left_path, "object", Deliberation[trial.data.index].right_path);
+      } else {
+        trial.stimulus = String.format(trial.stimulus, "object" ,Deliberation[trial.data.index].left_path, "object confirm", Deliberation[trial.data.index].right_path);
+      }
+    }
+  } // confirmation trial
+
+  // present confirmation only if there was a response
+  var if_deliberation_confirmation = {
+    timeline: [deliberation_confirmation_trial],
+    conditional_function: function(){
+      curr_stim_type = jsPsych.data.get().filter({ttype: 'deliberation'}).last(1).values()[0].stim_type;
+      if (curr_stim_type == "original") {
+        key_press = jsPsych.data.get().filter({ttype: 'deliberation'}).last(1).values()[0].key_press;
+      } else {
+        key_press = jsPsych.data.get().filter({ttype: 'scramble_prompt'}).last(1).values()[0].key_press;
+      }
+      if (key_press == null){
+        return false;
+      } else {
+        return true;
+      } // else
+    } // conditional function
+  } // if_confirmation
+
+// ------------------------------- too slow --------------------------------
+
+var deliberation_no_response = {
+    type: 'html-keyboard-response',
+    data: {ttype: "deliberation_no_response", index: t},
+    stimulus: '<div style="font-size: 200%">TOO SLOW</div>',
+    choices: jsPsych.NO_KEYS,
+    trial_duration: timing_warning,
+    on_finish: function(data){
+      data.warning = 1;
+      data.no_response = 1;
+      data.block = jsPsych.data.get().filter({ttype: 'deliberation'}).last(1).values()[0].block;
+      // assign trial duration to onset and duration
+      duration = timing_warning/1000;
+      data.duration = duration;
+      data.onset = onset;
+      curr_event = {PID: jsPsych.data.get().filter({ttype: 'get_id'}).last(1).values()[0].PID, phase: "deliberation", run: Deliberation[data.index].run, trial: data.index, event: "no_response", onset: data.onset, duration: data.duration}
+      events.push(curr_event);
+      onset = onset + duration;
+
+    } // on_finish
+  } // deliberation_too_slow
+
+  // present deliberation_too_slow only for no responses
+  var if_deliberation_no_response = {
+    timeline: [deliberation_no_response],
+    conditional_function: function(data){
+      curr_stim_type = jsPsych.data.get().filter({ttype: 'deliberation'}).last(1).values()[0].stim_type;
+      if (curr_stim_type == "original") {
+        key_press = jsPsych.data.get().filter({ttype: 'deliberation'}).last(1).values()[0].key_press;
+      } else {
+        key_press = jsPsych.data.get().filter({ttype: 'scramble_prompt'}).last(1).values()[0].key_press;
+      }
+      if (key_press == null & show_no_response == 1){
+        return true;
+      } else {
+        return false;
+      } // else
+    } // conditional function
+  } // if_confirmation
+
+  // ---------------------------------- iti ----------------------------------
+
+  // Fixation for jitter and ITI
+  var deliberation_iti_trial = {
+        type: 'html-keyboard-response',
+        stimulus: fixation_stim,
+        choices: jsPsych.NO_KEYS,
+        data: {ttype: 'iti', index: t},
+        on_start: function(trial){
+          // assign jitter timing
+          curr_iti = jsPsych.data.get().filter({ttype: 'deliberation'}).last(1).values()[0].iti;
+          // if the last trial was no response, reduce no response trial duration from iti
+          if (Deliberation[trial.data.index].no_response == 1){
+            curr_iti = curr_iti - timing_warning;
+          };
+          if (is_debug==1){
+            trial.trial_duration = 100;
+          } else {
+            trial.trial_duration = curr_iti;
+          }
+          //console.log("curr trial iti:"+curr_iti)
+
+          // add block info
+          trial.data.block = jsPsych.data.get().filter({ttype: 'deliberation'}).last(1).values()[0].block;
+
+          // assign trial duration to onset and duration
+          duration = curr_iti/1000;
+          trial.data.duration = duration;
+          trial.data.onset = onset;
+          curr_event = {PID: jsPsych.data.get().filter({ttype: 'get_id'}).last(1).values()[0].PID, phase: "deliberation", run: Deliberation[trial.data.index].run, trial: trial.data.index, event: "iti", onset: trial.data.onset, duration: trial.data.duration}
+          events.push(curr_event);
+          onset = onset + duration;
+        } // on_start
+      } // deliberation_iti_trial
+
+
+    // ------------------------- practice block over -------------------------------
+
+    var if_deliberation_practice_over = {
+        timeline: [practice_over, start_run],
+        conditional_function: function(){
+          curr_ind = jsPsych.data.get().filter({ttype: 'deliberation'}).last(1).values()[0].index;
+          if (end_practice_deliberation.includes(curr_ind) & repeat_deliberation_practice == 0) {
+             return true; } else { return false }
+        } // conditional_function
+      } // if_deliberation_practice_over
+
+    // ---------------------------- block over -------------------------------------
+
+    // present block over text
+    var deliberation_run_over_trial = {
+        type: 'html-keyboard-response',
+        data: {ttype: 'deliberation_run_over',
+               index: t},
+        stimulus: "Round {0} (out of {1}) is over</br></br>"+
+                  "Decisions you make in the following round will count as your final choices for the auction</br></br>"+
+                  "{2}" +
+                  "{3}",
+        choices: keys_start_block,
+        response_ends_trial: true,
+      on_start: function(trial){
+        // block number
+        block_number = jsPsych.data.get().filter({ttype: 'deliberation'}).last(1).values()[0].run;
+
+        // check how many trials the subjects had missed
+        missed_trials = Deliberation.map(a=>a.no_response).reduce((partialSum, a) => partialSum + a, 0);
+        if (missed_trials > deliberation_missed_trials_cutoff){
+          missed_trials_prompt = "We have noticed you didn't respond on time in a few trials, please make sure to respond on time on every trial"
+        } else {
+          missed_trials_prompt = ""
+        }
+
+        if (is_scanner=="scanner"){
+          start_prompt = "" // subjects do not press anything here.
+          trial.stimulus = String.format(trial.stimulus, block_number, n_deliberation_runs, missed_trials_prompt, start_prompt);
+        } else {
+          start_prompt = "When you are ready to start the next round, please press the "+keys_start_block;
+          trial.stimulus = String.format(trial.stimulus, block_number, n_deliberation_runs, missed_trials_prompt, start_prompt);
+        }
+      } // on_start
+    } // deliberation_run_over_trial
+
+    var if_deliberation_run_over_trial = {
+        timeline: [deliberation_run_over_trial, start_run],
+        conditional_function: function(){
+          // we don't present the end of block screen for the last block.
+          if (run_change_deliberation.includes(jsPsych.data.get().filter({ttype: 'deliberation'}).last(1).values()[0].index)){
+            return true;
+          } else { return false; } // the next block is similar to the current one
+        }
+      } // if_run_over
+      //timeline.push(if_decisions_run_over)
+
+// -------------------------- end current phase --------------------------------
+
+var end_deliberation_phase = {
+  type: "html-keyboard-response",
+  choices: keys_start_block,
+  data: {ttype: 'end_deliberation_phase'},
+  stimulus: "The current phase has ended</br></br>"+
+            "{0}",
+  on_start: function(trial){
+    if (is_scanner=="scanner"){
+      start_prompt = "" // subjects do not press anything here.
+    } else {
+      start_prompt = "When you are ready to continue, please press the "+keys_start_block;
+    }
+    trial.stimulus = String.format(trial.stimulus, start_prompt);
+
+    // create data matrices for the next steps
+
+// ============================== clean deliberation ===========================
+
+    clean_Deliberation = JSON.parse(JSON.stringify(Deliberation)).map(function(value,index) { return value; }).filter(function(a){return a.block==(n_deliberation_reps) & a.stim_type == "original"})
+
+    // check if we have a response per pair. if not, i.e., people didn't respond on time during their
+    // response interval, select a choice from the last block they did respond at.
+    no_response_trials = JSON.parse(JSON.stringify(clean_Deliberation)).map(function(value,index) { return value; }).filter(a => a.no_response == 1 & a.stim_type == "original");
+    if (no_response_trials.length != 0){
+      for (i=0; i<no_response_trials.length; i++){
+        del_blocks = range(1,n_deliberation_reps-1).sort((a, b) => b - a) // sort higher number first
+        for (j=0; j<del_blocks.length; j++){
+          // find response from the last block
+          good_trial = Deliberation.filter(a=>a.block == del_blocks[j] & a.pair_id == no_response_trials[i].pair_id & a.stim_type=="original" & a.no_response==0);
+          if (good_trial.length > 0){
+            clean_Deliberation = clean_Deliberation.filter(a=> a.pair_id != no_response_trials[i].pair_id)
+            good_trial[0].no_response = 1; // make sure to save the fact that this trial had originally no response
+            clean_Deliberation.push(good_trial[0])
+            break;
+          }
+        }
+      }
+    }
+    // check if there are enough choices to continue the task. if not, the experiment will end
+    if (clean_Deliberation.filter(a => a.block==n_deliberation_reps & a.no_response==1).length > 0){
+      not_enough_deliberation_choices_logical = 1;
+    }
+
+// =============================== outcome learning ============================
+
+  // if subject chose a category more than once, we want to make sure that
+  // this category has both gain and no gains, so reduce the strategy of
+  // choosing between categories
+
+  var all_chosen_categories = JSON.parse(JSON.stringify(clean_Deliberation)).map(function(value,index) { return value; }).map(a => [a.chosen_category,a.pair_id]).sort();
+  all_gains = repmat(["gain","no_gain"], clean_Deliberation.length/2);
+  for (i=0; i<all_chosen_categories.length; i++){all_chosen_categories[i][2] = all_gains[i]};
+
+  for (t=0; t<Outcome_learning.length; t++){
+    if (Outcome_learning[t].practice == 0){
+      // insert gains in data frame
+      Outcome_learning[t].outcome = all_chosen_categories.filter(a=>a[1] == Outcome_learning[t].item_id).map(a=>a[2])[0]
+      // assign stimuli by pair id
+      Outcome_learning[t].stimulus = clean_Deliberation.filter(a => a.pair_id == Outcome_learning[t].item_id)[0].chosen_stimulus;
+      Outcome_learning[t].path = clean_Deliberation.filter(a => a.pair_id == Outcome_learning[t].item_id)[0].chosen_path;
+    }
+  }
+
+// =============================== final decisions =============================
+
+  // we have 6 gain and 6 no gain items  (for a total of 12 pairs).
+  // we need to assign the pair ids to these items.
+  gains = shuffle(JSON.parse(JSON.stringify(all_chosen_categories)).map(function(value,index) { return value; }).filter(a => a[2] == "gain"));
+  no_gains = shuffle(JSON.parse(JSON.stringify(all_chosen_categories)).map(function(value,index) { return value; }).filter(a => a[2] == "no_gain"));
+  for (i=0; i<clean_Deliberation.length/2; i++){
+    gains[i][3] = gains[i][2]+(i+1);
+    no_gains[i][3] = no_gains[i][2]+(i+1);
+  }
+  all_outcomes = gains.concat(no_gains);
+
+  for (t=0; t<Final_decisions.length; t++){
+    if (Final_decisions[t].practice == 0){
+      Final_decisions[t].left_pair_id = all_outcomes.filter(a=>a[3] == Final_decisions[t].left_item_id)[0][1];
+      Final_decisions[t].right_pair_id = all_outcomes.filter(a=>a[3] == Final_decisions[t].right_item_id)[0][1];
+      if (Final_decisions[t].choice_type == "chosen"){
+        Final_decisions[t].left_stimulus = clean_Deliberation.filter(a => a.pair_id == Final_decisions[t].left_pair_id)[0].chosen_stimulus;
+        Final_decisions[t].right_stimulus = clean_Deliberation.filter(a => a.pair_id == Final_decisions[t].right_pair_id)[0].chosen_stimulus;
+        Final_decisions[t].left_category = clean_Deliberation.filter(a => a.pair_id == Final_decisions[t].left_pair_id)[0].chosen_category;
+        Final_decisions[t].right_category = clean_Deliberation.filter(a => a.pair_id == Final_decisions[t].right_pair_id)[0].chosen_category;
+        Final_decisions[t].left_path = clean_Deliberation.filter(a => a.pair_id == Final_decisions[t].left_pair_id)[0].chosen_path;
+        Final_decisions[t].right_path = clean_Deliberation.filter(a => a.pair_id == Final_decisions[t].right_pair_id)[0].chosen_path;
+        Final_decisions[t].left_rating = clean_Deliberation.filter(a => a.pair_id == Final_decisions[t].left_pair_id)[0].chosen_rating;
+        Final_decisions[t].right_rating = clean_Deliberation.filter(a => a.pair_id == Final_decisions[t].right_pair_id)[0].chosen_rating;
+      } else {
+        Final_decisions[t].left_stimulus = clean_Deliberation.filter(a => a.pair_id == Final_decisions[t].left_pair_id)[0].unchosen_stimulus;
+        Final_decisions[t].right_stimulus = clean_Deliberation.filter(a => a.pair_id == Final_decisions[t].right_pair_id)[0].unchosen_stimulus;
+        Final_decisions[t].left_category = clean_Deliberation.filter(a => a.pair_id == Final_decisions[t].left_pair_id)[0].unchosen_category;
+        Final_decisions[t].right_category = clean_Deliberation.filter(a => a.pair_id == Final_decisions[t].right_pair_id)[0].unchosen_category;
+        Final_decisions[t].left_path = clean_Deliberation.filter(a => a.pair_id == Final_decisions[t].left_pair_id)[0].unchosen_path;
+        Final_decisions[t].right_path = clean_Deliberation.filter(a => a.pair_id == Final_decisions[t].right_pair_id)[0].unchosen_path;
+        Final_decisions[t].left_rating = clean_Deliberation.filter(a => a.pair_id == Final_decisions[t].left_pair_id)[0].unchosen_rating;
+        Final_decisions[t].right_rating = clean_Deliberation.filter(a => a.pair_id == Final_decisions[t].right_pair_id)[0].unchosen_rating;
+      }
+    }
+  }
+
+// ================================== memory ===================================
+
+  // create recombined pairings
+  // sort chosen categories (e.g., body_parts, face, face,.. , scene, scene), and the unchosen inversely (e.g., scene, scene, face, face,.. , body_parts)
+  categories_chosen = JSON.parse(JSON.stringify(clean_Deliberation)).map(function(value,index) { return value; }).map(a=>[a.chosen_category, a.chosen_stimulus, a.chosen_path, a.pair_id]).sort();
+  categories_unchosen = JSON.parse(JSON.stringify(clean_Deliberation)).map(function(value,index) { return value; }).map(a=>[a.unchosen_category, a.unchosen_stimulus, a.unchosen_path, a.pair_id]).sort().reverse();
+  recombined = [];
+  for (i=0; i<categories_chosen.length; i++){
+    recombined[i] = {chosen_cat: categories_chosen[i][0],
+                     chosen_stim: categories_chosen[i][1],
+                     chosen_path: categories_chosen[i][2],
+                     chosen_id: categories_chosen[i][3],
+                     unchosen_cat: categories_unchosen[i][0],
+                     unchosen_stim: categories_unchosen[i][1],
+                     unchosen_path: categories_unchosen[i][2],
+                     unchosen_id: categories_unchosen[i][3]}
+  }
+  all_chosen_categories = [ ... new Set(categories_chosen.map(a=>a[0]))]
+  new_recombined = [];
+  for (i=0; i<all_chosen_categories.length; i++){
+    curr_cat = recombined.filter(a => a.chosen_cat == all_chosen_categories[i])
+    error = 1;
+    while (error==1){
+      // shuffle order of unchosen items
+      curr_unchosen = shuffle(curr_cat.map(a => [a.unchosen_cat, a.unchosen_stim, a.unchosen_path, a.unchosen_id]))
+      curr_cat.forEach((a, i) => {a.unchosen_cat = curr_unchosen[i][0]; a.unchosen_stim = curr_unchosen[i][1]; a.unchosen_path = curr_unchosen[i][2]; a.unchosen_id = curr_unchosen[i][3]})
+      // check if chosen and unchosen ids are the same (belong to the same pair)
+      curr_cat.forEach(a => a.same_cat = a.chosen_id == a.unchosen_id)
+      if (curr_cat.some(a => a.same_cat == true)){ error = 1; } else { error = 0}
+    }
+    new_recombined = new_recombined.concat(curr_cat)
+  }
+
+  // TODO: consider adding a 1000 iteration for loop that changes the location of unchosen items within the six first items (and the six last) pairwise - so we could try and mix pairings in the recombined pairs
+  intact_pairs = JSON.parse(JSON.stringify(clean_Deliberation)).map(function(value,index) { return value; })
+  // put pairs in Memory df
+  for (i=0; i<Memory.length; i++){
+    if (Memory[i].practice == 0){
+      if (Memory[i].pair_type == "intact"){
+        Memory[i].left_stimulus = intact_pairs.filter(a => a.pair_id == Memory[i].pair_id)[0].left_stimulus;
+        Memory[i].left_path = intact_pairs.filter(a => a.pair_id == Memory[i].pair_id)[0].left_path;
+        Memory[i].left_category = intact_pairs.filter(a => a.pair_id == Memory[i].pair_id)[0].left_category;
+        Memory[i].right_stimulus = intact_pairs.filter(a => a.pair_id == Memory[i].pair_id)[0].right_stimulus;
+        Memory[i].right_path = intact_pairs.filter(a => a.pair_id == Memory[i].pair_id)[0].right_path;
+        Memory[i].right_category = intact_pairs.filter(a => a.pair_id == Memory[i].pair_id)[0].right_category;
+        Memory[i].chosen_left = intact_pairs.filter(a => a.pair_id == Memory[i].pair_id)[0].left_chosen;
+      } else {
+        // select a random item from new_recombined df
+        curr_recombined = new_recombined.filter(a => a.chosen_id == Memory[i].chosen_id)[0];
+        if (Memory[i].chosen_left == 1){
+          Memory[i].left_stimulus = curr_recombined.chosen_stim;
+          Memory[i].left_path = curr_recombined.chosen_path;
+          Memory[i].left_category = curr_recombined.chosen_cat;
+          Memory[i].right_stimulus = curr_recombined.unchosen_stim;
+          Memory[i].right_path = curr_recombined.unchosen_path;
+          Memory[i].right_category = curr_recombined.unchosen_cat;
+        } else {
+          Memory[i].left_stimulus = curr_recombined.unchosen_stim;
+          Memory[i].left_path = curr_recombined.unchosen_path;
+          Memory[i].left_category = curr_recombined.unchosen_cat;
+          Memory[i].right_stimulus = curr_recombined.chosen_stim;
+          Memory[i].right_path = curr_recombined.chosen_path;
+          Memory[i].right_category = curr_recombined.chosen_cat;
+        }
+      }
+    } else {
+      Memory[i].left_category = NaN;
+      Memory[i].right_category = NaN;
+    }
+  }
+    // TODO: make sure we do not repeat items in recombined pair - every item should appear twice throughout the task
+
+// ================================= final ratings =============================
+
+    // remove scramble images that did not appear in the deliberation phase, and keep all other stims (even original stims that didn't participate in the deliberation phase)
+    deliberated_stims = [ ... new Set(Deliberation.map(a => a.right_path).concat(Deliberation.map(a => a.left_path)))];
+    Final_ratings = JSON.parse(JSON.stringify(Final_ratings)).map(function(value,index){return value;}).filter(a => !a.path.includes("scramble") | deliberated_stims.includes(a.path));
+
+    chosen_stims = [ ... new Set(Deliberation.map(a => a.chosen_path))]
+    rewarded_stims = [ ... new Set(Outcome_learning.filter(a => a.outcome == "gain").map(a => a.path))]
+
+    // assign stim type, and previous rating if applicable
+    for (i=0; i<Final_ratings.length; i++){
+      if (Final_ratings[i].path.includes("scramble")){
+        Final_ratings[i].stim_type = "scramble"
+      } else {
+        Final_ratings[i].stim_type = "original"
+      }
+      if (deliberated_stims.includes(Final_ratings[i].path)){
+        Final_ratings[i].deliberated_stim = "deliberated"
+      } else {
+        Final_ratings[i].deliberated_stim = "not_deliberated"
+      }
+      if (chosen_stims.includes(Final_ratings[i].path)){
+        Final_ratings[i].choice = "chosen"
+      } else {
+        Final_ratings[i].choice = "unchosen"
+      }
+      if (rewarded_stims.includes(Final_ratings[i].path)){
+        Final_ratings[i].outcome = "gain"
+      } else {
+        Final_ratings[i].outcome = "no_gain"
+      }
+      if (Final_ratings[i].stim_type == "original"){
+        Final_ratings[i].old_rating = Ratings.filter(a => a.stimulus == Final_ratings[i].stimulus)[0].rating;
+      }
+    }
+
+
+// ============================= outcome estimation ============================
+
+  // add stimulus id from deliberation mat and reward type from outcome learning
+
+  for (i=0; i<Outcome_estimation.length; i++){
+    if (Outcome_estimation[i].practice == 0){
+      if (Outcome_estimation[i].choice_type == "chosen"){
+        Outcome_estimation[i].stimulus_id = clean_Deliberation.filter(a => a.pair_id == Outcome_estimation[i].pair_id)[0].chosen_stimulus;
+        Outcome_estimation[i].path = clean_Deliberation.filter(a => a.pair_id == Outcome_estimation[i].pair_id)[0].chosen_path;
+      } else {
+        Outcome_estimation[i].stimulus_id = clean_Deliberation.filter(a => a.pair_id == Outcome_estimation[i].pair_id)[0].unchosen_stimulus;
+        Outcome_estimation[i].path = clean_Deliberation.filter(a => a.pair_id == Outcome_estimation[i].pair_id)[0].unchosen_path;
+      }
+      Outcome_estimation[i].reward_type = Outcome_learning.filter(a => a.item_id == Outcome_estimation[i].pair_id)[0].outcome;
+    }
+  }
+
+// ==================================== save ===================================
+
+    // save all data frames
+    subID = Deliberation[0].PID;
+    if (is_scanner == "scanner"){
+      save_local_data(data_folder+'Deliberation/deliberation_sub_'+subID+".csv", convertToCSV(Deliberation));
+      save_local_data(data_folder+'clean_Deliberation/clean_deliberation_sub_'+subID+".csv", convertToCSV(clean_Deliberation));
+      save_local_data(data_folder+'Events/events_sub_'+subID+".csv", convertToCSV(events));
+      save_local_data(data_folder+'Outcome_learning/outcome_learning_sub_'+subID+".csv", convertToCSV(Outcome_learning));
+      save_local_data(data_folder+'Final_decisions/final_decisions_sub_'+subID+".csv", convertToCSV(Final_decisions));
+      save_local_data(data_folder+'Memory/memory_sub_'+subID+".csv", convertToCSV(Memory));
+      save_local_data(data_folder+'Final_ratings/final_ratings_sub_'+subID+".csv", convertToCSV(Final_ratings));
+      save_local_data(data_folder+'Outcome_estimation/outcome_estimation_sub_'+subID+".csv", convertToCSV(Outcome_estimation));
+    } else {
+      save_server_data(data_folder+'Deliberation/deliberation_sub_'+subID+".csv", convertToCSV(Deliberation));
+      save_server_data(data_folder+'clean_Deliberation/clean_deliberation_sub_'+subID+".csv", convertToCSV(clean_Deliberation));
+      save_server_data(data_folder+'Events/events_sub_'+subID+".csv", convertToCSV(events));
+      save_server_data(data_folder+'Outcome_learning/outcome_learning_sub_'+subID+".csv", convertToCSV(Outcome_learning));
+      save_server_data(data_folder+'Final_decisions/final_decisions_sub_'+subID+".csv", convertToCSV(Final_decisions));
+      save_server_data(data_folder+'Memory/memory_sub_'+subID+".csv", convertToCSV(Memory));
+      save_server_data(data_folder+'Final_ratings/final_ratings_sub_'+subID+".csv", convertToCSV(Final_ratings));
+      save_server_data(data_folder+'Outcome_estimation/outcome_estimation_sub_'+subID+".csv", convertToCSV(Outcome_estimation));
+    }
+
+  }
+ };
+
+   var if_end_deliberation_phase = {
+       timeline: [end_deliberation_phase],
+       conditional_function: function(){
+         // we don't present the end of block screen for the last block.
+         if (jsPsych.data.get().filter({ttype: 'deliberation'}).last(1).values()[0].index == (n_deliberation_trials-1)){
+           return true;
+         } else { return false; } // the next block is similar to the current one
+       }
+     } // if_run_over
+
+// ----- repeat the entire trial for no responses in practice trials only ------
+
+    var repeat_deliberation_trial = {
+      timeline: [deliberation_trial, if_scramble_prompt, if_deliberation_confirmation, if_deliberation_no_response, deliberation_iti_trial, if_deliberation_practice_over, if_deliberation_run_over_trial, if_end_deliberation_phase],
+      loop_function: function(){
+        curr_ind = jsPsych.data.get().filter({ttype: 'deliberation'}).last(1).values()[0].index;
+        if (repeat_deliberation_practice == 1){
+          return true;
+        } else {
+          return false;
+        } // else
+      } // loop_function function
+    } // repeat_deliberation_trial
+    deliberation_timeline.timeline.push(repeat_deliberation_trial)
+
+// ---------- for mturkers, stop experiment if too many no responses -----------
+
+var not_enough_deliberation_choices = {
+    type: 'html-keyboard-response',
+    data: {ttype: 'not_enough_deliberation_choices',
+           index: t},
+    stimulus: "Unfortunately, you did not answer to a significant number of trials. We therefore cannot proceed with the experiment. <br></br> To exit the experiment please press Q",
+    choices: "q",
+    response_ends_trial: true,
+    on_finish: function(trial){
+      subID = Deliberation[0].PID;
+      jsPsych.data.addProperties({not_enough_deliberation_choices: 1})
+      save_server_data(data_folder+'All_data/all_data_sub_'+subID+".csv", jsPsych.data.get().ignore('stimulus').csv());
+      save_server_data(int_data_folder+'int_data_sub_'+subID+".csv", jsPsych.data.getInteractionData().csv());
+      jsPsych.endExperiment("The experiment is over")
+    }
+}
+
+// if any trial in clean_Deliberation has block==4 and no reponse==1
+
+var if_not_enough_deliberation_choices = {
+    timeline: [not_enough_deliberation_choices],
+    conditional_function: function(data){
+      if (not_enough_deliberation_choices_logical == 1){
+        return true;
+      } else {
+        return false;
+      }
+    } // conditional_function
+  } // if_enough_deliberation_choices
+  deliberation_timeline.timeline.push(if_not_enough_deliberation_choices)
+
+} // for deliberation trials
+
+
+// =============================================================================
+//                              OUTCOME LEARNING
+// =============================================================================
+
+// Outcome learning instructions
+var outcome_learning_instructions = {
+    type: 'instructions',
+    pages: ['<div><img class="instructions" src="Stimuli/Instructions/'+is_scanner+'/Outcome_learning1.png"</img></div>',
+            '<div><img class="instructions" src="Stimuli/Instructions/'+is_scanner+'/Outcome_learning2.png"</img></div>',
+            '<div><img class="instructions" src="Stimuli/Instructions/'+is_scanner+'/Outcome_learning3.png"</img></div>',
+            '<div><img class="instructions" src="Stimuli/Instructions/'+is_scanner+'/start_quiz.png"</img></div>'],
+    data: {ttype: "outcome_learning_instructions"},
+    show_clickable_nav: true
+  };
+
+// activate function to present a looping quiz (loops until you get all answers correctly)
+repeat_reward_instructions = present_quiz_instructions(outcome_learning_instructions, 'reward_comprehension_check', quiz_qs.reward, quiz_answers.reward)
+
+// push the repeated quiz and also present next screens after they get it correctly.
+outcome_learning_timeline.timeline.push(repeat_reward_instructions,passed_instructions_practice)
+
+// TODO: if we start from a specific phase - load the df for that subject.
+
+for (t = 0; t < n_outcome_learning_trials; t++) {
+
+// --------------------------- show chosen item --------------------------------
+
+var show_chosen_item_trial = {
+    type: 'html-keyboard-response',
+    data: {ttype: 'show_chosen_item',
+           index: t},
+    stimulus: single_stim,
+    choices: jsPsych.NO_KEYS,
+    trial_duration: timing_show_chosen,
+    response_ends_trial: false,
+    on_start: function(trial){
+      trial.data.stimulus_id = Outcome_learning[trial.data.index].stimulus;
+      trial.stimulus = String.format(trial.stimulus,Outcome_learning[trial.data.index].path); // full path
+    },
+    on_finish: function(data){
+
+      // insert parameters
+      data.isi = Outcome_learning[data.index].isi;
+      data.iti = Outcome_learning[data.index].iti;
+      data.item_id = Outcome_learning[data.index].item_id;
+      data.outcome = Outcome_learning[data.index].outcome;
+      data.practice = Outcome_learning[data.index].practice;
+      data.run = Outcome_learning[data.index].run;
+
+      // assign trial duration to onset and duration
+      data.duration = timing_show_chosen/1000;
+      data.onset = onset;
+      curr_event = {PID: jsPsych.data.get().filter({ttype: 'get_id'}).last(1).values()[0].PID, phase: "outcome_learning", run: Outcome_learning[data.index].run, trial: data.index, event: data.outcome, onset: data.onset, duration: data.duration}
+      events.push(curr_event);
+      onset = onset + data.duration;
+    } // on_finish
+  } // show_chosen_item_trial
+
+// ---------------------------------- isi --------------------------------------
+
+    // Fixation for jitter and ITI
+var isi_outcome_learning_trial = {
+    type: 'html-keyboard-response',
+    stimulus: fixation_stim,
+    choices: jsPsych.NO_KEYS,
+    data: {ttype: 'isi_outcome_learning', index: t},
+    on_start: function(trial){
+      if (is_debug==1){
+        trial.trial_duration = 100;
+      } else {
+        trial.trial_duration = Outcome_learning[trial.data.index].isi;
+      }
+      //console.log("curr trial iti:"+curr_iti)
+
+      // add run info
+      trial.data.run = jsPsych.data.get().filter({ttype: 'show_chosen_item'}).last(1).values()[0].run;
+
+      // assign trial duration to onset and duration
+      duration = trial.trial_duration/1000;
+      trial.data.duration = duration;
+      trial.data.onset = onset;
+      curr_event = {PID: jsPsych.data.get().filter({ttype: 'get_id'}).last(1).values()[0].PID, phase: "outcome_learning", run: Outcome_learning[trial.data.index].run, trial: trial.data.index, event: "isi", onset: trial.data.onset, duration: trial.data.duration}
+      events.push(curr_event);
+      onset = onset + duration;
+    } // on_start
+  } //
+
+// ------------------------------ show reward ----------------------------------
+
+var show_reward_trial = {
+  type: 'html-keyboard-response',
+  data: {ttype: 'show_reward',
+         index: t},
+  stimulus: reward_stim,
+  choices: keys_task,
+  trial_duration: timing_show_outcome,
+  response_ends_trial: false, // response doesnt end the trial
+  on_start: function(trial){
+    if (Outcome_learning[trial.data.index].outcome == "gain"){
+      outcome_path = 'Stimuli/Reward_stim/100bill.jpeg';
+    } else {
+      outcome_path = 'Stimuli/Reward_stim/scrambled_100bill.jpeg';
+    }
+    trial.stimulus = String.format(trial.stimulus,outcome_path); // full path
+  },
+  on_finish: function(data){
+
+    // register response
+    if (data.key_press == jsPsych.pluginAPI.convertKeyCharacterToKeyCode(keys_task[0])){ // left chosen (gain)
+      response = "gain";
+    } else if (data.key_press == jsPsych.pluginAPI.convertKeyCharacterToKeyCode(keys_task[1])){ // right chosen (no gain)
+      response = "no_gain";
+    }
+
+    // register no response and check whether the trial should be repeated
+    if (!data.key_press){
+      response = NaN;
+      response_rt = NaN;
+      no_response = 1;
+      if (Outcome_learning[data.index].practice == 1){
+        repeat_outcome_learning_practice = 1;
+      }
+    } else {
+      no_response = 0;
+      response_rt = data.rt;
+      if (Outcome_learning[data.index].practice == 1){
+        repeat_outcome_learning_practice = 0;
+      }
+    }
+
+    data.run = Outcome_learning[data.index].run;
+    data.response = response;
+    data.response_rt = response_rt;
+    data.no_response = no_response;
+    Outcome_learning[data.index].response = response;
+    Outcome_learning[data.index].response_rt = response_rt;
+    Outcome_learning[data.index].no_response = no_response;
+
+    if (Outcome_learning[data.index].response == Outcome_learning[data.index].outcome){
+      Outcome_learning[data.index].response_acc = 1;
+    } else {
+      Outcome_learning[data.index].response_acc = 0;
+    }
+
+    /*if (no_response==1){
+      duration = timing_show_outcome/1000;
+    } else {
+      duration = data.rt/1000;
+    }*/
+    data.onset = onset;
+    data.duration = timing_show_outcome/1000;
+    curr_event = {PID: jsPsych.data.get().filter({ttype: 'get_id'}).last(1).values()[0].PID, phase: "outcome_learning", run: Outcome_learning[data.index].run, trial: data.index, event: "outcome", onset: data.onset, duration: data.duration}
+    events.push(curr_event);
+    onset = onset + duration;
+  } // on_finish
+} // show_chosen_item_trial
+
+
+// --------------------------------- iti ---------------------------------------
+
+var iti_outcome_learning_trial = {
+      type: 'html-keyboard-response',
+      stimulus: fixation_stim,
+      choices: jsPsych.NO_KEYS,
+      data: {ttype: 'iti_outcome_learning', index: t},
+      on_start: function(trial){
+        // assign trial duration
+        trial_duration = Outcome_learning[trial.data.index].iti;
+        if (!isNaN(Outcome_learning[trial.data.index].response)){
+          trial_duration = trial_duration + (timing_show_outcome - Outcome_learning[trial.data.index].response_rt); // we add the remaining time from the outcome presentation
+        } else if (is_debug==1){
+          trial_duration = 100;
+        }
+        trial.trial_duration = trial_duration;
+
+        // add run info
+        trial.data.run = Outcome_learning[trial.data.index].run;
+
+        // assign trial duration to onset and duration
+        duration = trial_duration/1000;
+        trial.data.duration = duration;
+        trial.data.onset = onset;
+        curr_event = {PID: jsPsych.data.get().filter({ttype: 'get_id'}).last(1).values()[0].PID, phase: "outcome_learning", run: Outcome_learning[trial.data.index].run, trial: trial.data.index, event: "iti", onset: trial.data.onset, duration: trial.data.duration}
+        events.push(curr_event);
+        onset = onset + duration;
+      } // on_start
+    } //
+
+// ---------------------------- practice over ----------------------------------
+
+var if_outcome_learning_practice_over = {
+    timeline: [practice_over, start_run],
+    conditional_function: function(){
+      curr_ind = jsPsych.data.get().filter({ttype: 'show_chosen_item'}).last(1).values()[0].index;
+      if (end_practice_outcome_learning.includes(curr_ind) & repeat_outcome_learning_practice == 0) {
+         return true; } else { return false }
+    } // conditional_function
+  } // if_outcome_learning_practice_over
+
+// ----------------------------- block over ------------------------------------
+
+// present block over text
+var outcome_learning_run_over_trial = {
+    type: 'html-keyboard-response',
+    data: {ttype: 'outcome_learning_run_over',
+           index: t},
+    stimulus: "Round {0} (out of {1}) is over</br></br>"+
+              "{2}" +
+              "{3}",
+    choices: keys_start_block,
+    response_ends_trial: true,
+  on_start: function(trial){
+    // block number
+    run_number = jsPsych.data.get().filter({ttype: 'show_chosen_item'}).last(1).values()[0].run;
+
+    // check how many trials the subjects had missed
+    missed_trials = Outcome_learning.filter(a=>a.run == run_number).map(a=>a.no_response).reduce((partialSum, a) => partialSum + a, 0);
+    if (missed_trials > outcome_learning_missed_trials_cutoff){
+      missed_trials_prompt = "We have noticed you didn't respond on time in a few trials, please make sure to respond on time on every trial</br></br>"
+    } else {
+      missed_trials_prompt = ""
+    }
+
+    if (is_scanner=="scanner"){
+      start_prompt = "" // subjects do not press anything here.
+    } else {
+      start_prompt = "When you are ready to start the next round, please press the "+keys_start_block;
+    }
+    trial.stimulus = String.format(trial.stimulus, run_number, n_outcome_learning_runs, missed_trials_prompt, start_prompt);
+  } // on_start
+} // outcome_learning_run_over_trial
+
+var if_outcome_learning_run_over_trial = {
+    timeline: [outcome_learning_run_over_trial, start_run],
+    conditional_function: function(){
+      // we don't present the end of block screen for the last block.
+      if (run_change_outcome_learning.includes(jsPsych.data.get().filter({ttype: 'show_chosen_item'}).last(1).values()[0].index)){
+        return true;
+      } else { return false; } // the next block is similar to the current one
+    }
+  } // if_run_over
+  //timeline.push(if_decisions_run_over)
+
+// ---------------------- present percentage of earnings -----------------------
+
+var end_outcome_learning_phase = {
+   type: "html-keyboard-response",
+   choices: keys_start_block,
+   data: {ttype: 'deliberation_reward_tally'},
+   stimulus: "Congratulations! We played out for real one of your decisions, and you earned extra ${0}</br></br>"+
+             "{1}",
+   on_start: function(trial){
+     if (is_scanner=="scanner"){
+       start_prompt = "" // subjects do not press anything here.
+     } else {
+       start_prompt = "When you are ready to continue, please press the "+keys_start_block;
+     }
+     trial.stimulus = String.format(trial.stimulus, deliberation_bonus, start_prompt);
+     jsPsych.data.get().addToLast({deliberation_reward_tally: deliberation_bonus});
+   },
+   on_finish: function(data){
+     subID = Deliberation[0].PID;
+     // save data
+     if (is_scanner == "scanner"){
+       save_local_data(data_folder+'Outcome_learning/outcome_learning_data_sub_'+subID+".csv", convertToCSV(Outcome_learning));
+       save_local_data(data_folder+'Events/events_sub_'+subID+".csv", convertToCSV(events));
+     } else {
+       save_server_data(data_folder+'Outcome_learning/outcome_learning_data_sub_'+subID+".csv", convertToCSV(Outcome_learning));
+       save_server_data(data_folder+'Events/events_sub_'+subID+".csv", convertToCSV(events));
+     }
+   }
+  };
+
+var if_end_outcome_learning_phase = {
+    timeline: [end_outcome_learning_phase],
+    conditional_function: function(){
+      // we don't present the end of block screen for the last block.
+      if (jsPsych.data.get().filter({ttype: 'show_chosen_item'}).last(1).values()[0].index == (n_outcome_learning_trials-1)){
+        return true;
+      } else { return false; } // the next block is similar to the current one
+    }
+  } // if_run_over
+
+// -------------------- repeat trial only in practice  -----------------------
+
+var repeat_outcome_learning_trial = {
+  timeline: [show_chosen_item_trial, isi_outcome_learning_trial, show_reward_trial, iti_outcome_learning_trial, if_outcome_learning_practice_over, if_outcome_learning_run_over_trial, if_end_outcome_learning_phase],
+  loop_function: function(){
+    curr_ind = jsPsych.data.get().filter({ttype: 'show_reward'}).last(1).values()[0].index;
+    if (repeat_outcome_learning_practice == 1){
+      return true;
+    } else {
+      return false;
+    } // else
+  } // loop_function function
+} // repeat_deliberation_trial
+outcome_learning_timeline.timeline.push(repeat_outcome_learning_trial)
+
+} // outcome learning trials
+
+// =============================================================================
+//                               FINAL DECISIOMS
+// =============================================================================
+
+// Final decisions instructions
+var final_decisions_instructions = {
+      type: 'instructions',
+      pages: ['<div><img class="instructions" src="Stimuli/Instructions/'+is_scanner+'/Final_decisions1.png"</img></div>',
+              '<div><img class="instructions" src="Stimuli/Instructions/'+is_scanner+'/Final_decisions2.png"</img></div>',
+              '<div><img class="instructions" src="Stimuli/Instructions/'+is_scanner+'/start_quiz.png"</img></div>'],
+      data: {ttype: "final_decisions_instructions"},
+      show_clickable_nav: true
+    };
+
+// activate function to present a looping quiz (loops until you get all answers correctly)
+repeat_final_decisions_instructions = present_quiz_instructions(final_decisions_instructions, 'final_decisions_comprehension_check', quiz_qs.final_decisions, quiz_answers.final_decisions)
+
+// push the repeated quiz and also present next screens after they get it correctly.
+final_decisions_timeline.timeline.push(repeat_final_decisions_instructions,passed_instructions_practice);
+
+// -------------------------------- choice -------------------------------------
+
+for (t = 0; t < n_final_decisions_trials; t++) {
+
+var final_decisions_trial = {
+  type: 'html-keyboard-response',
+  data: {ttype: 'final_decisions',
+         index: t},
+  stimulus: decisions_stims,
+  choices: keys_task,
+  trial_duration: timing_max_final_decisions,
+  response_ends_trial: true,
+  on_start: function(trial){
+    trial.stimulus = String.format(trial.stimulus, Final_decisions[trial.data.index].left_path, "",Final_decisions[trial.data.index].right_path);
+  },
+  on_finish: function(data){
+
+    // update choice
+    if(data.key_press == jsPsych.pluginAPI.convertKeyCharacterToKeyCode(keys_task[0])) { // 'f' (left) was chosen
+      data.left_chosen = 1;
+      data.chosen_stimulus = Final_decisions[data.index].left_stimulus;
+      data.unchosen_stimulus = Final_decisions[data.index].right_stimulus;
+      data.chosen_category = Final_decisions[data.index].left_category;
+      data.unchosen_stimulus = Final_decisions[data.index].right_category;
+      data.no_response = 0;
+    }  else if (data.key_press == jsPsych.pluginAPI.convertKeyCharacterToKeyCode(keys_task[1])){
+      data.left_chosen = 0;
+      data.chosen_stimulus = Final_decisions[data.index].right_stimulus;
+      data.unchosen_stimulus = Final_decisions[data.index].left_stimulus;
+      data.chosen_category = Final_decisions[data.index].right_category;
+      data.unchosen_stimulus = Final_decisions[data.index].left_category;
+      data.no_response = 0;
+    } else {
+      data.left_chosen = NaN;
+      data.chosen_stimulus = NaN;
+      data.unchosen_stimulus = NaN;
+      data.chosen_category = NaN;
+      data.unchosen_stimulus = NaN;
+      data.no_response = 1;
+    }// else
+
+    Final_decisions[data.index].rt = data.rt;
+    Final_decisions[data.index].left_chosen = data.left_chosen;
+    Final_decisions[data.index].chosen_stimulus = data.chosen_stimulus;
+    Final_decisions[data.index].unchosen_stimulus = data.unchosen_stimulus;
+    Final_decisions[data.index].chosen_category = data.chosen_category;
+    Final_decisions[data.index].unchosen_stimulus = data.unchosen_stimulus;
+    Final_decisions[data.index].no_response = data.no_response;
+
+    // update data matrix per trial
+    data.iti            = Final_decisions[data.index].iti;
+    data.block          = Final_decisions[data.index].block;
+    data.left_category  = Final_decisions[data.index].left_category;
+    data.right_category = Final_decisions[data.index].right_category;
+    data.choice_type    = Final_decisions[data.index].choice_type;
+    data.gain_left      = Final_decisions[data.index].gain_left;
+    data.left_rating    = Final_decisions[data.index].left_rating;
+    data.right_rating   = Final_decisions[data.index].right_rating;
+    data.left_stimulus  = Final_decisions[data.index].left_stimulus;
+    data.right_stimulus = Final_decisions[data.index].right_stimulus;
+    data.left_item_id   = Final_decisions[data.index].left_item_id;
+    data.right_item_id  = Final_decisions[data.index].right_item_id;
+    data.left_path      = Final_decisions[data.index].left_path;
+    data.right_path     = Final_decisions[data.index].right_path;
+    data.practice       = Final_decisions[data.index].practice;
+    data.run            = Final_decisions[data.index].run;
+
+    if (data.no_response == 0){ // only for actual responses
+      // assess whether higher outcome was chosen
+      if (data.left_chosen == data.gain_left){
+        data.higher_outcome_chosen = 1;
+      } else {
+        data.higher_outcome_chosen = 0;
+      }
+      Final_decisions[data.index].higher_outcome_chosen = data.higher_outcome_chosen;
+      duration = data.rt;
+      if (Final_decisions[data.index].practice == 1){
+        repeat_final_decisions_practice = 0;
+      }
+    } else {
+      duration = timing_max_final_decisions;
+      if (Final_decisions[data.index].practice == 1){
+        repeat_final_decisions_practice = 1;
+      }
+    }
+
+    // add events info
+    data.onset = onset;
+    data.duration = duration/1000;
+    curr_event = {PID: jsPsych.data.get().filter({ttype: 'get_id'}).last(1).values()[0].PID, phase: "final_decisions", run: Final_decisions[data.index].run, trial: data.index, event: "choice", onset: data.onset, duration: data.duration}
+    events.push(curr_event);
+    onset = onset + data.duration;
+
+  } // on_finish
+} // trial final decisions
+
+// ---------------------------- confirmation -----------------------------------
+
+var final_decisions_confirmation_trial = {
+  type: 'html-keyboard-response',
+  data: {ttype: 'final_decisions_confirmation',
+         index: t},
+  stimulus: choice_confirm_stims,
+  choices: jsPsych.NO_KEYS,
+  response_ends_trial: false,
+  on_start: function(trial){
+    // we decide which css object to include according to the decision of the subject. for the chosen object we use the class "object confirm"
+    if (Final_decisions[trial.data.index].left_chosen==1){
+      trial.stimulus = String.format(trial.stimulus, "object confirm" ,Final_decisions[trial.data.index].left_path, "object", Final_decisions[trial.data.index].right_path);
+    } else {
+      trial.stimulus = String.format(trial.stimulus, "object" ,Final_decisions[trial.data.index].left_path, "object confirm", Final_decisions[trial.data.index].right_path);
+    } // else
+    // decide on trial duration - we add the extra time left from the decision trial to the confirmation.
+    decision_rt = Final_decisions[trial.data.index].rt;
+    if (fixed_confirmation == 1){
+      trial_duration = timing_max_final_decisions - decision_rt;
+    } else {
+      trial_duration = timing_confirmation;
+    }
+    trial.trial_duration = trial_duration;
+
+    // add block info
+    trial.data.run = Final_decisions[trial.data.index].run;
+
+    // assign trial duration to onset and duration
+    duration = trial_duration/1000;
+    trial.data.duration = duration;
+    trial.data.onset = onset;
+    curr_event = {PID: jsPsych.data.get().filter({ttype: 'get_id'}).last(1).values()[0].PID, phase: "final_decisions", run: Final_decisions[trial.data.index].run, trial: trial.data.index, event: "confirmation", onset: trial.data.onset, duration: trial.data.duration}
+    events.push(curr_event);
+    onset = onset + duration;
+  } // on_start
+} // confirmation_trial
+
+
+// present confirmation only if there was a response
+var if_final_decisions_confirmation_trial = {
+  timeline: [final_decisions_confirmation_trial],
+  conditional_function: function(){
+    if (jsPsych.data.get().filter({ttype: 'final_decisions'}).last(1).values()[0].key_press){
+      return true;
+    } else {
+      return false;
+    } // else
+  } // conditional function
+} // if_confirmation
+
+
+// -------------------------------- no response --------------------------------
+
+var final_decisions_no_response = {
+  type: 'html-keyboard-response',
+  data: {ttype: "final_decisions_no_response", index: t},
+  stimulus: '<div style="font-size: 200%">TOO SLOW</div>',
+  choices: jsPsych.NO_KEYS,
+  trial_duration: timing_warning,
+  on_finish: function(data){
+    data.warning = 1;
+    data.no_response = 1;
+    data.run = jsPsych.data.get().filter({ttype: 'final_decisions'}).last(1).values()[0].run;
+    // assign trial duration to onset and duration
+    duration = timing_warning/1000;
+    data.duration = duration;
+    data.onset = onset;
+    curr_event = {PID: jsPsych.data.get().filter({ttype: 'get_id'}).last(1).values()[0].PID, phase: "final_decisions", run: Final_decisions[data.index].run, trial: data.index, event: "no_response", onset: data.onset, duration: data.duration}
+    events.push(curr_event);
+    onset = onset + duration;
+  } // on_finish
+} // deliberation_too_slow
+
+var if_final_decisions_no_response = {
+  timeline: [final_decisions_no_response],
+  conditional_function: function(data){
+    if ((jsPsych.data.get().filter({ttype: 'final_decisions'}).last(1).values()[0].key_press == null) & (show_no_response == 1)){
+      return true;
+    } else {
+      return false;
+    } // else
+  } // conditional function
+} // if_confirmation
+
+// ----------------------------------- iti -----------------------------------
+
+var iti_final_decisions_trial = {
+    type: 'html-keyboard-response',
+    stimulus: fixation_stim,
+    choices: jsPsych.NO_KEYS,
+    data: {ttype: 'iti_final_decisions', index: t},
+    on_start: function(trial){
+      // assign trial duration
+      trial_duration = Final_decisions[trial.data.index].iti;
+      if (Final_decisions[trial.data.index].no_response==1){
+        trial_duration = trial_duration - timing_warning; // we add the remaining time from the outcome presentation
+      } else if (is_debug==1){
+        trial_duration = 100;
+      } else if (Final_decisions[trial.data.index].no_response==0 & fixed_confirmation == 1){
+        // iti shift = 1.5 (max response) - RT - 0.5 (confirmation)
+        trial_duration = Final_decisions[trial.data.index].iti + (timing_max_final_decisions - Final_decisions[trial.data.index].rt - timing_confirmation);
+      }
+      trial.trial_duration = trial_duration;
+
+      // add run info
+      trial.data.run = Final_decisions[trial.data.index].run;
+
+      // assign trial duration to onset and duration
+      duration = trial_duration/1000;
+      trial.data.duration = duration;
+      trial.data.onset = onset;
+      curr_event = {PID: jsPsych.data.get().filter({ttype: 'get_id'}).last(1).values()[0].PID, phase: "final_decisions", run: Final_decisions[trial.data.index].run, trial: trial.data.index, event: "iti", onset: trial.data.onset, duration: trial.data.duration}
+      events.push(curr_event);
+      onset = onset + duration;
+    } // on_start
+  } //
+
+// ------------------------- practice block over -------------------------------
+
+var if_final_decisions_practice_over = {
+    timeline: [practice_over, start_run],
+    conditional_function: function(){
+      curr_ind = jsPsych.data.get().filter({ttype: 'final_decisions'}).last(1).values()[0].index;
+      if (end_practice_final_decisions.includes(curr_ind) & repeat_final_decisions_practice == 0) {
+         return true; } else { return false }
+    } // conditional_function
+  } // if_deliberation_practice_over
+
+// ---------------------------- block over -------------------------------------
+
+// present block over text
+var final_decisions_run_over_trial = {
+    type: 'html-keyboard-response',
+    data: {ttype: 'final_decisions_run_over',
+           index: t},
+    stimulus: "Round {0} (out of {1}) is over</br></br>"+
+              "{2}" +
+              "{3}",
+    choices: keys_start_block,
+    response_ends_trial: true,
+  on_start: function(trial){
+
+    // run number
+    run_number = jsPsych.data.get().filter({ttype: 'final_decisions'}).last(1).values()[0].run;
+
+    // check how many trials the subjects had missed
+    missed_trials = Final_decisions.map(a=>a.no_response).reduce((partialSum, a) => partialSum + a, 0);
+    if (missed_trials > final_decisions_missed_trials_cutoff){
+      missed_trials_prompt = "We have noticed you didn't respond on time in a few trials, please make sure to respond on time on every trial"
+    } else {
+      missed_trials_prompt = ""
+    }
+
+    if (is_scanner=="scanner"){
+      start_prompt = "" // subjects do not press anything here.
+    } else {
+      start_prompt = "When you are ready to start the next round, please press the "+keys_start_block;
+    }
+    trial.stimulus = String.format(trial.stimulus, run_number, n_final_decisions_runs, missed_trials_prompt, start_prompt);
+  } // on_start
+} // final_decisions_run_over_trial
+
+var if_final_decisions_run_over_trial = {
+    timeline: [final_decisions_run_over_trial, start_run],
+    conditional_function: function(){
+      // we don't present the end of block screen for the last block.
+      if (run_change_final_decisions.includes(jsPsych.data.get().filter({ttype: 'final_decisions'}).last(1).values()[0].index)){
+        return true;
+      } else { return false; } // the next block is similar to the current one
+    }
+  } // if_run_over
+
+// -------------------------- end current phase --------------------------------
+
+var end_final_decisions_phase = {
+  type: "html-keyboard-response",
+  choices: keys_start_block,
+  data: {ttype: 'end_final_decisions_phase'},
+  stimulus: "The current phase has ended</br></br>"+
+            "{0}",
+  on_start: function(trial){
+    if (is_scanner=="scanner"){
+      start_prompt = "" // subjects do not press anything here.
+    } else {
+      start_prompt = "When you are ready to continue, please press the "+keys_start_block;
+    }
+    trial.stimulus = String.format(trial.stimulus, start_prompt);
+    subID = Deliberation[0].PID;
+    if (is_scanner == "scanner"){
+      save_local_data(data_folder+'Final_decisions/final_decisions_sub_'+subID+".csv", convertToCSV(Final_decisions));
+      save_local_data(data_folder+'Events/events_sub_'+subID+".csv", convertToCSV(events));
+    } else {
+      save_server_data(data_folder+'Final_decisions/final_decisions_sub_'+subID+".csv", convertToCSV(Final_decisions));
+      save_server_data(data_folder+'Events/events_sub_'+subID+".csv", convertToCSV(events));
+    }
+  }
+ };
+
+var if_end_final_decisions_phase = {
+   timeline: [end_final_decisions_phase],
+   conditional_function: function(){
+     // we don't present the end of block screen for the last block.
+     if (jsPsych.data.get().filter({ttype: 'final_decisions'}).last(1).values()[0].index == (n_final_decisions_trials-1)){
+       return true;
+     } else { return false; } // the next block is similar to the current one
+   }
+ } // if_run_over
+
+// ----- repeat the entire trial for no responses in practice trials only ------
+
+var repeat_final_decisions_trial = {
+  timeline: [final_decisions_trial, if_final_decisions_confirmation_trial, if_final_decisions_no_response, iti_final_decisions_trial, if_final_decisions_practice_over, if_final_decisions_run_over_trial, if_end_final_decisions_phase],
+  loop_function: function(){
+    if (repeat_final_decisions_practice == 1){
+      return true;
+    } else {
+      return false;
+    } // else
+  } // loop_function function
+} // repeat_deliberation_trial
+
+final_decisions_timeline.timeline.push(repeat_final_decisions_trial)
+
+} // final decisions loop
+
+
+// =============================================================================
+//                                    MEMORY
+// =============================================================================
+
+var memory_test_instructions = {
+      type: 'instructions',
+      pages: ['<div><img class="instructions" src="Stimuli/Instructions/'+is_scanner+'/Memory1.png"</img></div>',
+              '<div><img class="instructions" src="Stimuli/Instructions/'+is_scanner+'/Memory2.png"</img></div>',
+              '<div><img class="instructions" src="Stimuli/Instructions/'+is_scanner+'/start_quiz.png"</img></div>'],
+      data: {ttype: "memory_test_instructions"},
+      show_clickable_nav: true
+    };
+
+// activate function to present a looping quiz (loops until you get all answers correctly)
+repeat_memory_instructions = present_quiz_instructions(memory_test_instructions, 'memory_comprehension_check', quiz_qs.memory, quiz_answers.memory)
+
+// push the repeated quiz and also present next screens after they get it correctly.
+memory_timeline.timeline.push(repeat_memory_instructions,passed_instructions_practice)
+
+// -----------------------------------------------------------------------------
+
+// Run over memory trials
+for (t = 0; t < n_memory_trials; t++) {
+
+  var memory_trial = {
+    type: 'html-keyboard-response',
+    data: {ttype: 'memory',
+           index: t},
+    stimulus: decisions_stims,
+    choices: keys_task,
+    trial_duration: timing_max_memory,
+    response_ends_trial: true,
+    on_start: function(trial){
+      trial.stimulus = String.format(trial.stimulus, Memory[trial.data.index].left_path, "", Memory[trial.data.index].right_path);
+    },
+    on_finish: function(data){
+      // update data matrix per trial
+      data.chosen_left    = Memory[data.index].chosen_left;
+      data.iti            = Memory[data.index].iti;
+      data.left_category  = Memory[data.index].left_category;
+      data.left_path      = Memory[data.index].left_path;
+      data.left_stimulus  = Memory[data.index].left_stimulus;
+      data.right_category = Memory[data.index].right_category;
+      data.right_path     = Memory[data.index].right_path;
+      data.right_stimulus = Memory[data.index].right_stimulus;
+      data.old_pair       = Memory[data.index].old_pair;
+      data.pair_id        = Memory[data.index].pair_id;
+      data.pair_type      = Memory[data.index].pair_type;
+      data.practice       = Memory[data.index].practice;
+      data.run            = Memory[data.index].run;
+      data.block            = Memory[data.index].block;
+
+      // register response
+      if(data.key_press == jsPsych.pluginAPI.convertKeyCharacterToKeyCode(keys_task[0])) { // 'f' (left) was chosen
+        data.old_response = 1;
+      }  else if (data.key_press == jsPsych.pluginAPI.convertKeyCharacterToKeyCode(keys_task[1])){
+        data.old_response = 0;
+      }
+
+      if (data.key_press == null){
+        data.old_response = NaN;
+        data.no_response = 1;
+        duration = timing_max_memory/1000;
+        if (data.practice == 1){
+          repeat_memory_practice = 1;
+        }
+      } else {
+        data.no_response = 0;
+        duration = data.rt/1000;
+        if (data.practice == 1){
+          repeat_memory_practice = 0;
+        }
+      }// else
+      if (data.old_response == data.old_pair){
+        data.pair_acc = 1;
+      } else {
+        data.pair_acc = 0;
+      }
+
+      Memory[data.index].pairs_rt = data.rt;
+      Memory[data.index].old_response = data.old_response;
+      Memory[data.index].no_response = data.no_response;
+      Memory[data.index].pair_acc = data.pair_acc;
+
+      // assign trial duration to onset and duration
+      data.duration = duration;
+      data.onset = onset;
+      curr_event = {PID: jsPsych.data.get().filter({ttype: 'get_id'}).last(1).values()[0].PID, phase: "memory", run: Memory[data.index].run, trial: data.index, event: "choice", onset: data.onset, duration: data.duration}
+      events.push(curr_event);
+      onset = onset + duration;
+
+    } // on_finish
+  } // memory_test_trial
+
+// -----------------------------------------------------------------------------
+
+  memory_confirmation_trial = {
+    type: 'html-keyboard-response',
+    data: {ttype: 'memory_confirmation_trial',
+           index: t},
+    stimulus: '<p style="font-size:200%">{0}</p>',
+    choices: jsPsych.NO_KEYS,
+    response_ends_trial: false,
+    on_start: function(trial){
+      // decide which text to present
+      if (Memory[trial.data.index].old_response==1){
+        trial.stimulus = String.format(trial.stimulus, "INTACT");
+      } else if (Memory[trial.data.index].old_response==0) {
+        trial.stimulus = String.format(trial.stimulus, "RECOMBINED");
+      } // else
+
+     if (fixed_confirmation == 1){
+       trial_duration = timing_confirmation;
+     } else {
+       trial_duration = timing_max_memory - Memory[trial.data.index].pairs_rt;
+     }
+
+      trial.trial_duration = trial_duration;
+
+      // add block info
+      trial.data.run = Memory[trial.data.index].run;
+
+      // assign trial duration to onset and duration
+      duration = trial_duration/1000;
+      trial.data.duration = duration;
+      trial.data.onset = onset;
+      curr_event = {PID: jsPsych.data.get().filter({ttype: 'get_id'}).last(1).values()[0].PID, phase: "memory", run: Memory[trial.data.index].run, trial: trial.data.index, event: "confirmation", onset: trial.data.onset, duration: trial.data.duration}
+      events.push(curr_event);
+      onset = onset + duration;
+    } // on_start
+  } // memory_test_confirmation_trial
+
+  // present confirmation only if there was a response
+  var if_memory_confirmation_trial = {
+    timeline: [memory_confirmation_trial],
+    conditional_function: function(){
+      if (jsPsych.data.get().filter({ttype: 'memory'}).last(1).values()[0].key_press){
+        return true;
+      } else {
+        return false;
+      } // else
+    } // conditional function
+  } // if_confirmation
+
+// ------------------------------ no response --------------------------------
+
+  var memory_no_response = {
+    type: 'html-keyboard-response',
+    data: {ttype: "memory_no_response", index: t},
+    stimulus: '<div style="font-size: 200%">TOO SLOW</div>',
+    choices: jsPsych.NO_KEYS,
+    trial_duration: timing_warning,
+    on_finish: function(data){
+      data.warning = 1;
+      data.no_response = 1;
+      data.run = Memory[data.index].run;
+      // assign trial duration to onset and duration
+      duration = timing_warning/1000;
+      data.duration = duration;
+      data.onset = onset;
+      curr_event = {PID: jsPsych.data.get().filter({ttype: 'get_id'}).last(1).values()[0].PID, phase: "memory", run: Memory[data.index].run, trial: data.index, event: "no_response", onset: data.onset, duration: data.duration}
+      events.push(curr_event);
+      onset = onset + duration;
+    } // on_finish
+  } //
+
+  var if_memory_no_response = {
+    timeline: [memory_no_response],
+    conditional_function: function(data){
+      if ((jsPsych.data.get().filter({ttype: 'memory'}).last(1).values()[0].key_press == null) & (show_no_response == 1)){
+        return true;
+      } else {
+        return false;
+      } // else
+    } // conditional function
+  } // if_confirmation
+
+  // ----------------------------------- iti -----------------------------------
+
+  var iti_memory_trial = {
+      type: 'html-keyboard-response',
+      stimulus: fixation_stim,
+      choices: jsPsych.NO_KEYS,
+      data: {ttype: 'iti_memory', index: t},
+      on_start: function(trial){
+        // assign trial duration
+        trial_duration = Memory[trial.data.index].iti;
+        if (Memory[trial.data.index].no_response==1){
+          trial_duration = trial_duration - timing_warning; // we add the remaining time from the outcome presentation
+        } else if (is_debug==1){
+          trial_duration = 100;
+        } else if (Memory[trial.data.index].no_response==0 & fixed_confirmation==1){
+          trial_duration = trial_duration + (timing_max_memory - Memory[trial.data.index].pairs_rt - timing_confirmation)
+        }
+        trial.trial_duration = trial_duration;
+
+        // add run info
+        trial.data.run = Memory[trial.data.index].run;
+
+        // assign trial duration to onset and duration
+        duration = trial_duration/1000;
+        trial.data.duration = duration;
+        trial.data.onset = onset;
+        curr_event = {PID: jsPsych.data.get().filter({ttype: 'get_id'}).last(1).values()[0].PID, phase: "memory", run: Memory[trial.data.index].run, trial: trial.data.index, event: "iti", onset: trial.data.onset, duration: trial.data.duration}
+        events.push(curr_event);
+        onset = onset + duration;
+      } // on_start
+    } //
+
+  // ------------------------- practice block over -------------------------------
+
+  var if_memory_practice_over = {
+    timeline: [practice_over, start_run],
+    conditional_function: function(){
+      curr_ind = jsPsych.data.get().filter({ttype: 'memory'}).last(1).values()[0].index;
+      if (end_practice_memory.includes(curr_ind) & repeat_memory_practice == 0) {
+         return true; } else { return false }
+    } // conditional_function
+  } // if_deliberation_practice_over
+
+// ---------------------------- block over -------------------------------------
+
+  // present block over text
+  var memory_run_over_trial = {
+      type: 'html-keyboard-response',
+      data: {ttype: 'memory_run_over',
+             index: t},
+      stimulus: "Round {0} (out of {1}) is over</br></br>"+
+                "{2}" +
+                "{3}",
+      choices: keys_start_block,
+      response_ends_trial: true,
+    on_start: function(trial){
+
+      // run number
+      run_number = jsPsych.data.get().filter({ttype: 'memory'}).last(1).values()[0].run;
+
+      // check how many trials the subjects had missed
+      missed_trials = Memory.map(a=>a.no_response).reduce((partialSum, a) => partialSum + a, 0);
+      if (missed_trials > memory_missed_trials_cutoff){
+        missed_trials_prompt = "We have noticed you didn't respond on time in a few trials, please make sure to respond on time on every trial"
+      } else {
+        missed_trials_prompt = ""
+      }
+
+      if (is_scanner=="scanner"){
+        start_prompt = "" // subjects do not press anything here.
+      } else {
+        start_prompt = "When you are ready to start the next round, please press the "+keys_start_block;
+      }
+      trial.stimulus = String.format(trial.stimulus, run_number, n_memory_runs, missed_trials_prompt, start_prompt);
+    } // on_start
+  } // final_decisions_run_over_trial
+
+  var if_memory_run_over_trial = {
+      timeline: [memory_run_over_trial, start_run],
+      conditional_function: function(){
+        // we don't present the end of block screen for the last block.
+        if (run_change_memory.includes(jsPsych.data.get().filter({ttype: 'memory'}).last(1).values()[0].index)){
+          return true;
+        } else { return false; } // the next block is similar to the current one
+      }
+    } // if_run_over
+
+  // -------------------------- end current phase --------------------------------
+
+  var end_memory_phase = {
+    type: "html-keyboard-response",
+    choices: keys_start_block,
+    data: {ttype: 'end_memory_phase'},
+    stimulus: "The current phase has ended</br></br>"+
+              "{0}",
+    on_start: function(trial){
+      if (is_scanner=="scanner"){
+        start_prompt = "" // subjects do not press anything here.
+      } else {
+        start_prompt = "When you are ready to continue, please press the "+keys_start_block;
+      }
+      trial.stimulus = String.format(trial.stimulus, start_prompt);
+      subID = Deliberation[0].PID;
+      if (is_scanner == "scanner"){
+        save_local_data(data_folder+'Memory/memory_sub_'+subID+".csv", convertToCSV(Memory));
+        save_local_data(data_folder+'Events/events_sub_'+subID+".csv", convertToCSV(events));
+      } else {
+        save_server_data(data_folder+'Memory/memory_sub_'+subID+".csv", convertToCSV(Memory));
+        save_server_data(data_folder+'Events/events_sub_'+subID+".csv", convertToCSV(events));
+      }
+    }
+   };
+
+  var if_end_memory_phase = {
+     timeline: [end_memory_phase],
+     conditional_function: function(){
+       // we don't present the end of block screen for the last block.
+       if (jsPsych.data.get().filter({ttype: 'memory'}).last(1).values()[0].index == (n_memory_trials-1)){
+         return true;
+       } else { return false; } // the next block is similar to the current one
+     }
+   } // if_run_over
+
+  // ----- repeat the entire trial for no responses in practice trials only ------
+
+  var repeat_memory_trial = {
+   timeline: [memory_trial, if_memory_confirmation_trial, if_memory_no_response, iti_memory_trial, if_memory_practice_over, if_memory_run_over_trial, if_end_memory_phase],
+   loop_function: function(){
+     if (repeat_memory_practice == 1){
+       return true;
+     } else {
+       return false;
+     } // else
+   } // loop_function function
+  } // repeat_deliberation_trial
+
+  memory_timeline.timeline.push(repeat_memory_trial)
+
+} // memory test loop
+
+// =============================================================================
+//                              OUTCOME ESTIMATION
+// =============================================================================
+
+var outcome_estimation_instructions = {
+      type: 'instructions',
+      pages: [
+          '<div><img class="instructions" src="Stimuli/Instructions/'+is_scanner+'/Outcome_estimation1.png"</img></div>',
+          '<div><img class="instructions" src="Stimuli/Instructions/'+is_scanner+'/Outcome_estimation2.png"</img></div>',
+          '<div><img class="instructions" src="Stimuli/Instructions/'+is_scanner+'/start_quiz.png"</img></div>'],
+      data: {ttype: "outcome_estimation_instructions"},
+      show_clickable_nav: true
+    };
+
+  // activate function to present a looping quiz (loops until you get all answers correctly)
+  repeat_outcome_estimation_instructions = present_quiz_instructions(outcome_estimation_instructions, 'outcome_estimation_comprehension_check', quiz_qs.outcome_estimation, quiz_answers.outcome_estimation)
+
+  // push the repeated quiz and also present next screens after they get it correctly.
+  outcome_estimation_timeline.timeline.push(repeat_outcome_estimation_instructions, passed_instructions_practice)
+
+// ----------------------------------- choice ----------------------------------
+
+// outcome estimation trial
+for (t = 0; t < n_outcome_estimation_trials; t++){
+
+  var outcome_estimation_trial = {
+      type: 'html-keyboard-response',
+      data: {ttype: 'outcome_estimation',
+             index: t},
+      stimulus: single_stim,
+      choices: keys_task,
+      trial_duration: timing_max_outcome_estimation,
+      response_ends_trial: true,
+      on_start: function(trial){
+        trial.stimulus = String.format(trial.stimulus, Outcome_estimation[trial.data.index].path); // full path
+      },
+      on_finish: function(data){
+
+        data.run = Outcome_estimation[data.index].run;
+        data.block = Outcome_estimation[data.index].block;
+        data.choice_type = Outcome_estimation[data.index].choice_type;
+        data.iti = Outcome_estimation[data.index].iti;
+        data.pair_id = Outcome_estimation[data.index].pair_id;
+        data.path = Outcome_estimation[data.index].path;
+        data.practice = Outcome_estimation[data.index].practice;
+        data.reward_type = Outcome_estimation[data.index].reward_type;
+        data.stimulus_id = Outcome_estimation[data.index].stimulus_id;
+
+        if(data.key_press == jsPsych.pluginAPI.convertKeyCharacterToKeyCode(keys_task[0])) { // 'up' (gain) was chosen
+          data.outcome_response = "gain";
+        } else if (data.key_press == jsPsych.pluginAPI.convertKeyCharacterToKeyCode(keys_task[1])){ // 'down' (no gain) was chosen
+          data.outcome_response = "no_gain";
+        }
+
+        if (data.key_press == null){
+          data.no_response = 1;
+          data.outcome_response = NaN;
+          data.outcome_rt = NaN;
+          duration = timing_max_outcome_estimation/1000;
+          if (Outcome_estimation[data.index].practice == 1){
+            repeat_outcome_estimation_practice = 1;
+          }
+        } else {
+          data.no_response = 0;
+          data.outcome_rt = data.rt;
+          duration = data.rt/1000;
+          if (Outcome_estimation[data.index].practice == 1){
+            repeat_outcome_estimation_practice = 0;
+          }
+        }
+
+        if (data.outcome_response == data.reward_type){
+          data.outcome_acc = 1;
+        } else {
+          data.outcome_acc = 0;
+        }
+
+        Outcome_estimation[data.index].no_response = data.no_response;
+        Outcome_estimation[data.index].outcome_rt = data.outcome_rt;
+        Outcome_estimation[data.index].outcome_response = data.outcome_response;
+        Outcome_estimation[data.index].outcome_acc = data.outcome_acc;
+
+
+        // assign trial duration to onset and duration
+        data.duration = duration;
+        data.onset = onset;
+        curr_event = {PID: jsPsych.data.get().filter({ttype: 'get_id'}).last(1).values()[0].PID, phase: "outcome_estimation", run: Outcome_estimation[data.index].run, trial: data.index, event: "choice", onset: data.onset, duration: data.duration}
+        events.push(curr_event);
+        onset = onset + duration;
+
+      } // on_finish
+    } // outcome_estimation_trial
+
+// ---------------------------- confirmation -----------------------------------
+
+    outcome_estimation_confirmation_trial = {
+      type: 'html-keyboard-response',
+      data: {ttype: 'outcome_estimation_confirmation_trial',
+             index: t},
+      stimulus: '<p style="font-size:200%">{0}</p>',
+      choices: jsPsych.NO_KEYS,
+      response_ends_trial: false,
+      on_start: function(trial){
+        // decide which text to present
+        if (Outcome_estimation[trial.data.index].outcome_response=="gain"){
+          trial.stimulus = String.format(trial.stimulus, "GAIN");
+        } else if (Outcome_estimation[trial.data.index].outcome_response=="no_gain") {
+          trial.stimulus = String.format(trial.stimulus, "NO GAIN");
+        } // else
+
+        if (fixed_confirmation==1){
+          trial_duration = timing_confirmation;
+        } else {
+          decision_rt = Outcome_estimation[trial.data.index].outcome_rt;
+          trial_duration = timing_max_outcome_estimation - decision_rt + timing_confirmation;
+        }
+        trial.trial_duration = trial_duration;
+
+        // add block info
+        trial.data.run = Outcome_estimation[trial.data.index].run;
+
+        // assign trial duration to onset and duration
+        duration = trial_duration/1000;
+        trial.data.duration = duration;
+        trial.data.onset = onset;
+        curr_event = {PID: jsPsych.data.get().filter({ttype: 'get_id'}).last(1).values()[0].PID, phase: "outcome_estimation", run: Outcome_estimation[trial.data.index].run, trial: trial.data.index, event: "confirmation", onset: trial.data.onset, duration: trial.data.duration}
+        events.push(curr_event);
+        onset = onset + duration;
+      } // on_start
+    } // memory_test_confirmation_trial
+
+    // present confirmation only if there was a response
+    var if_outcome_estimation_confirmation_trial = {
+      timeline: [outcome_estimation_confirmation_trial],
+      conditional_function: function(){
+        if (jsPsych.data.get().filter({ttype: 'outcome_estimation'}).last(1).values()[0].key_press){
+          return true;
+        } else {
+          return false;
+        } // else
+      } // conditional function
+    } // if_confirmation
+
+// -------------------------------- no response --------------------------------
+
+    var outcome_estimation_no_response = {
+      type: 'html-keyboard-response',
+      data: {ttype: "outcome_estimation_no_response", index: t},
+      stimulus: '<div style="font-size: 200%">TOO SLOW</div>',
+      choices: jsPsych.NO_KEYS,
+      trial_duration: timing_warning,
+      on_finish: function(data){
+        data.warning = 1;
+        data.run = Outcome_estimation[data.index].run;
+        // assign trial duration to onset and duration
+        duration = timing_warning/1000;
+        data.duration = duration;
+        data.onset = onset;
+        curr_event = {PID: jsPsych.data.get().filter({ttype: 'get_id'}).last(1).values()[0].PID, phase: "outcome_estimation", run: Outcome_estimation[data.index].run, trial: data.index, event: "no_response", onset: data.onset, duration: data.duration}
+        events.push(curr_event);
+        onset = onset + duration;
+      } // on_finish
+    } //
+
+    var if_outcome_estimation_no_response = {
+      timeline: [outcome_estimation_no_response],
+      conditional_function: function(data){
+        if ((jsPsych.data.get().filter({ttype: 'outcome_estimation'}).last(1).values()[0].key_press == null) & (show_no_response == 1)){
+          return true;
+        } else {
+          return false;
+        } // else
+      } // conditional function
+    } // if_confirmation
+
+// ------------------------------------ iti ------------------------------------
+
+    var iti_outcome_estimation_trial = {
+        type: 'html-keyboard-response',
+        stimulus: fixation_stim,
+        choices: jsPsych.NO_KEYS,
+        data: {ttype: 'iti_outcome_estimation', index: t},
+        on_start: function(trial){
+          // assign trial duration
+          trial_duration = Outcome_estimation[trial.data.index].iti;
+          if (Outcome_estimation[trial.data.index].no_response==1){
+            trial_duration = trial_duration - timing_warning; // we add the remaining time from the outcome presentation
+          } else if (is_debug==1){
+            trial_duration = 100;
+          } else if (Outcome_estimation[trial.data.index].no_response==0 & fixed_confirmation==1){
+            trial_duration = trial_duration + (timing_max_outcome_estimation - Outcome_estimation[trial.data.index].rt - timing_confirmation)
+          };
+          trial.trial_duration = trial_duration;
+
+          // add run info
+          trial.data.run = Outcome_estimation[trial.data.index].run;
+
+          // assign trial duration to onset and duration
+          duration = trial_duration/1000;
+          trial.data.duration = duration;
+          trial.data.onset = onset;
+          curr_event = {PID: jsPsych.data.get().filter({ttype: 'get_id'}).last(1).values()[0].PID, phase: "outcome_estimation", run: Outcome_estimation[trial.data.index].run, trial: trial.data.index, event: "iti", onset: trial.data.onset, duration: trial.data.duration}
+          events.push(curr_event);
+          onset = onset + duration;
+        } // on_start
+      } //
+
+// ------------------------- practice block over -------------------------------
+
+    var if_outcome_estimation_practice_over = {
+      timeline: [practice_over, start_run],
+      conditional_function: function(){
+        curr_ind = jsPsych.data.get().filter({ttype: 'outcome_estimation'}).last(1).values()[0].index;
+        if (end_practice_outcome_estimation.includes(curr_ind) & repeat_outcome_estimation_practice == 0) {
+           return true; } else { return false }
+      } // conditional_function
+    } // if_deliberation_practice_over
+
+// ---------------------------- block over -------------------------------------
+
+    // present block over text
+    var outcome_estimation_run_over_trial = {
+        type: 'html-keyboard-response',
+        data: {ttype: 'outcome_estimation_run_over',
+               index: t},
+        stimulus: "Round {0} (out of {1}) is over</br></br>"+
+                  "{2}" +
+                  "{3}",
+        choices: keys_start_block,
+        response_ends_trial: true,
+      on_start: function(trial){
+
+        // run number
+        run_number = jsPsych.data.get().filter({ttype: 'outcome_estimation'}).last(1).values()[0].run;
+
+        // check how many trials the subjects had missed
+        missed_trials = Outcome_estimation.map(a=>a.no_response).reduce((partialSum, a) => partialSum + a, 0);
+        if (missed_trials > outcome_estimation_missed_trials_cutoff){
+          missed_trials_prompt = "We have noticed you didn't respond on time in a few trials, please make sure to respond on time on every trial"
+        } else {
+          missed_trials_prompt = ""
+        }
+
+        if (is_scanner=="scanner"){
+          start_prompt = "" // subjects do not press anything here.
+        } else {
+          start_prompt = "When you are ready to start the next round, please press the "+keys_start_block;
+        }
+        trial.stimulus = String.format(trial.stimulus, run_number, n_outcome_estimation_runs, missed_trials_prompt, start_prompt);
+      } // on_start
+    } // final_decisions_run_over_trial
+
+    var if_outcome_estimation_run_over_trial = {
+        timeline: [outcome_estimation_run_over_trial, start_run],
+        conditional_function: function(){
+          // we don't present the end of block screen for the last block.
+          if (run_change_outcome_estimation.includes(jsPsych.data.get().filter({ttype: 'outcome_estimation'}).last(1).values()[0].index)){
+            return true;
+          } else { return false; } // the next block is similar to the current one
+        }
+      } // if_run_over
+
+// -------------------------- end current phase --------------------------------
+
+    var end_outcome_estimation_phase = {
+      type: "html-keyboard-response",
+      choices: keys_start_block,
+      data: {ttype: 'end_outcome_estimation_phase'},
+      stimulus: "The current phase has ended</br></br>"+
+                "{0}",
+      on_start: function(trial){
+        if (is_scanner=="scanner"){
+          start_prompt = "" // subjects do not press anything here.
+        } else {
+          start_prompt = "When you are ready to continue, please press the "+keys_start_block;
+        }
+        trial.stimulus = String.format(trial.stimulus, start_prompt);
+        subID = Deliberation[0].PID;
+        if (is_scanner == "scanner"){
+          save_local_data(data_folder+'Outcome_estimation/outcome_estimation_sub_'+subID+".csv", convertToCSV(Outcome_estimation));
+          save_local_data(data_folder+'Events/events_sub_'+subID+".csv", convertToCSV(events));
+        } else {
+          save_server_data(data_folder+'Outcome_estimation/outcome_estimation_sub_'+subID+".csv", convertToCSV(Outcome_estimation));
+          save_server_data(data_folder+'Events/events_sub_'+subID+".csv", convertToCSV(events));
+        }
+      }
+     };
+
+    var if_end_outcome_estimation_phase = {
+       timeline: [end_outcome_estimation_phase],
+       conditional_function: function(){
+         // we don't present the end of block screen for the last block.
+         if (jsPsych.data.get().filter({ttype: 'outcome_estimation'}).last(1).values()[0].index == (n_outcome_estimation_trials-1)){
+           return true;
+         } else { return false; } // the next block is similar to the current one
+       }
+     } // if_run_over
+
+// ----- repeat the entire trial for no responses in practice trials only ------
+
+    var repeat_outcome_estimation_trial = {
+     timeline: [outcome_estimation_trial, if_outcome_estimation_confirmation_trial, if_outcome_estimation_no_response, iti_outcome_estimation_trial, if_outcome_estimation_practice_over, if_outcome_estimation_run_over_trial, if_end_outcome_estimation_phase],
+     loop_function: function(){
+       if (repeat_outcome_estimation_practice == 1){
+         return true;
+       } else {
+         return false;
+       } // else
+     } // loop_function function
+    } // repeat_deliberation_trial
+
+    outcome_estimation_timeline.timeline.push(repeat_outcome_estimation_trial)
+
+  } // outcome_estimation test loop
+
+// -----------------------------------------------------------------------------
+
+  // Confidence
+  /*var outcome_estimation_confidence = {
+      type: 'survey-likert',
+      data: {ttype: 'outcome_estimation_confidence',
+             index: t},
+      preamble: '<img class="object" src="{0}/{1}" />',
+      questions: [{prompt: 'How confident you are in your response?',labels: ['1<br>Completely unsure', '2', '3', '4', '5', '6<br>Completely sure'], required: true}],
+      on_start: function(trial){
+        trial.data.preamble = Outcome_estimation[trial.data.index].painting;
+        trial.preamble = String.format(trial.preamble, image_folder, trial.data.preamble);
+      },
+      on_finish: function(data){
+        // add trial data to ratings Array
+        var curr_ind = jsPsych.data.get().last(1).values()[0].index;
+        data.stimulus_id = Outcome_estimation[curr_ind].stimulus;
+        var outcome_response = data.responses;
+        data.outcome_eval_confidence = Number(outcome_response.match(/\d/g)[1]) + 1; // we add 1 because the numbering is from 0 to 5, but the scale is shown as 1 to 6.
+        data.outcome_eval_confidence_rt = data.rt;
+      } // on_finish
+    } // outcome_estimation_confidence
+    timeline.push(outcome_estimation_confidence);
+
+  }*/ // for trials
+
+// =============================================================================
+//                               FINAL RATINGS
+// =============================================================================
+
+// ------------------------------ Instructions ---------------------------------
+
+// Rating instructions
+var final_rating_instructions = {
+      type: 'instructions',
+      pages: [
+        '<div><img class="instructions" src="Stimuli/Instructions/'+is_scanner+'/Final_ratings.png"</img></div>',
+        '<div><img class="instructions" src="Stimuli/Instructions/'+is_scanner+'/start_quiz.png"</img></div>'],
+      data: {ttype: "final_ratings_instructions"},
+      show_clickable_nav: true};
+
+// activate function to present a looping quiz (loops until you get all answers correctly)
+repeat_final_ratings_instructions = present_quiz_instructions(final_rating_instructions, 'final_ratings_comprehension_check', quiz_qs.final_ratings, quiz_answers.final_ratings)
+
+// push the repeated quiz and also present next screens after they get it correctly.
+final_ratings_timeline.timeline.push(repeat_final_ratings_instructions,passed_instructions_no_practice)
+
+// --------------------------------- Trial -------------------------------------
+
+// Ratings trial
+for (t = 0; t < n_final_ratings_trials; t++){
+  // var rating_trial = [];
+  var final_ratings_trial = {
+    type: 'html-slider-response',
+    data: {ttype: 'final_ratings',
+           index: t},
+    stimulus: '<img class="object" src="{0}" />',
+    labels: ['Not at all', 'Very much'],
+    prompt: '<p>How much do you like this photograph?</p>',
+    response_ends_trial: true,
+    on_start: function(trial){
+      trial.data.path = Final_ratings[trial.data.index].path;
+      trial.stimulus = String.format(trial.stimulus, trial.data.path);
+    },
+    on_finish: function(data){
+
+      data.category = Final_ratings[data.index].category;
+      data.choice = Final_ratings[data.index].choice;
+      data.deliberated_stim = Final_ratings[data.index].deliberated_stim;
+      data.iti = Final_ratings[data.index].iti;
+      data.old_rating = Final_ratings[data.index].old_rating;
+      data.outcome = Final_ratings[data.index].outcome;
+      data.stim_type = Final_ratings[data.index].stim_type;
+      data.stimulus_index = Final_ratings[data.index].stimulus_index;
+      data.new_rating = Number(jsPsych.data.get().last(1).values()[0].response);
+      Final_ratings[data.index].rt = data.rt;
+      Final_ratings[data.index].new_rating = data.new_rating;
+      subID = Final_ratings[0].PID;
+      if (data.index == n_final_ratings_trials-1){
+        if (is_scanner == "scanner"){
+          save_local_data(data_folder+'Final_ratings/final_ratings_sub_'+subID+".csv", convertToCSV(Final_ratings));
+        } else {
+          save_server_data(data_folder+'Final_ratings/final_ratings_sub_'+subID+".csv", convertToCSV(Final_ratings));
+        }
+      }
+    } // on_finish
+  } // rating_trial
+final_ratings_timeline.timeline.push(final_ratings_trial);
+} // for trials
+
+// =============================================================================
+//                               END EXPERIMENT
+// =============================================================================
+
+if (is_scanner == "scanner"){
+  var end_task = {
+      type: "html-keyboard-response",
+      choices: keys_start_block,
+      response_ends_trial: true,
+      data: {ttype: 'end_experiment'},
+      stimulus:  "You have completed the experiment. Thank you for participating!"+
+                 "<br>Please remain still for one more minute while we complete a final scan.</br>"+
+                 "<br>We will be coming in to get you very shortly.</br>"
+      } // end_task
+  } else {
+    var end_task = [
+        // intro
+      { type: 'html-keyboard-response',
+        data: {ttype: 'debreif_intro'},
+        stimulus: "You have completed the main part of the study. We will now ask you a few short questions."+
+                  "<br>Please answer them sincerely. Once again, we remind you that your answers are completely anonymous.</br>" +
+                  "<br>Press the "+continue_key_text+" to continue.</br>",
+        choices: keys_task[0],
+        response_ends_trial: true},
+        // age
+      { type: 'survey-text',
+        questions: [{prompt: 'How old are you?', columns: 20, rows: 1}],
+        data: {ttype: 'debreif_age'}},
+        // gender
+      { type: 'survey-multi-choice',
+        questions: [{prompt: 'What is your gender?', options: ['Female','Male','Other'], required: true}],
+        data: {ttype: 'debreif_gender'}},
+        // dominant hand
+      { type: 'survey-multi-choice',
+        questions: [{prompt: 'What is your dominant hand?', options: ['Left','Right'], required: true}],
+        data: {ttype: 'debreif_dominant_hand'}},
+        // native language
+      { type: 'survey-multi-choice',
+        questions: [{prompt: 'Is English your native language?', options: ['Yes','No'], required: true}],
+        data: {ttype: 'debreif_native_language'}},
+        // fluency in english
+      { type: 'survey-likert',
+        questions: [{prompt: 'How fluent are you in reading and understanding English?',labels: ['1<br>Not at all', '2', '3', '4', '5','6<br>Very fluent'],required: true}],
+        data: {ttype: 'debreif_fluency'}},
+    // strategy
+      { type: 'survey-text',
+        questions: [{prompt: 'Did you use any type of strategy in the final decisions phase (right before the memory questions)?', columns: 60, rows: 15}],
+        data: {ttype: 'debreif_strategy_FD'}},
+      { type: 'survey-text',
+        questions: [{prompt: 'In the same decisions phase, some of the pairs included photographs we did not show you their auction outcomes. How did you decide which one to choose in these pairs?', columns: 60, rows: 15}],
+        data: {ttype: 'debreif_strategy_unchosen'}},
+      { type: 'survey-text',
+        questions: [{prompt: 'Did you use any type of strategy in the decisions phase in the begining of the study where you had to choose which photograph should go on auction?',columns: 60, rows: 15}],
+        data: {ttype: 'debreif_strategy_deliberation'}},
+      { type: 'survey-text',
+        questions: [{prompt: 'Did you find that some photographs were easier to remember than others? which ones?',columns: 60, rows: 15}],
+        data: {ttype: 'debreif_stims_memorability'}},
+      { type: 'survey-text',
+        questions: [{prompt: 'Was there anything in the instructions you found unclear?',columns: 60, rows: 15}],
+        data: {ttype: 'debreif_clear_instructions'}},
+      { type: 'survey-text',
+        questions: [{prompt: 'What did you think about the photographs we showed you?',columns: 60, rows: 15}],
+        data: {ttype: 'debreif_photos'}},
+      // compute extra rewards given to subjects
+      { type: 'html-keyboard-response',
+        stimulus: function() {
+          subID = jsPsych.data.get().last(1).values()[0].PID;
+          var reward_FD = jsPsych.data.get().filter({ttype: 'final_decisions', choice_type: 'chosen'}).select('higher_outcome_chosen').sum() * reward_per_correct_reponse;
+          var total_reward = reward_FD + deliberation_bonus;
+          var given_reward = total_reward.toFixed(2);
+          jsPsych.data.get().addToLast({total_reward_tally: given_reward});
+          return '<p>Thank you for participating in this study!<br></br>' +
+                 'Congratulations! Your total extra earnings in the experiment are $' + given_reward + '<br></br>' +
+                 '<br>Your survey code is: ' + subID + '</br>' +
+                 '<br>In order to receive payment, you must provide the above code on the survey link page on mturk.<br/>'+
+                 '<br>Once you press the space bar, your results will be uploaded to the server, and the experiment will complete.<br/>'+
+                 'This may take several minutes - do not refresh or close your browser during this time.<br></br>'+
+                 'After your results will be uploaded the screen will turn grey, and you may submit your code.<br></br>'+
+                 'Press the space bar to complete this experiment.</p>'
+        },
+        choices: [' '],
+        data: {ttype: 'final_reward_tally'}},
+      { type: 'html-keyboard-response',
+        stimulus: '<p>Data uploading... The screen will turn grey when all data are uploaded.<br></br> When this happens, you may close this window and submit your code</p>',
+        choices: jsPsych.NO_KEYS,
+        trial_duration: 6000,
+        data: {ttype: 'debreif_end'}
+      }];
+  }
+
+  var end_scan_day = {
+      type: "html-keyboard-response",
+      choices: keys_start_block,
+      response_ends_trial: true,
+      data: {ttype: 'end_scan_day'},
+      stimulus:  "You have completed the entire study. Thank you for participating!"+
+                 "<br>Please call the experimenter.</br>"
+     }
+
+
+//timeline.push(setup_timeline, ratings_timeline, localizer_timeline, deliberation_timeline, outcome_learning_timeline, final_decisions_timeline, memory_timeline, outcome_estimation_timeline);
+timeline.push(setup_timeline)
+timeline = timeline.concat(end_task);
+
+if (is_scanner=="scanner"){
+  timeline.push(end_task, final_ratings_timeline, end_scan_day)
+} else {
+  timeline.push(final_ratings_timeline)
+  timeline = timeline.concat(end_task)
+}
+//timeline.push(setup_timeline, localizer_timeline);
+//timeline.push(setup_timeline, ratings_timeline, localizer_timeline., deliberation_timeline, memory_timeline, outcome_estimation_timeline, final_ratings_timeline);
+
+// start the experiment
+jsPsych.init({
+  timeline: timeline,
+  preload_images: images,
+  exclusions: {min_width: 500,
+              min_height: 300},
+  on_interaction_data_update: function(data){
+    data.PID = jsPsych.data.get().last(1).values()[0].PID;
+  },
+  on_finish: function() {
+    subID = jsPsych.data.get().last(1).values()[0].PID;
+    if (is_scanner == "scanner"){
+      save_local_data(data_folder+'All_data/all_data_sub_'+subID+".csv", jsPsych.data.get().ignore('stimulus').csv());
+      save_local_data(int_data_folder+'int_data_sub_'+subID+".csv", jsPsych.data.getInteractionData().csv());
+      save_local_data(data_folder+'Events/events_sub_'+subID+".csv", convertToCSV(events));
+      } else {
+      save_server_data(data_folder+'All_data/all_data_sub_'+subID+".csv", jsPsych.data.get().ignore('stimulus').csv());
+      save_server_data(int_data_folder+'int_data_sub_'+subID+".csv", jsPsych.data.getInteractionData().csv());
+      save_server_data(data_folder+'Events/events_sub_'+subID+".csv", convertToCSV(events));
+    }
+  } // on_finish
+});
+
+</script>
+
+</html>

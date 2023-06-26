@@ -1,0 +1,4 @@
+,PID,practice,run,block,trial,pair_type,old_pair,chosen_left,pair_id,chosen_id,iti,left_stimulus,right_stimulus,left_path,right_path,pair_response,pair_acc,pair_rt
+0,,1,0,0,1,,,,,,1500,,,Stimuli/Practice_stims/Memory/annie-spratt-g9KFpAfQ5bc-unsplash.jpg,Stimuli/Practice_stims/Memory/charl-durand-bsfXvI25iNg-unsplash.jpg,,,
+1,,1,0,0,2,,,,,,1000,,,Stimuli/Practice_stims/Memory/charl-durand-bsfXvI25iNg-unsplash.jpg,Stimuli/Practice_stims/Memory/jimmy-dean-Yn0l7uwBrpw-unsplash.jpg,,,
+2,,1,0,0,3,,,,,,3000,,,Stimuli/Practice_stims/Memory/jimmy-dean-Yn0l7uwBrpw-unsplash.jpg,Stimuli/Practice_stims/Memory/annie-spratt-g9KFpAfQ5bc-unsplash.jpg,,,

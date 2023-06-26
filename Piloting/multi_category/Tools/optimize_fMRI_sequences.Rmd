@@ -1,0 +1,339 @@
+---
+title: "simulate_fMRI_timing"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Setup
+
+```{r}
+
+library(neuRosim)
+library(lme4)
+library(lmerTest)
+library(dplyr)
+library(tidyr)
+library(TruncExpFam)
+library(plyr)
+library(rio)
+library(ggplot2)
+
+iti_params <- list();
+iti_params$shape = 2.5
+iti_params$mean = 2
+iti_params$rate = 0.5
+iti_params$scale = 1
+iti_params$max = 6
+iti_params$min = 1
+
+# function to find the total run time such that there will be an integer number of TRs.
+closest_divider <- function(num, divider){
+  while(num %% divider != 0){
+    num = num + 0.5
+  }
+  return(num)
+}
+```
+
+# functions 
+
+```{r}
+
+compute_design_matrix <- function(TR, event.column, response.duration, current.df){
+  
+  # create an even file
+  onset = 0;
+  event.file = data.frame()      
+  for (i in 1:nrow(current.df)){
+    iti = current.df$iti[i]; 
+    duration = response.duration;
+    event = as.character(current.df[i,event.column])
+    event.file = rbind(event.file, data.frame(event=event, onset=onset, duration=duration, iti=iti));
+    onset = onset + duration + iti;
+  }
+          
+  # compute design matrix
+  events <- unique(unlist(current.df[,event.column]))
+  onsets <- list(); durations <- list(); totaltime <- list();  effectsize <- list()
+  for (e in 1:length(events)){
+    onsets[[e]] <- as.numeric(unlist(event.file %>% subset(event == events[e]) %>% select(onset)))/1000
+    durations[[e]] <- as.numeric(unlist(event.file %>% subset(event == events[e]) %>% select(duration)))/1000
+    totaltime[[e]] <- closest_divider(round((nrow(current.df) * response.duration + sum(current.df$iti))/1000),TR)
+    effectsize[[e]] <- 1
+  }
+  design = specifydesign(onsets=onsets, durations=durations, totaltime=totaltime[[1]], TR=TR, effectsize=effectsize, conv="double-gamma", cond.names = events)
+  
+  des.mat = cbind(rep(1, nrow(design)), design)
+  con = c(0, 1, -1) # chosen-unchosen -> chosen > unchosen
+  efficiency = 1/(t(con)%*%solve(t(des.mat)%*%des.mat)%*%con)
+  VIF = diag(solve(cor(des.mat[,2:3])))
+  correlation <- as.numeric(cor.test(design[,events[1]], design[,events[2]])$estimate)
+  
+ # add TR to event file 
+ event.file = event.file %>% mutate(TR = onset/1000/TR)
+ 
+  results = list(des.mat, event.file, efficiency, VIF, correlation)
+ names(results) = c("design_matrix", "event_file", "efficiency", "VIF", "correlation")
+ return(results)
+}
+
+swap_itis <- function(df, column,ind1, ind2){
+  iti_ind1 <- df[ind1, column]; iti_ind2 <- df[ind2, column]
+  df[ind1,column] <- iti_ind2; df[ind2,column] <- iti_ind1; 
+  return(df)
+}
+
+
+```
+
+# optimize localizer 
+
+```{r}
+
+localizer <- read.csv("../Task_sequences/Localizer/localizer_1.csv")
+categories = c("outdoor_scenes", "objects", "faces", "body_parts")
+stimulus.duration = 300;
+isi.duration = 400;
+n.stims.per.block = 20;
+timing.baseline.block = n.stims.per.block * (stimulus.duration+isi.duration) # 14 secs 
+n.reps.per.category = 3;
+total.exp.time = length(categories)*2*timing.baseline.block*n.reps.per.category/60000
+n.stims.per.cat = n.stims.per.block*n.reps.per.category;
+odd.ball.percent = 0.1 
+event.column = "task"
+TR = 1.5
+
+test_localizer_design <- function(df, stimulus.duration, isi.duration, timing.baseline.block, event.column, TR){
+  
+  df$stimulus_duration = stimulus.duration
+  isis <- sort(unique(df$isi))
+  df$isi[df$isi == isis[1]] = isi.duration
+  df$isi[df$isi == isis[2]] = timing.baseline.block
+
+  # create an even file
+  onset = 0;
+  event.file = data.frame()      
+  for (i in 1:nrow(df)){
+    isi = df$isi[i]
+    duration = df$stimulus_duration[i];
+    event = as.character(df[i,event.column])
+    event.file = rbind(event.file, data.frame(event=event, onset=onset, duration=duration, isi=isi));
+    onset = onset + duration + isi;
+  }
+          
+  # compute design matrix
+  events <- unique(unlist(df[,event.column]))
+  onsets <- list(); durations <- list(); totaltime <- list();  effectsize <- list()
+  for (e in 1:length(events)){
+    onsets[[e]] <- as.numeric(unlist(event.file %>% subset(event == events[e]) %>% select(onset)))/1000
+    durations[[e]] <- as.numeric(unlist(event.file %>% subset(event == events[e]) %>% select(duration)))/1000
+    totaltime[[e]] <- closest_divider(round((nrow(df) * stimulus.duration + sum(df$isi))/1000),TR)
+    effectsize[[e]] <- 1
+  }
+  design = specifydesign(onsets=onsets, durations=durations, totaltime=totaltime[[1]], TR=TR, effectsize=effectsize, conv="double-gamma", cond.names = events)
+  
+  des.mat = cbind(rep(1, nrow(design)), design)
+  contrast1 <- c(0,1,-0.33,-0.33,-0.33)
+  contrast2 <- c(0,-0.33,1,-0.33,-0.33)
+  contrast3 <- c(0,-0.33,-0.33,1,-0.33)
+  contrast4 <- c(0,-0.33,-0.33,-0.33,1)
+
+  efficiency = 4/((t(contrast1)%*%solve(t(des.mat)%*%des.mat)%*%contrast1) + 
+                  (t(contrast2)%*%solve(t(des.mat)%*%des.mat)%*%contrast2) +
+                  (t(contrast3)%*%solve(t(des.mat)%*%des.mat)%*%contrast3) +
+                  (t(contrast4)%*%solve(t(des.mat)%*%des.mat)%*%contrast4))
+
+  ## Variance Inflation Factor (rule of thumb - should be below 5)
+  VIF = diag(solve(cor(des.mat[,2:5])))
+  
+  # compute pair-wise correlations 
+  pairs_categories = as.data.frame(t(combn(categories,2)))
+  all_corrs = c()
+  for (p in 1:nrow(pairs_categories)){
+    all_corrs[p] <- as.numeric(cor.test(des.mat[,pairs_categories$V1[p]], des.mat[,pairs_categories$V2[p]])$estimate)
+  }
+  all_correlations <- all_corrs
+  mean_corr <- mean(all_corrs)
+  
+ # add TR to event file 
+ event.file = event.file %>% mutate(TR = onset/1000/TR)
+ 
+results = list(des.mat, event.file, efficiency, VIF, all_correlations, mean_corr)
+ names(results) = c("design_matrix", "event_file", "efficiency", "VIF", "all_correlations", "mean_correlation")
+ return(results)
+  
+}
+
+curr_design <- test_localizer_design(df=localizer, stimulus.duration=stimulus.duration, isi.duration=isi.duration, timing.baseline.block=timing.baseline.block, event.column="task", TR=1.5)
+curr_design$mean_correlation
+curr_design$efficiency
+curr_design$VIF
+
+# plot the design matrix - we want to allow the signal to go up and down rather than stay fixed (so we could differentiate it from baseline)
+events = unique(unlist(localizer["task"]))
+dev.new(width=15, height=5, unit="in")
+plot(curr_design$design_matrix[,events[1]], type = 'l', lwd = 2, col = 'red', xlab = "TR", 
+     ylab = '', ylim = c(min(c(curr_design$design_matrix[,events])), 1.3))
+lines(curr_design$design_matrix[,events[2]], lwd = 2, col = 'green')
+lines(curr_design$design_matrix[,events[3]], lwd = 2, col = 'blue')
+lines(curr_design$design_matrix[,events[4]], lwd = 2, col = 'grey')
+abline(v=curr_design$event_file[curr_design$event_file$event==events[1],"TR"], lwd = 0.2, col = 'red', lty=1)
+abline(v=curr_design$event_file[curr_design$event_file$event==events[2],"TR"], lwd = 0.2, col = 'green', lty=1)
+abline(v=curr_design$event_file[curr_design$event_file$event==events[3],"TR"], lwd = 0.2, col = 'blue', lty=1)
+abline(v=curr_design$event_file[curr_design$event_file$event==events[4],"TR"], lwd = 0.2, col = 'grey', lty=1)
+
+
+```
+
+# optimize tasks with two conditions and iti only (deliberation, final decisions, memory, outcome estimation)
+
+Here we try to optimize for efficiency for power detection (the ability to detect a difference between conditions).
+We first select a 
+
+for some reason when i use a fixed ITI i get a higher efficiency score (but also a worse VIF) - need to check what is the issue there. 
+1. try to compute efficiency differently. perhaps use jeanette's python code
+2. try to reorder both the trial order and the itis
+
+```{r}
+
+phase = "Final_decisions"
+run = 1
+version = "a"
+event_column = "choice_type"
+stimulus_duration = 1500;
+
+# upload matrix
+all_df <- read.csv(sprintf("../Task_sequences/%s/%s_1.csv",phase, tolower(phase)))
+practice_trials <- all_df %>% subset(practice == 1)
+df <- all_df %>% subset(practice == 0)
+
+# subset the run
+curr_df <- df[df$run==run, ] %>% relocate(c(!!sym(event_column),iti), .after="PID") 
+
+# shuffle order of trials such that the trial type doesn't repeat more than two times in a row. because the signal won't go up and down and it will be difficult to differentiate from baseline. 
+keep.looking = 1
+while (keep.looking == 1){
+  curr_df <- curr_df %>%
+    group_by(block) %>%
+    slice(sample(1:n()))
+  # The rle function breaks a sequence into lengths and values
+  length.repeats = rle(as.vector(unlist(curr_df[event_column])))$lengths
+  # Keep going if the max number of repeats is larger than 2
+  keep.looking = max(length.repeats) > 3
+}  #end while
+
+# after checking a few options, we ended up using this iti vector (sampled from a truncated gamma distribution, with parameters from iti_params)
+# this is the chosen vector because it has the required parameters (mean, min, max)
+curr_iti = rtruncexp(nrow(curr_df), 
+                     rate=iti_params$rate, 
+                     a=iti_params$min, 
+                     b=iti_params$max)
+curr_iti = round_any(as.numeric(curr_iti), 0.5)*1000 # convert iti to jumps of 500ms (so length will be divided by TR)
+mean(curr_iti)
+max(curr_iti)
+min(curr_iti)
+hist(curr_iti)
+
+chosen_iti_vector = curr_iti;
+(sum(chosen_iti_vector) + nrow(curr_df)*1500)/60000
+
+# assing chosen iti
+curr_df$iti = rep(2500, nrow(curr_df))#chosen_iti_vector
+
+# now we run a simulation where we shuffle the order of itis and check what is the correlation between conditions
+n_sims <- 100
+iti_mat <- matrix(data=NA, nrow=n_sims, ncol=length(chosen_iti_vector))
+corr_mat <- matrix(data=NA, nrow=n_sims, ncol=1)
+efficiency_mat <- matrix(data=NA, nrow=n_sims, ncol=1)
+VIF_mat <- matrix(data=NA, nrow=n_sims, ncol=1)
+cns_mat <- matrix(data=NA, nrow=n_sims, ncol=1)
+
+for (i in 1:n_sims){
+  
+  # order trials
+  keep.looking = 1
+  while (keep.looking == 1){
+    curr_df <- curr_df %>%
+      group_by(block) %>%
+      slice(sample(1:n()))
+    # The rle function breaks a sequence into lengths and values
+    length.repeats = rle(as.vector(unlist(curr_df[event_column])))$lengths
+    # Keep going if the max number of repeats is larger than 2
+    keep.looking = max(length.repeats) > 3
+  }  #end while
+  
+  iti_mat[i,] <- sample(chosen_iti_vector)
+  curr_df$iti <- iti_mat[i,]
+  curr_design <- compute_design_matrix(TR=1.5, 
+                                     response.duration=stimulus_duration,
+                                     event.column=event_column, 
+                                     current.df = curr_df)
+  
+  sim_unchosen = curr_design$design_matrix[,"unchosen"] + rnorm(length(curr_design$design_matrix[,"unchosen"]), mean=0, sd=0.1)
+  m = lm(sim_unchosen ~ curr_design$design_matrix[,"unchosen"] + curr_design$design_matrix[,"chosen"])
+  cns_mat[i] <- unlist(m$coefficients[2]) - unlist(m$coefficients[3])
+  corr_mat[i] <- curr_design$correlation
+  efficiency_mat[i] <- curr_design$efficiency
+  VIF_mat[i] <- as.numeric(curr_design$VIF[1])
+}
+
+curr_df$iti <- iti_mat[270,]
+
+# plot the design matrix - we want to allow the signal to go up and down rather than stay fixed (so we could differentiate it from baseline)
+events = unique(unlist(curr_df[event_column]))
+dev.new(width=10, height=5, unit="in")
+plot(curr_design$design_matrix[,events[1]], type = 'l', lwd = 2, col = 'red', xlab = "TR", 
+     ylab = '', ylim = c(min(c(curr_design$design_matrix[,events])), 1.3),
+     main = "BEST DESIGN")
+lines(curr_design$design_matrix[,events[2]], lwd = 2, col = 'green')
+abline(v=curr_design$event_file[curr_design$event_file$event==events[1],"TR"], lwd = 1, col = 'red', lty=2)
+abline(v=curr_design$event_file[curr_design$event_file$event==events[2],"TR"], lwd = 1, col = 'green', lty=2)
+
+# we manually check the task sequence to assess whether we have same itis on a row, and whther the long itis are spread across the task. if not - we swap itis within a condition 
+curr_df <- swap_itis(curr_df, 5, 10)
+curr_design <- compute_design_matrix(TR=1.5, 
+                                     response.duration=stimulus_duration,
+                                     event.column=event_column, 
+                                     current.df = curr_df)
+
+#m <- lm(data=curr_design$design_matrix, chosen ~ unchosen)
+curr_design$VIF
+
+# save the chosen design
+curr_df <- curr_df %>% mutate(version="a")
+deliberation_run2a <- list(chosen_iti_vector, corr_mat, iti_mat, curr_df, curr_design)
+names(deliberation_run2a) <- c("chosen_iti_vector", "corr_mat", "iti_mat", "chosen_df", "chosen_design_matrix")
+
+save(deliberation_run1b, file = "../Task_sequences/iti_simulation/Deliberation/deliberation_run1b.RData")
+save(deliberation_run1a, file = "../Task_sequences/iti_simulation/Deliberation/deliberation_run1a.RData")
+save(deliberation_run2b, file = "../Task_sequences/iti_simulation/Deliberation/deliberation_run2b.RData")
+save(deliberation_run2a, file = "../Task_sequences/iti_simulation/Deliberation/deliberation_run2a.RData")
+
+# create new data files
+df_list <- list(import_list("../Task_sequences/iti_simulation/Deliberation/deliberation_run1b.RData"),
+                import_list("../Task_sequences/iti_simulation/Deliberation/deliberation_run1a.RData"),
+                import_list("../Task_sequences/iti_simulation/Deliberation/deliberation_run2b.RData"),
+                import_list("../Task_sequences/iti_simulation/Deliberation/deliberation_run2a.RData"))
+n_runs = 2
+phase = "Deliberation"
+practice_trials = read.csv("../Task_sequences/Deliberation/deliberation_1.csv") %>% subset(practice==1) %>% mutate(version=NaN)
+combine_data_files <- fuction(df_list, n_runs, practice_trials, phase){
+  all_data = c()
+  for (i in 1:length(df_list)){
+    curr_list = df_list[[i]]
+    all_data = rbind(all_data, curr_list[[1]]$chosen_df)
+  }
+  versions <- unique(all_data$version)
+  for (v in 1:length(versions)){
+    n_prac = nrow(practice_trials)
+    curr_version <- all_data %>% subset(version==versions[v]) 
+    curr_version <- curr_version %>% mutate(trial = (1+n_prac):(nrow(curr_version)+n_prac))
+    curr_version <- rbind(practice_trials, curr_version)
+    write.csv(curr_version, sprintf("../Task_sequences/%s/%s_%s.csv", phase, tolower(phase), versions[v]))
+  }
+}
+
+```

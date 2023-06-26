@@ -1,0 +1,190 @@
+---
+title: "optimize localizer"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Setup
+
+```{r}
+
+library(neuRosim)
+library(lme4)
+library(lmerTest)
+library(dplyr)
+library(tidyr)
+library(TruncExpFam)
+library(plyr)
+library(rio)
+library(ggplot2)
+
+iti_params <- list();
+iti_params$shape = 2.5
+iti_params$mean = 2
+iti_params$rate = 0.5
+iti_params$scale = 1
+iti_params$max = 6
+iti_params$min = 1
+
+# function to find the total run time such that there will be an integer number of TRs.
+closest_divider <- function(num, divider){
+  while(num %% divider != 0){
+    num = num + 0.5
+  }
+  return(num)
+}
+```
+
+# functions 
+
+```{r}
+
+compute_design_matrix <- function(TR, event.column, response.duration, current.df){
+  
+  # create an even file
+  onset = 0;
+  event.file = data.frame()      
+  for (i in 1:nrow(current.df)){
+    iti = current.df$iti[i]; 
+    duration = response.duration;
+    event = as.character(current.df[i,event.column])
+    event.file = rbind(event.file, data.frame(event=event, onset=onset, duration=duration, iti=iti));
+    onset = onset + duration + iti;
+  }
+          
+  # compute design matrix
+  events <- unique(unlist(current.df[,event.column]))
+  onsets <- list(); durations <- list(); totaltime <- list();  effectsize <- list()
+  for (e in 1:length(events)){
+    onsets[[e]] <- as.numeric(unlist(event.file %>% subset(event == events[e]) %>% select(onset)))/1000
+    durations[[e]] <- as.numeric(unlist(event.file %>% subset(event == events[e]) %>% select(duration)))/1000
+    totaltime[[e]] <- closest_divider(round((nrow(current.df) * response.duration + sum(current.df$iti))/1000),TR)
+    effectsize[[e]] <- 1
+  }
+  design = specifydesign(onsets=onsets, durations=durations, totaltime=totaltime[[1]], TR=TR, effectsize=effectsize, conv="double-gamma", cond.names = events)
+  
+  des.mat = cbind(rep(1, nrow(design)), design)
+  con = c(0, 1, -1) # chosen-unchosen -> chosen > unchosen
+  efficiency = 1/(t(con)%*%solve(t(des.mat)%*%des.mat)%*%con)
+  VIF = diag(solve(cor(des.mat[,2:3])))
+  correlation <- as.numeric(cor.test(design[,events[1]], design[,events[2]])$estimate)
+  
+ # add TR to event file 
+ event.file = event.file %>% mutate(TR = onset/1000/TR)
+ 
+  results = list(des.mat, event.file, efficiency, VIF, correlation)
+ names(results) = c("design_matrix", "event_file", "efficiency", "VIF", "correlation")
+ return(results)
+}
+
+swap_itis <- function(df, column,ind1, ind2){
+  iti_ind1 <- df[ind1, column]; iti_ind2 <- df[ind2, column]
+  df[ind1,column] <- iti_ind2; df[ind2,column] <- iti_ind1; 
+  return(df)
+}
+
+
+```
+
+# optimize localizer 
+
+```{r}
+
+localizer <- read.csv("../Task_sequences/Localizer/localizer_1.csv")
+categories = c("outdoor_scenes", "objects", "faces", "body_parts")
+stimulus.duration = 300;
+isi.duration = 400;
+n.stims.per.block = 20;
+timing.baseline.block = n.stims.per.block * (stimulus.duration+isi.duration) # 14 secs 
+n.reps.per.category = 3;
+total.exp.time = length(categories)*2*timing.baseline.block*n.reps.per.category/60000
+n.stims.per.cat = n.stims.per.block*n.reps.per.category;
+odd.ball.percent = 0.1 
+event.column = "task"
+TR = 1.5
+
+test_localizer_design <- function(df, stimulus.duration, isi.duration, timing.baseline.block, event.column, TR){
+  
+  df$stimulus_duration = stimulus.duration
+  isis <- sort(unique(df$isi))
+  df$isi[df$isi == isis[1]] = isi.duration
+  df$isi[df$isi == isis[2]] = timing.baseline.block
+
+  # create an even file
+  onset = 0;
+  event.file = data.frame()      
+  for (i in 1:nrow(df)){
+    isi = df$isi[i]
+    duration = df$stimulus_duration[i];
+    event = as.character(df[i,event.column])
+    event.file = rbind(event.file, data.frame(event=event, onset=onset, duration=duration, isi=isi));
+    onset = onset + duration + isi;
+  }
+          
+  # compute design matrix
+  events <- unique(unlist(df[,event.column]))
+  onsets <- list(); durations <- list(); totaltime <- list();  effectsize <- list()
+  for (e in 1:length(events)){
+    onsets[[e]] <- as.numeric(unlist(event.file %>% subset(event == events[e]) %>% select(onset)))/1000
+    durations[[e]] <- as.numeric(unlist(event.file %>% subset(event == events[e]) %>% select(duration)))/1000
+    totaltime[[e]] <- closest_divider(round((nrow(df) * stimulus.duration + sum(df$isi))/1000),TR)
+    effectsize[[e]] <- 1
+  }
+  design = specifydesign(onsets=onsets, durations=durations, totaltime=totaltime[[1]], TR=TR, effectsize=effectsize, conv="double-gamma", cond.names = events)
+  
+  des.mat = cbind(rep(1, nrow(design)), design)
+  contrast1 <- c(0,1,-0.33,-0.33,-0.33)
+  contrast2 <- c(0,-0.33,1,-0.33,-0.33)
+  contrast3 <- c(0,-0.33,-0.33,1,-0.33)
+  contrast4 <- c(0,-0.33,-0.33,-0.33,1)
+
+  efficiency = 4/((t(contrast1)%*%solve(t(des.mat)%*%des.mat)%*%contrast1) + 
+                  (t(contrast2)%*%solve(t(des.mat)%*%des.mat)%*%contrast2) +
+                  (t(contrast3)%*%solve(t(des.mat)%*%des.mat)%*%contrast3) +
+                  (t(contrast4)%*%solve(t(des.mat)%*%des.mat)%*%contrast4))
+
+  ## Variance Inflation Factor (rule of thumb - should be below 5)
+  VIF = diag(solve(cor(des.mat[,2:5])))
+  
+  # compute pair-wise correlations 
+  pairs_categories = as.data.frame(t(combn(categories,2)))
+  all_corrs = c()
+  for (p in 1:nrow(pairs_categories)){
+    all_corrs[p] <- as.numeric(cor.test(des.mat[,pairs_categories$V1[p]], des.mat[,pairs_categories$V2[p]])$estimate)
+  }
+  all_correlations <- all_corrs
+  mean_corr <- mean(all_corrs)
+  
+ # add TR to event file 
+ event.file = event.file %>% mutate(TR = onset/1000/TR)
+ 
+results = list(des.mat, event.file, efficiency, VIF, all_correlations, mean_corr)
+ names(results) = c("design_matrix", "event_file", "efficiency", "VIF", "all_correlations", "mean_correlation")
+ return(results)
+  
+}
+
+curr_design <- test_localizer_design(df=localizer, stimulus.duration=stimulus.duration, isi.duration=isi.duration, timing.baseline.block=timing.baseline.block, event.column="task", TR=1.5)
+curr_design$mean_correlation
+curr_design$efficiency
+curr_design$VIF
+
+# plot the design matrix - we want to allow the signal to go up and down rather than stay fixed (so we could differentiate it from baseline)
+events = unique(unlist(localizer["task"]))
+dev.new(width=15, height=5, unit="in")
+plot(curr_design$design_matrix[,events[1]], type = 'l', lwd = 2, col = 'red', xlab = "TR", 
+     ylab = '', ylim = c(min(c(curr_design$design_matrix[,events])), 1.3))
+lines(curr_design$design_matrix[,events[2]], lwd = 2, col = 'green')
+lines(curr_design$design_matrix[,events[3]], lwd = 2, col = 'blue')
+lines(curr_design$design_matrix[,events[4]], lwd = 2, col = 'grey')
+abline(v=curr_design$event_file[curr_design$event_file$event==events[1],"TR"], lwd = 0.2, col = 'red', lty=1)
+abline(v=curr_design$event_file[curr_design$event_file$event==events[2],"TR"], lwd = 0.2, col = 'green', lty=1)
+abline(v=curr_design$event_file[curr_design$event_file$event==events[3],"TR"], lwd = 0.2, col = 'blue', lty=1)
+abline(v=curr_design$event_file[curr_design$event_file$event==events[4],"TR"], lwd = 0.2, col = 'grey', lty=1)
+
+
+```
+

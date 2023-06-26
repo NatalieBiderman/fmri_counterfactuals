@@ -1,0 +1,5 @@
+,PID,practice,run,trial,item_id,stimulus,path,outcome,iti,isi,response,response_acc,response_rt
+0,,1,0,1,prac1,,Stimuli/Practice_stims/Outcome_learning/nizar-albusaidy-B2r2SWAf5CE-unsplash.jpg,gain,1500,1000,,,
+1,,1,0,2,prac2,,Stimuli/Practice_stims/Outcome_learning/randy-fath-epf1tdtIIkM-unsplash.jpg,no-gain,1000,1500,,,
+2,,1,0,3,prac2,,Stimuli/Practice_stims/Outcome_learning/randy-fath-epf1tdtIIkM-unsplash.jpg,no-gain,2000,1000,,,
+3,,1,0,4,prac1,,Stimuli/Practice_stims/Outcome_learning/nizar-albusaidy-B2r2SWAf5CE-unsplash.jpg,gain,1000,2000,,,

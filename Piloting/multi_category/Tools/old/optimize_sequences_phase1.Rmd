@@ -1,0 +1,377 @@
+---
+title: "Optimize Sequences"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+params:
+  mean_iti:
+    value: x
+  min_iti:
+    value: x
+  max_iti:
+    value: x
+  stim_length:
+    value: x
+---
+
+```{r, results="hide"}
+library(neuRosim)
+library(lme4)
+library(lmerTest)
+library(reticulate)
+library("oro.nifti")
+```
+
+```{python}
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+import scipy.stats as ss
+```
+
+```{r}
+mean_iti = params$mean_iti
+min_iti = params$min_iti
+max_iti = params$max_iti
+stim_length = params$stim_length
+```
+
+# Generate onsets for simulated subjects
+
+```{python}
+
+def trunc_exp_rv(low, high, scale, size):
+  out_sum = 1000
+  while out_sum != scale*size:
+    rnd_cdf = np.random.uniform(ss.expon.cdf(x=low, scale=scale),
+                                ss.expon.cdf(x=high, scale=scale),
+                                size=size)
+    out = np.round(ss.expon.ppf(q=rnd_cdf, scale=scale),1)
+    out_sum = np.sum(out)
+  return out
+
+def simulate_phase1(iti_sequences_r1_t1,iti_sequences_r1_t2,iti_sequences_r2_t1,iti_sequences_r2_t2,n_subjects,stim_length):
+  
+  d_out = []
+  for sim in range(n_subjects):
+  
+    n_img_per_stim = 2
+    
+    n_p1_trials = 80
+    p1_trial_number = 0
+    
+    # Assign stimuli to conditions
+    stims = {"A1":[],"A2":[],"A3":[],
+             "A4":[],"A5":[],"A6":[],
+             "C1":[],"C2":[],"C3":[],
+             "C4":[],"C5":[],"C6":[]}
+    faces = []
+    tools = []
+    scenes = []
+    face_stims = ["A1","A4","C2","C5"]
+    tool_stims = ["C1","C4","A3","A6"]
+    scene_stims = ["A2","A5","C3","C6"]
+    for i in range(1,9):
+      faces.append('faces/face'+str(i)+'.jpg')
+      tools.append('tools/tool'+str(i)+'.jpeg')
+      scenes.append('scenes/scene'+str(i)+'.jpeg')
+    
+    for i in range(n_img_per_stim):
+      for j in range(4):
+        f = np.random.choice(faces)
+        faces.remove(f)
+        stims[face_stims[j]].append(f)
+        
+        t = np.random.choice(tools)
+        tools.remove(t)
+        stims[tool_stims[j]].append(t)
+        
+        s = np.random.choice(scenes)
+        scenes.remove(s)
+        stims[scene_stims[j]].append(s)
+        
+    stims_by_condition = {"A1C1_1":[],
+                          "A1C1_2":[],
+                          "A2C1_1":[],
+                          "A2C1_2":[],
+                          "A3C2_1":[],
+                          "A3C2_2":[],
+                          "A3C3_1":[],
+                          "A3C3_2":[],
+                          "A4C4_1":[],
+                          "A4C4_2":[],
+                          "A5C4_1":[],
+                          "A5C4_2":[],
+                          "A6C5_1":[],
+                          "A6C5_2":[],
+                          "A6C6_1":[],
+                          "A6C6_2":[]}
+    stim_types =  list(stims_by_condition.keys())
+    for i in range(len(stim_types)):
+    
+      stim_index = int(stim_types[i][5])-1
+    
+      a_curr = stim_types[i][0]+stim_types[i][1]
+      stims_by_condition[stim_types[i]].append(stims[a_curr][stim_index])
+      
+      c_curr = stim_types[i][2]+stim_types[i][3]
+      stims_by_condition[stim_types[i]].append(stims[c_curr][stim_index])
+    
+    
+    
+    p1_data = {"event":[],
+               "onset":[],
+               "duration":[],
+               "trial":[],
+               "trial_type":[],
+               "run":[],
+               "sequence":[],
+               "subject":[]}
+    for seq in range(n_sequences):
+      time = 0
+      p1_tracking = {"A1C1_1":0,
+                   "A1C1_2":0,
+                   "A2C1_1":0,
+                   "A2C1_2":0,
+                   "A3C2_1":0,
+                   "A3C2_2":0,
+                   "A3C3_1":0,
+                   "A3C3_2":0,
+                   "A4C4_1":0,
+                   "A4C4_2":0,
+                   "A5C4_1":0,
+                   "A5C4_2":0,
+                   "A6C5_1":0,
+                   "A6C5_2":0,
+                   "A6C6_1":0,
+                   "A6C6_2":0}
+      p1_types =  p1_tracking.keys()
+      for t in range(n_p1_trials):
+      
+        if t < n_p1_trials/2:
+          t_ind = t
+          run = 1
+          iti_sequences_1 = iti_sequences_r1_t1
+          iti_sequences_2 = iti_sequences_r1_t2
+        else:
+          t_ind = int(t - n_p1_trials/2)
+          run = 2
+          iti_sequences_1 = iti_sequences_r2_t1
+          iti_sequences_2 = iti_sequences_r2_t2
+        if t == 40: time=0
+
+        # Sampling trial types such that we rotate through them
+        minval = min(p1_tracking.values())
+        res = [k for k, v in p1_tracking.items() if v==minval]
+        trial_type = np.random.choice(res)
+        
+        #Get antecedent image
+        antecedent = stims_by_condition[trial_type][0]
+      
+        #Get consequent image
+        consequent = stims_by_condition[trial_type][1];
+      
+        events = ["iti",antecedent.split("/")[0][:-1],"isi",consequent.split("/")[0][:-1]]
+        durations = [iti_sequences_1[t_ind,seq],stim_length,iti_sequences_2[t_ind,seq],stim_length]
+        #durations = [2,1.75,2,1.75]
+        trial_nums = [t+1,t+1,t+1,t+1]
+        seq_nums = [seq,seq,seq,seq]
+        subj_nums = [sim,sim,sim,sim]
+        run_nums = [run,run,run,run]
+        trial_types = [trial_type,trial_type,trial_type,trial_type]
+        onsets = []
+        for d in durations:
+          onsets.append(time)
+          time+=d
+        p1_data["event"].extend(events)
+        p1_data["onset"].extend(onsets)
+        p1_data["duration"].extend(durations)
+        p1_data["trial"].extend(trial_nums)
+        p1_data["trial_type"].extend(trial_types)
+        p1_data["run"].extend(run_nums)
+        p1_data["subject"].extend(subj_nums)
+        p1_data["sequence"].extend(seq_nums)
+    
+        p1_tracking[trial_type]+=1
+
+    p1_data = pd.DataFrame.from_dict(p1_data)
+    d_out.append(p1_data)
+    
+  return pd.concat(d_out).reset_index(drop=True)
+  
+```
+
+```{python}
+n_sequences = 20
+n_trials = 40 #number of trials per run
+# Generate many iti sequences
+iti_sequences_r1_t1 = np.zeros((n_trials,n_sequences))
+iti_sequences_r2_t1 = np.zeros((n_trials,n_sequences))
+iti_sequences_r1_t2 = np.zeros((n_trials,n_sequences))
+iti_sequences_r2_t2 = np.zeros((n_trials,n_sequences))
+mean_iti = float(r.mean_iti) #eligible with 1.5s ITI: 2 or 3.5
+min_iti = float(r.min_iti)
+max_iti = float(r.max_iti)
+stim_length = float(r.stim_length)
+for i in range(n_sequences):
+  iti_sequences_r1_t1[:,i] = trunc_exp_rv(low=min_iti, high=max_iti, scale=mean_iti, size=n_trials) # was 2
+  iti_sequences_r1_t2[:,i] = trunc_exp_rv(low=min_iti, high=max_iti, scale=mean_iti, size=n_trials)
+  iti_sequences_r2_t1[:,i] = trunc_exp_rv(low=min_iti, high=max_iti, scale=mean_iti, size=n_trials)
+  iti_sequences_r2_t2[:,i] = trunc_exp_rv(low=min_iti, high=max_iti, scale=mean_iti, size=n_trials)
+
+n_subjects = 100
+p1_data = simulate_phase1(iti_sequences_r1_t1,iti_sequences_r1_t2,iti_sequences_r2_t1,iti_sequences_r2_t2,n_subjects,stim_length)
+```
+
+# Need to turn this into an rmd script that takes in subject ID as an argument
+
+```{python}
+ 
+edf = pd.read_csv("/Users/jonathannicholas/Desktop/fifo_mri/event_files/sub-03/func/sub-03_ses-fifo_task-assoc_run-1_events.tsv",sep="\t")
+
+fi_stims = ["A1","A2","A4","A5","C1","C4"]
+fo_stims = ["A3","A6","C2","C3","C5","C6"]
+
+conditions = []
+edf["duration"] = 1.5
+edf["onset"] = edf.onset.round(1)
+
+mapper = pd.read_csv("assoc_learning_mapper.csv")
+mapper = mapper[mapper.sub_id == "sub-02"].reset_index(drop=True)
+tt=[]
+for i, row in edf.iterrows():
+  if mapper.trialtype.iloc[i] in fi_stims:
+    tt.append(row.trial_type + "_" + "fanin")
+  else:
+    tt.append(row.trial_type + "_" + "fanout")
+edf["event"] = tt
+
+```
+
+```{r}
+
+seq=py$edf
+
+face_fi_df = seq[seq$event == "face_fanin",]
+tool_fi_df = seq[seq$event == "tool_fanin",]
+scene_fi_df = seq[seq$event == "scene_fanin",]
+face_fo_df = seq[seq$event == "face_fanout",]
+tool_fo_df = seq[seq$event == "tool_fanout",]
+scene_fo_df = seq[seq$event == "scene_fanout",]
+
+onsets = list(face_fi_df$onset, tool_fi_df$onset, scene_fi_df$onset,face_fo_df$onset, tool_fo_df$onset, scene_fo_df$onset)
+durations = list(face_fi_df$duration, tool_fi_df$duration, scene_fi_df$duration,face_fo_df$duration, tool_fo_df$duration, scene_fo_df$duration)
+totaltime = 360#tail(seq,n=1)$onset + tail(seq)$duration
+TR = 1.5
+effectsize=list(1,1,1,1,1,1)
+
+design = specifydesign(onsets=onsets, durations=durations, totaltime=totaltime,
+                       TR=TR, effectsize=effectsize,conv="double-gamma")
+
+```
+
+
+```{python}
+# need to get a correlation matrix like this for:
+# every participant and fan in/fan out.
+dm = r.design
+dm_fi = dm[:,:3]
+dm_fo = dm[:,3:]
+dm_fi = pd.DataFrame(dm_fi,columns=["face","tool","scene"])
+dm_fo = pd.DataFrame(dm_fo,columns=["face","tool","scene"])
+
+dm_fi.corr()
+dm_fo.corr()
+```
+
+
+# First determine a design that results in the least correlated regressors`
+
+```{r}
+designs = NULL
+seq_types = NULL
+run_nums = NULL
+sub_types = NULL
+total_simulated = 0
+n_runs = 2
+for (r in 1:n_runs) {
+  for (s in 0:py$n_sequences-1) {
+    for (s1 in 0:py$n_subjects-1) {
+        tryCatch({
+          sd = py$p1_data[py$p1_data$sequence == s,]
+          sd = sd[sd$subject == s1,]
+          sd = sd[sd$run == r,]
+          
+          face_df = sd[sd$event == "face",]
+          tool_df = sd[sd$event == "tool",]
+          scene_df = sd[sd$event == "scene",]
+        
+          onsets = list(face_df$onset, tool_df$onset, scene_df$onset)
+          durations = list(face_df$duration, tool_df$duration, scene_df$duration)
+          totaltime = tail(sd,n=1)$onset + tail(sd,n=1)$duration
+          TR = 1.5
+          effectsize=list(1,1,1)
+        
+          design = specifydesign(onsets=onsets, durations=durations, totaltime=totaltime,
+                                 TR=TR, effectsize=effectsize,conv="double-gamma")
+          designs = cbind(designs,design)
+          seq_types = cbind(seq_types,s)
+          run_nums = cbind(run_nums,r)
+          sub_types = cbind(sub_types,s1)
+          total_simulated = total_simulated + 1
+          }, error=function(e){}) #{cat("ERROR :",conditionMessage(e), "\n")}) #
+    }
+  }
+}
+```
+
+```{python}
+i=0
+j=3
+design_correlations = {"1":[],"2":[],"3":[],"mean":[],"range":[],"timing_id":[],"order_id":[],"run_id":[]}
+for s in range(int(r.total_simulated)):
+  dm = pd.DataFrame.from_dict(r.designs[:,i:j])
+  dm.columns = ["face","tool","scene"]
+  corrs = list(set(dm.corr().values.flatten()))
+  corrs.remove(1)
+  design_correlations["1"].append(corrs[0])
+  design_correlations["2"].append(corrs[1])
+  design_correlations["3"].append(corrs[2])
+  design_correlations["mean"].append(np.mean(np.abs(corrs)))
+  design_correlations["range"].append(np.max(np.abs(corrs)) - np.min(np.abs(corrs)))
+  design_correlations["timing_id"].append(r.seq_types[0][s])
+  design_correlations["order_id"].append(r.sub_types[0][s])
+  design_correlations["run_id"].append(r.run_nums[0][s])
+  i+=3
+  j+=3
+design_correlations = pd.DataFrame.from_dict(design_correlations)
+a = design_correlations.groupby(["timing_id","order_id"])["mean"].mean().reset_index(name="mean_corr")
+b = design_correlations.groupby(["timing_id","order_id"])["range"].mean().reset_index(name="range")
+summary_df = a.merge(b,on=["timing_id","order_id"])
+# set a range threshold: 0.1
+summary_df = summary_df[summary_df.range < 0.1].sort_values("mean_corr")
+summary_df["rank"] = range(1,len(summary_df)+1)
+
+full_out_df = []
+for i, row in summary_df.iterrows():
+  rank = int(row["rank"])
+  subj = row.order_id
+  seq = row.timing_id
+  phase1_trial_sequence = p1_data[(p1_data.event == "iti") & (p1_data.subject == subj) & (p1_data.sequence == seq)][["trial_type"]]["trial_type"]
+  phase1_iti_sequence = p1_data[(p1_data.event == "iti") & (p1_data.subject == subj) & (p1_data.sequence == seq)][["duration"]]["duration"]
+  phase1_isi_sequence = p1_data[(p1_data.event == "isi") & (p1_data.subject == subj) & (p1_data.sequence == seq)][["duration"]]["duration"]
+  frame = {"trial_type":list(phase1_trial_sequence),"iti_duration":list(phase1_iti_sequence),"isi_duration":list(phase1_isi_sequence)}
+  seq_out_df = pd.DataFrame.from_dict(frame)
+  seq_out_df["mean_iti"] = mean_iti
+  seq_out_df["min_iti"] = min_iti
+  seq_out_df["max_iti"] = max_iti
+  seq_out_df["rank"] = rank
+  seq_out_df["mean_corr"] = row.mean_corr
+  seq_out_df["range_corr"] = row.range
+  full_out_df.append(seq_out_df)
+full_out_df = pd.concat(full_out_df).reset_index()
+file_name = "./candidate_task_sequences/phase1/mean%s_min%s_max%s_stimlength%s.csv"%(mean_iti,min_iti,max_iti,stim_length)
+full_out_df.to_csv(file_name,index=False)
+```

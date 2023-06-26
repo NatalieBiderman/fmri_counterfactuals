@@ -1,0 +1,1310 @@
+---
+title: "simulate_fMRI_timing"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Setup
+
+```{r}
+
+library(neuRosim)
+library(lme4)
+library(lmerTest)
+library(dplyr)
+library(tidyr)
+library(TruncExpFam)
+library(plyr)
+library(rio)
+library(ggplot2)
+
+iti_params <- list();
+iti_params$shape = 2.5
+iti_params$mean = 2
+iti_params$rate = 0.5
+iti_params$scale = 1
+iti_params$max = 6
+iti_params$min = 1
+
+# function to find the total run time such that there will be an integer number of TRs.
+closest_divider <- function(num, divider){
+  while(num %% divider != 0){
+    num = num + 0.5
+  }
+  return(num)
+}
+```
+
+# Deliberation phase 
+
+Simulate RTs in Deliberation phase
+
+```{r}
+
+deliberation = read.csv("../Task_sequences/Deliberation/deliberation_1.csv") %>% 
+  subset(practice == 0)
+
+# simulate rts as a function of block 
+deliberation <- deliberation %>% mutate(
+  rt = ifelse(block==1, round(rtruncnorm(nrow(deliberation), a=deliberation_rt$min, b=deliberation_rt$max, mean=deliberation_rt$mean_block1, sd=deliberation_rt$sd_block1)),
+              ifelse(block==2, round(rtruncnorm(nrow(deliberation), a=deliberation_rt$min, b=deliberation_rt$max, mean=deliberation_rt$mean_block2, sd=deliberation_rt$sd_block2)),
+                     round(rtruncnorm(nrow(deliberation), a=deliberation_rt$min, b=deliberation_rt$max, mean=deliberation_rt$mean_block3, sd=deliberation_rt$sd_block3))))) 
+
+# simulate scramble_prompt rts 
+deliberation[deliberation$stim_type=="scramble", "rt"] <- round(rtruncnorm(sum(deliberation$stim_type=="scramble"), a=deliberation_rt$min, b=deliberation_rt$scramble_max, mean=deliberation_rt$mean_block3, sd=deliberation_rt$sd_block3))
+
+# add a no_response column
+deliberation <- deliberation %>% mutate(no_response = ifelse((rt>=deliberation_rt$max & stim_type=="original") | (rt>=deliberation_rt$scramble_max & stim_type=="scramble"), 1, 0)) %>%
+  mutate(rt = ifelse(no_response==1, NaN, rt))
+
+
+```
+
+# Run simulation
+
+```{r}
+
+n_sims <- 100
+n_runs <- 2
+TR <- 1.5
+
+# save room
+simulated_iti <- data.frame(matrix(NaN, ncol=3, nrow=0)); colnames(simulated_iti) = c("iti", "run", "simulation")
+event_file_deliberation = data.frame(matrix(NaN, ncol=6, nrow=0)); colnames(event_file_deliberation) = c("event", "onset", "duration", "iti", "run", "simulation")
+correlation_df1 <- data.frame(matrix(NaN, ncol=4, nrow=0)); colnames(correlation_df1) = c("scramble", "scramble_prompt", "run", "simulation") 
+correlation_df2 <- data.frame(matrix(NaN, ncol=3, nrow=0)); colnames(correlation_df2) = c("scramble", "run", "simulation") 
+
+for (s in 1:n_sims){
+  
+  for (r in 1:n_runs){
+    
+    curr_df <- deliberation %>% subset(run == r)
+    
+    # sample iti from truncated exponential distribution 
+    curr_iti = round(rtruncgamma(nrow(curr_df), shape=deliberation_iti$shape, rate = deliberation_iti$rate, scale = deliberation_iti$scale, a = deliberation_iti$min, b = deliberation_iti$max),1)*1000
+      #round(rtruncexp(nrow(curr_df), rate = deliberation_iti$rate, a = deliberation_iti$min, b = deliberation_iti$max),1)*1000
+    simulated_iti <- rbind(simulated_iti, data.frame(iti=as.numeric(curr_iti), run=r, simulation=s))
+    
+    curr_df <- curr_df %>% mutate(iti = curr_iti)
+    
+    # restart onset
+    onset = 0;
+    
+# ==============================================================================
+# create event files 
+# ==============================================================================
+
+    for (i in 1:nrow(curr_df)){
+      
+      if (curr_df$stim_type[i] == "original"){
+        
+        # choice event
+        iti = 0; 
+        duration = curr_df$rt[i];
+        event_file_deliberation = rbind(event_file_deliberation, c("choice", onset, duration, iti, r, s)); 
+        onset = onset + duration;
+        if (curr_df$no_response[i] == 0){
+          
+          # confirmation event
+          iti = curr_df$iti[i]; 
+          duration = deliberation_rt$max - curr_df$rt[i];
+          event_file_deliberation = rbind(event_file_deliberation, c("choice_confirm", onset, duration, iti, r, s)); 
+          onset = onset + duration;
+        } else {
+          
+          # no response event
+          iti = curr_df$iti[i] - deliberation_rt$no_response_prompt; 
+          duration = deliberation_rt$no_response_prompt;
+          event_file_deliberation = rbind(event_file_deliberation, c("no_response", onset, duration, iti, r, s)); 
+          onset = onset + duration
+        }
+        # add iti to onset
+        onset = onset + iti;
+        
+        
+      } else { # scramble 
+        
+        # scramble event
+        duration = curr_df$scramble_screen_time[i];
+        iti = 0;
+        event_file_deliberation = rbind(event_file_deliberation, c("scramble", onset, duration, iti, r, s)); 
+        onset = onset + duration
+        
+        if (curr_df$no_response[i] == 0){
+          # scramble prompt
+          duration = curr_df$rt[i];
+          iti = 0;
+          event_file_deliberation = rbind(event_file_deliberation, c("scramble_prompt", onset, duration, iti, r, s)); 
+          onset = onset + duration
+          
+          # confirmation event
+          iti = curr_df$iti[i]
+          duration = deliberation_rt$max - curr_df$scramble_screen_time[i] - curr_df$rt[i]; # with confirmation the whole trial should take 3 secs 
+          event_file_deliberation = rbind(event_file_deliberation, c("scramble_confirm", onset, duration, iti, r, s)); 
+          onset = onset + duration
+          
+        } else {
+          
+          # scramble prompt
+          duration = deliberation_rt$max - curr_df$scramble_screen_time[i]
+          iti = 0;
+          event_file_deliberation = rbind(event_file_deliberation, c("scramble_prompt", onset, duration, iti, r, s)); 
+          onset = onset + duration
+          
+          # no response (time taken from iti)
+          duration = deliberation_rt$no_response_prompt;
+          iti = curr_df$iti[i] - deliberation_rt$no_response_prompt
+          event_file_deliberation = rbind(event_file_deliberation, c("no_response", onset, duration, iti, r, s)); 
+          onset = onset + deliberation_rt$no_response_prompt
+        }
+        # add iti 
+        onset = onset + iti
+      }                                                    
+    }
+    
+# ==============================================================================
+# create a design matrix  
+# ==============================================================================
+    
+    colnames(event_file_deliberation) = c("event", "onset", "duration", "iti","run", "simulation")
+    events <- c("choice", "scramble", "scramble_prompt")
+    onsets <- list(); durations <- list(); totaltime <- list();  effectsize <- list()
+    # function to find the total run time such that there will be an integer number of TRs.
+    closest_divider <- function(num, divider){
+      while(num %% divider != 0){
+        num = num + 0.5
+      }
+      return(num)
+    }
+    for (e in 1:length(events)){
+      curr_event_file <-
+      onsets[[e]] <- as.numeric(unlist(event_file_deliberation %>% subset(simulation == s & run == r & event == events[e]) %>% select(onset)))/1000
+      durations[[e]] <- as.numeric(unlist(event_file_deliberation %>% subset(simulation == s & run == r & event == events[e]) %>% select(duration)))/1000
+      totaltime[[e]] <- closest_divider(round((nrow(deliberation)/2 * deliberation_rt$stim_length + sum(simulated_iti[simulated_iti$run==r & simulated_iti$simulation==s, "iti"]))/1000),TR)
+      effectsize[[e]] <- 1
+    }
+    design = specifydesign(onsets=onsets, durations=durations, totaltime=totaltime[[1]], TR=TR, effectsize=effectsize, conv="double-gamma", cond.names = events)
+    
+# ==============================================================================
+# compute correlation between items 
+# ==============================================================================
+    
+    m1 <- lm(data=as.data.frame(design), choice ~ scramble + scramble_prompt)
+    correlation_df1 <- rbind(correlation_df1, data.frame(scramble=as.numeric(m1$coefficients[2]), scramble_prompt = as.numeric(m1$coefficients[3]), run=r, simulation=s))
+    
+    m2 <- cor.test(design[,"choice"], design[,"scramble"])
+    correlation_df2 <- rbind(correlation_df2, data.frame(scramble=as.numeric(m2$estimate), run=r, simulation=s))
+  
+  }
+}
+
+# ==============================================================================
+# find design with the lowest correlation 
+# ==============================================================================
+
+run1 <- correlation_df1 %>% subset(run==1)
+run2 <- correlation_df1 %>% subset(run==2)
+
+```
+
+# Run simulation - without taking into account rt simulation
+
+```{r}
+
+n_sims <- 100
+n_runs <- 2
+TR <- 1.5
+
+# save room
+simulated_iti_no_rt <- data.frame(matrix(NaN, ncol=3, nrow=0)); colnames(simulated_iti_no_rt) = c("iti", "run", "simulation")
+event_file_deliberation_no_rt = data.frame(matrix(NaN, ncol=6, nrow=0)); colnames(event_file_deliberation_no_rt) = c("event", "onset", "duration", "iti", "run", "simulation")
+correlation_df_no_rt1 <- data.frame(matrix(NaN, ncol=4, nrow=0)); colnames(correlation_df_no_rt1) = c("scramble", "scramble_prompt", "run", "simulation") 
+correlation_df_no_rt2 <- data.frame(matrix(NaN, ncol=3, nrow=0)); colnames(correlation_df_no_rt2) = c("scramble", "run", "simulation") 
+
+for (s in 1:n_sims){
+  
+  for (r in 1:n_runs){
+    
+    curr_df <- deliberation %>% subset(run == r)
+    
+    # sample iti from truncated exponential distribution 
+    curr_iti = round(rtruncgamma(nrow(curr_df), shape=deliberation_iti$shape, rate = deliberation_iti$rate, scale = deliberation_iti$scale, a = deliberation_iti$min, b = deliberation_iti$max),1)*1000    
+    simulated_iti_no_rt <- rbind(simulated_iti_no_rt, data.frame(iti=as.numeric(curr_iti), run=r, simulation=s))
+    
+    curr_df <- curr_df %>% mutate(iti = curr_iti)
+    
+    # restart onset
+    onset = 0;
+    
+# ==============================================================================
+# create event files 
+# ==============================================================================
+
+    for (i in 1:nrow(curr_df)){
+      
+      if (curr_df$stim_type[i] == "original"){
+        event = "choice"
+      } else {
+        event = "scramble"
+      }
+      
+      iti = curr_df$iti[i]; 
+      duration = deliberation_rt$max;
+      event_file_deliberation_no_rt = rbind(event_file_deliberation_no_rt, c(event, onset, duration, iti, r, s)); 
+      onset = onset + duration + iti;
+    }
+    
+# ==============================================================================
+# create a design matrix  
+# ==============================================================================
+    
+    colnames(event_file_deliberation_no_rt) = c("event", "onset", "duration", "iti","run", "simulation")
+    events <- c("choice", "scramble")
+    onsets <- list(); durations <- list(); totaltime <- list();  effectsize <- list()
+    # function to find the total run time such that there will be an integer number of TRs.
+    closest_divider <- function(num, divider){
+      while(num %% divider != 0){
+        num = num + 0.5
+      }
+      return(num)
+    }
+    for (e in 1:length(events)){
+      onsets[[e]] <- as.numeric(unlist(event_file_deliberation_no_rt %>% subset(simulation == s & run == r & event == events[e]) %>% select(onset)))/1000
+      durations[[e]] <- as.numeric(unlist(event_file_deliberation_no_rt %>% subset(simulation == s & run == r & event == events[e]) %>% select(duration)))/1000
+      totaltime[[e]] <- closest_divider(round((nrow(deliberation)/2 * deliberation_rt$stim_length + sum(simulated_iti_no_rt[simulated_iti_no_rt$run==r & simulated_iti_no_rt$simulation==s, "iti"]))/1000),TR)
+      effectsize[[e]] <- 1
+    }
+    design = specifydesign(onsets=onsets, durations=durations, totaltime=totaltime[[1]], TR=TR, effectsize=effectsize, conv="double-gamma", cond.names = events)
+    
+# ==============================================================================
+# compute correlation between items 
+# ==============================================================================
+    
+    m2 <- cor.test(design[,"choice"], design[,"scramble"])
+    correlation_df_no_rt2 <- rbind(correlation_df_no_rt2, data.frame(scramble=as.numeric(m2$estimate), run=r, simulation=s))
+  
+  }
+}
+
+# ==============================================================================
+# find design with the lowest correlation 
+# ==============================================================================
+
+run1 <- correlation_df_no_rt2 %>% subset(run==1)
+run2 <- correlation_df_no_rt2 %>% subset(run==2)
+
+```
+
+# Shuffle task sequence as part of the simulation 
+
+```{r}
+
+# load deliberation matrix 
+
+deliberation = read.csv("../Task_sequences/Deliberation/deliberation_1.csv") %>% 
+  subset(practice == 0)
+
+n_iti_sims <- 20
+n_shuffle_trials <- 20
+n_runs <- 2
+TR <- 1.5
+
+event_file_deliberation = data.frame(matrix(NaN, ncol=7, nrow=0)); colnames(event_file_deliberation) = c("event", "onset", "duration", "iti", "run", "iti_simulation", "shuffle_order")
+correlation_df1 <- data.frame(matrix(NaN, ncol=5, nrow=0)); colnames(correlation_df1) = c("scramble", "scramble_prompt", "run", "iti_simulation", "shuffle_order")
+correlation_df2 <- data.frame(matrix(NaN, ncol=4, nrow=0)); colnames(correlation_df2) = c("scramble", "run", "iti_simulation", "shuffle_order")
+full_deliberation <- data.frame(matrix(NaN, ncol=ncol(deliberation), nrow=0)); colnames(full_deliberation) <- colnames(deliberation)
+
+for (r in 1:n_runs){
+
+  curr_df <- deliberation %>% subset(run == r)
+
+# ==============================================================================
+# generate itis
+# ==============================================================================
+
+  # we first generate itis from a truncated exponential distribution 
+  for (s in 1:n_iti_sims){
+  
+    # sample iti from truncated exponential distribution 
+    curr_iti = round(rtruncgamma(nrow(curr_df), shape = deliberation_iti$shape, rate = deliberation_iti$rate, scale = deliberation_iti$scale, a = deliberation_iti$min, b = deliberation_iti$max),1)*1000
+      #round(rtruncexp(nrow(curr_df), rate = deliberation_iti$rate, a = deliberation_iti$min, b = deliberation_iti$max),1)*1000
+
+    curr_df <- curr_df %>% mutate(iti = curr_iti, iti_simulation = s)
+
+# ==============================================================================
+# shuffle the order of trials
+# ==============================================================================
+
+    for (t in 1:n_shuffle_trials){
+      
+      blocks <- unique(curr_df$block)
+      new_curr_df <- c()
+      for (b in 1:length(blocks)){
+        curr_block <- curr_df %>% subset(block==b) %>% slice(sample(1:n()))
+        new_curr_df <- rbind(new_curr_df, curr_block)
+      }
+      curr_df <- new_curr_df %>% mutate(order_shuffle = t)
+      
+      # simulate rts
+      curr_df <- curr_df %>% mutate(
+  rt = ifelse(block==1, round(rtruncnorm(nrow(curr_df), a=deliberation_rt$min, b=deliberation_rt$max, mean=deliberation_rt$mean_block1, sd=deliberation_rt$sd_block1)),
+              ifelse(block==2, round(rtruncnorm(nrow(curr_df), a=deliberation_rt$min, b=deliberation_rt$max, mean=deliberation_rt$mean_block2, sd=deliberation_rt$sd_block2)), round(rtruncnorm(nrow(curr_df), a=deliberation_rt$min, b=deliberation_rt$max, mean=deliberation_rt$mean_block3, sd=deliberation_rt$sd_block3))))) 
+
+      # simulate scramble_prompt rts 
+      curr_df[curr_df$stim_type=="scramble", "rt"] <- round(rtruncnorm(sum(curr_df$stim_type=="scramble"), a=deliberation_rt$min, b=deliberation_rt$scramble_max, mean=deliberation_rt$mean_block3, sd=deliberation_rt$sd_block3))
+      
+      # add a no_response column
+      curr_df <- curr_df %>% mutate(no_response = ifelse((rt>=deliberation_rt$max & stim_type=="original") | (rt>=deliberation_rt$scramble_max & stim_type=="scramble"), 1, 0)) %>%
+        mutate(rt = ifelse(no_response==1, NaN, rt))
+      
+# ==============================================================================
+# create event files 
+# ==============================================================================
+    
+    # restart onset
+    onset = 0;
+      
+    for (i in 1:nrow(curr_df)){
+      
+      if (curr_df$stim_type[i] == "original"){
+        
+        # choice event
+        iti = 0; 
+        duration = curr_df$rt[i];
+        event_file_deliberation = rbind(event_file_deliberation, c("choice", onset, duration, iti, r, s, t)); 
+        onset = onset + duration;
+        if (curr_df$no_response[i] == 0){
+          
+          # confirmation event
+          iti = curr_df$iti[i]; 
+          duration = deliberation_rt$max - curr_df$rt[i];
+          event_file_deliberation = rbind(event_file_deliberation, c("choice_confirm", onset, duration, iti, r, s, t)); 
+          onset = onset + duration;
+        } else {
+          
+          # no response event
+          iti = curr_df$iti[i] - deliberation_rt$no_response_prompt; 
+          duration = deliberation_rt$no_response_prompt;
+          event_file_deliberation = rbind(event_file_deliberation, c("no_response", onset, duration, iti, r, s, t)); 
+          onset = onset + duration
+        }
+        # add iti to onset
+        onset = onset + iti;
+        
+        
+      } else { # scramble 
+        
+        # scramble event
+        duration = curr_df$scramble_screen_time[i];
+        iti = 0;
+        event_file_deliberation = rbind(event_file_deliberation, c("scramble", onset, duration, iti, r, s, t)); 
+        onset = onset + duration
+        
+        if (curr_df$no_response[i] == 0){
+          # scramble prompt
+          duration = curr_df$rt[i];
+          iti = 0;
+          event_file_deliberation = rbind(event_file_deliberation, c("scramble_prompt", onset, duration, iti, r, s, t)); 
+          onset = onset + duration
+          
+          # confirmation event
+          iti = curr_df$iti[i]
+          duration = deliberation_rt$max - curr_df$scramble_screen_time[i] - curr_df$rt[i]; # with confirmation the whole trial should take 3 secs 
+          event_file_deliberation = rbind(event_file_deliberation, c("scramble_confirm", onset, duration, iti, r, s, t)); 
+          onset = onset + duration
+          
+        } else {
+          
+          # scramble prompt
+          duration = deliberation_rt$max - curr_df$scramble_screen_time[i]
+          iti = 0;
+          event_file_deliberation = rbind(event_file_deliberation, c("scramble_prompt", onset, duration, iti, r, s, t)); 
+          onset = onset + duration
+          
+          # no response (time taken from iti)
+          duration = deliberation_rt$no_response_prompt;
+          iti = curr_df$iti[i] - deliberation_rt$no_response_prompt
+          event_file_deliberation = rbind(event_file_deliberation, c("no_response", onset, duration, iti, r, s, t)); 
+          onset = onset + deliberation_rt$no_response_prompt
+        }
+        # add iti 
+        onset = onset + iti
+      }                                                    
+    } # i
+      
+    full_deliberation <- rbind(full_deliberation, curr_df)
+    
+# ==============================================================================
+# create a design matrix  
+# ==============================================================================
+    
+    colnames(event_file_deliberation) = c("event", "onset", "duration", "iti","run", "iti_simulation", "shuffle_order")
+    events <- c("choice", "scramble", "scramble_prompt")
+    onsets <- list(); durations <- list(); totaltime <- list();  effectsize <- list()
+    # function to find the total run time such that there will be an integer number of TRs.
+    closest_divider <- function(num, divider){
+      while(num %% divider != 0){
+        num = num + 0.5
+      }
+      return(num)
+    }
+    for (e in 1:length(events)){
+      curr_event_file <-
+      onsets[[e]] <- as.numeric(unlist(event_file_deliberation %>% subset(iti_simulation == s & run == r & shuffle_order == t & event == events[e]) %>% select(onset)))/1000
+      durations[[e]] <- as.numeric(unlist(event_file_deliberation %>% subset(iti_simulation == s & run == r & shuffle_order == t & event == events[e]) %>% select(duration)))/1000
+      totaltime[[e]] <- closest_divider(round((nrow(curr_df) * deliberation_rt$stim_length + sum(curr_df$iti))/1000),TR)
+      effectsize[[e]] <- 1
+    }
+    design = specifydesign(onsets=onsets, durations=durations, totaltime=totaltime[[1]], TR=TR, effectsize=effectsize, conv="double-gamma", cond.names = events)
+    
+# ==============================================================================
+# compute correlation between items 
+# ==============================================================================
+    
+    m1 <- lm(data=as.data.frame(design), choice ~ scramble + scramble_prompt)
+    correlation_df1 <- rbind(correlation_df1, data.frame(scramble=as.numeric(m1$coefficients[2]), scramble_prompt = as.numeric(m1$coefficients[3]), run=r, iti_simulation=s, shuffle_order=t))
+    
+    m2 <- cor.test(design[,"choice"], design[,"scramble"])
+    correlation_df2 <- rbind(correlation_df2, data.frame(scramble=as.numeric(m2$estimate), run=r, iti_simulation=s, shuffle_order=t))
+
+    } # t
+    
+  } #
+  
+} # r
+
+```
+
+```{r}
+
+# load deliberation matrix 
+
+deliberation = read.csv("../Task_sequences/Deliberation/deliberation_1.csv") %>% 
+  subset(practice == 0)
+
+n_iti_sims <- 20
+n_shuffle_trials <- 20
+n_runs <- 2
+TR <- 1.5
+
+event_file_deliberation_no_rt = data.frame(matrix(NaN, ncol=7, nrow=0)); colnames(event_file_deliberation_no_rt) = c("event", "onset", "duration", "iti", "run", "iti_simulation", "shuffle_order")
+correlation_df1 <- data.frame(matrix(NaN, ncol=5, nrow=0)); colnames(correlation_df1) = c("scramble", "scramble_prompt", "run", "iti_simulation", "shuffle_order")
+correlation_df2 <- data.frame(matrix(NaN, ncol=4, nrow=0)); colnames(correlation_df2) = c("scramble", "run", "iti_simulation", "shuffle_order")
+full_deliberation <- data.frame(matrix(NaN, ncol=ncol(deliberation), nrow=0)); colnames(full_deliberation) <- colnames(deliberation)
+
+for (r in 1:n_runs){
+
+  curr_df <- deliberation %>% subset(run == r)
+
+# ==============================================================================
+# generate itis
+# ==============================================================================
+
+  # we first generate itis from a truncated exponential distribution 
+  for (s in 1:n_iti_sims){
+  
+    # sample iti from truncated exponential distribution 
+    curr_iti = round(rtruncgamma(nrow(curr_df), shape = deliberation_iti$shape, rate = deliberation_iti$rate, scale = deliberation_iti$scale, a = deliberation_iti$min, b = deliberation_iti$max),1)*1000
+      #round(rtruncexp(nrow(curr_df), rate = deliberation_iti$rate, a = deliberation_iti$min, b = deliberation_iti$max),1)*1000
+
+    curr_df <- curr_df %>% mutate(iti = curr_iti, iti_simulation = s)
+
+# ==============================================================================
+# shuffle the order of trials
+# ==============================================================================
+
+    for (t in 1:n_shuffle_trials){
+      
+      # blocks <- unique(curr_df$block)
+      # new_curr_df <- c()
+      # for (b in 1:length(blocks)){
+      #   curr_block <- curr_df %>% subset(block==b) %>% slice(sample(1:n()))
+      #   new_curr_df <- rbind(new_curr_df, curr_block)
+      # }
+      # curr_df <- new_curr_df %>% mutate(order_shuffle = t)
+      curr_df <- curr_df %>% slice(sample(1:n())) %>% mutate(order_shuffle = t)
+      
+      
+# ==============================================================================
+# create event files 
+# ==============================================================================
+    
+    # restart onset
+    onset = 0;
+      
+    for (i in 1:nrow(curr_df)){
+      
+      if (curr_df$stim_type[i] == "original"){
+        event = "choice"
+      } else {
+        event = "scramble"
+      }
+      
+      iti = curr_df$iti[i]; 
+      duration = deliberation_rt$max;
+      event_file_deliberation_no_rt = rbind(event_file_deliberation_no_rt, c(event, onset, duration, iti, r, s, t)); 
+      onset = onset + duration + iti;
+    }
+      
+    full_deliberation <- rbind(full_deliberation, curr_df)
+    
+# ==============================================================================
+# create a design matrix  
+# ==============================================================================
+    
+    colnames(event_file_deliberation_no_rt) = c("event", "onset", "duration", "iti","run", "iti_simulation", "shuffle_order")
+    events <- c("choice", "scramble")
+    onsets <- list(); durations <- list(); totaltime <- list();  effectsize <- list()
+    # function to find the total run time such that there will be an integer number of TRs.
+    closest_divider <- function(num, divider){
+      while(num %% divider != 0){
+        num = num + 0.5
+      }
+      return(num)
+    }
+    for (e in 1:length(events)){
+      curr_event_file <-
+      onsets[[e]] <- as.numeric(unlist(event_file_deliberation_no_rt %>% subset(iti_simulation == s & run == r & shuffle_order == t & event == events[e]) %>% select(onset)))/1000
+      durations[[e]] <- as.numeric(unlist(event_file_deliberation_no_rt %>% subset(iti_simulation == s & run == r & shuffle_order == t & event == events[e]) %>% select(duration)))/1000
+      totaltime[[e]] <- closest_divider(round((nrow(curr_df) * deliberation_rt$stim_length + sum(curr_df$iti))/1000),TR)
+      effectsize[[e]] <- 1
+    }
+    design = specifydesign(onsets=onsets, durations=durations, totaltime=totaltime[[1]], TR=TR, effectsize=effectsize, conv="double-gamma", cond.names = events)
+    
+# ==============================================================================
+# compute correlation between items 
+# ==============================================================================
+    
+    m2 <- cor.test(design[,"choice"], design[,"scramble"])
+    correlation_df2 <- rbind(correlation_df2, data.frame(scramble=as.numeric(m2$estimate), run=r, iti_simulation=s, shuffle_order=t))
+
+    } # t
+    
+  } #
+  
+} # r
+
+```
+
+# general function for creating and testing design matrices 
+
+```{r}
+
+simulate_iti_fmri <- function(df, event_column, response_duration, n_iti_sims, n_shuffle_trials, n_shuffle_itis, n_runs, TR, iti_params){
+  
+  df <- df %>% subset(practice == 0)
+  
+  event_file = data.frame(matrix(NaN, ncol=8, nrow=0));
+  full_df <- data.frame(matrix(NaN, ncol=ncol(df), nrow=0));
+  correlation_df <- data.frame(matrix(NaN, ncol=4, nrow=0)); 
+  VIF <- data.frame(matrix(NaN, ncol=4, nrow=0))
+  
+  for (r in 1:n_runs){
+  
+    curr_df <- df %>% subset(run == r)
+  
+# ==============================================================================
+# generate itis
+# ==============================================================================
+
+    # we first generate itis from a truncated exponential distribution 
+    for (s in 1:n_iti_sims){
+    
+      # sample iti from truncated exponential distribution and round to nearest 0.5
+      curr_iti = rtruncgamma(nrow(curr_df), shape=iti_params$shape, rate=iti_params$rate, scale=iti_params$scale, a=iti_params$min, b=iti_params$max)
+      curr_iti = round_any(as.numeric(curr_iti), 0.5)*1000
+        #round(rtruncexp(nrow(curr_df), rate = deliberation_iti$rate, a = deliberation_iti$min, b = deliberation_iti$max),1)*1000
+  
+      curr_df <- curr_df %>% mutate(iti = curr_iti, iti_simulation = s)
+  
+# ==============================================================================
+# shuffle the order of trials
+# ==============================================================================
+
+      for (t in 1:n_shuffle_trials){
+        
+        curr_df <- curr_df %>% slice(sample(1:n())) %>% mutate(order_shuffle = t)
+
+# ==============================================================================
+# shuffle the order of itis
+# ==============================================================================
+
+        for (sh in 1:n_shuffle_itis){
+          
+          curr_df <- curr_df %>% mutate(iti = sample(iti), iti_shuffle = sh)
+# ==============================================================================
+# create event files 
+# ==============================================================================
+      
+          # restart onset
+          onset = 0;
+            
+          for (i in 1:nrow(curr_df)){
+            
+            iti = curr_df$iti[i]; 
+            duration = response_duration;
+            event = curr_df[i,event_column]
+            event_file = rbind(event_file, data.frame(event=event, onset=onset, duration=duration, iti=iti, run=r, iti_simulation=s, order_shuffle=t, iti_shuffle=sh));
+            onset = onset + duration + iti;
+          }
+          
+          full_df <- rbind(full_df, curr_df)
+          
+# ==============================================================================
+# create a design matrix  
+# ==============================================================================
+    
+          events <- unique(df[,event_column])
+          onsets <- list(); durations <- list(); totaltime <- list();  effectsize <- list()
+          # function to find the total run time such that there will be an integer number of TRs.
+          closest_divider <- function(num, divider){
+            while(num %% divider != 0){
+              num = num + 0.5
+            }
+            return(num)
+          }
+          for (e in 1:length(events)){
+            curr_event_file <-
+            onsets[[e]] <- as.numeric(unlist(event_file %>% subset(iti_simulation == s & run == r & order_shuffle == t & iti_shuffle == sh & event == events[e]) %>% select(onset)))/1000
+            durations[[e]] <- as.numeric(unlist(event_file %>% subset(iti_simulation == s & run == r & order_shuffle == t & iti_shuffle == sh & event == events[e]) %>% select(duration)))/1000
+            totaltime[[e]] <- closest_divider(round((nrow(curr_df) * response_duration + sum(curr_df$iti))/1000),TR)
+            effectsize[[e]] <- 1
+          }
+          design = specifydesign(onsets=onsets, durations=durations, totaltime=totaltime[[1]], TR=TR, effectsize=effectsize, conv="double-gamma", cond.names = events)
+          
+# ==============================================================================
+# compute correlation between items and VIF
+# ==============================================================================
+    
+          m <- cor.test(design[,events[1]], design[,events[2]])
+          correlation_df <- rbind(correlation_df, data.frame(estimate=as.numeric(m$estimate), run=r, iti_simulation=s, order_shuffle=t, iti_shuffle=sh))
+          
+          curr_vif <- as.numeric(diag(solve(cor(design)))[1]) # for designs with two factors 
+          VIF <- rbind(VIF, data.frame(estimate=curr_vif, run=r, iti_simulation=s, order_shuffle=t, iti_shuffle=sh))
+          
+        }
+
+      } # t
+      
+    } #
+    
+  } # r
+  
+  output <- list(full_df, event_file, correlation_df, VIF)
+  names(output) <- c("full_df", "event_file", "correlation", "VIF")
+  return(output)
+  
+} # function
+
+
+```
+
+# final decisions simulation 
+
+```{r}
+
+final_decisions_simulation <- simulate_iti_fmri(df = read.csv("../Task_sequences/Final_decisions/final_decisions_1.csv"), 
+                                             event_column = "choice_type", 
+                                             response_duration = 1.5, 
+                                             n_iti_sims = 10, 
+                                             n_shuffle_trials = 10, 
+                                             n_shuffle_itis = 10,
+                                             n_runs = 4, 
+                                             TR = 1.5, 
+                                             iti_params = iti_params)
+save(list = "final_decisions_simulation",file = "../Task_sequences/Simulation/final_decisions_simulation.RData")
+
+compute_design_matrix <- function(TR, event.column, event.file, current.df){
+  # compute design matrix
+  events <- unique(current.df[,event.column])
+  onsets <- list(); durations <- list(); totaltime <- list();  effectsize <- list()
+  for (e in 1:length(events)){
+    onsets[[e]] <- as.numeric(unlist(event.file %>% subset(event == events[e]) %>% select(onset)))/1000
+    durations[[e]] <- as.numeric(unlist(event.file %>% subset(event == events[e]) %>% select(duration)))/1000
+    totaltime[[e]] <- closest_divider(round((nrow(current.df) * 1.5 + sum(current.df$iti))/1000),TR)
+    effectsize[[e]] <- 1
+  }
+  design = specifydesign(onsets=onsets, durations=durations, totaltime=totaltime[[1]], TR=TR, effectsize=effectsize, conv="double-gamma", cond.names = events)
+  
+  des.mat = cbind(rep(1, nrow(design)), design)
+  con = c(0, 1, -1) # chosen-unchosen -> chosen > unchosen
+  
+  efficiency = 1/(t(con)%*%solve(t(des.mat)%*%des.mat)%*%con)
+
+## Variance Inflation Factor (rule of thumb - should be below 5)
+ VIF = diag(solve(cor(des.mat[,2:3])))
+ 
+ results = list(des.mat, efficiency, VIF)
+ names(results) = c("design_matrix", "efficiency", "VIF")
+ return(results)
+}
+
+best_corr <- final_decisions_simulation$correlation %>% arrange(desc(estimate)) %>% filter(row_number()==1)
+worst_corr <- final_decisions_simulation$correlation %>% arrange(desc(estimate)) %>% filter(row_number()==n())
+
+best_design <- compute_design_matrix(TR = 1.5,
+                                     event.column = "choice_type",
+                                     event.file = final_decisions_simulation$event_file %>% subset(iti_simulation == best_corr$iti_simulation & run == best_corr$run & order_shuffle == best_corr$order_shuffle & iti_shuffle == best_corr$order_shuffle),
+                                     current.df = final_decisions_simulation$full_df %>% subset(iti_simulation == best_corr$iti_simulation & run == best_corr$run & order_shuffle == best_corr$order_shuffle & iti_shuffle == best_corr$order_shuffle))
+
+worst_design <- compute_design_matrix(TR = 1.5,
+                                      event.column = "choice_type",
+                                      event.file = final_decisions_simulation$event_file %>% subset(iti_simulation == worst_corr$iti_simulation & run == worst_corr$run & order_shuffle == worst_corr$order_shuffle & iti_shuffle == worst_corr$order_shuffle),
+                                     current.df = final_decisions_simulation$full_df %>% subset(iti_simulation == worst_corr$iti_simulation & run == worst_corr$run & order_shuffle == worst_corr$order_shuffle & iti_shuffle == worst_corr$order_shuffle))
+
+
+# Plot design matrices with best and worst efficiencies
+par(mfrow = c(2, 1), mar = c(4, 3, 2, 1))
+# best
+plot(best_design$design_matrix[,"chosen"], type = 'l', lwd = 2, col = 'red', xlab = "TR", 
+     ylab = '', ylim = c(min(c(best_design$design_matrix[,c("chosen","unchosen")])), 1.3),
+     main = "Lowest Correlation")
+lines(best_design$design_matrix[,"unchosen"], lwd = 2, col = 'cyan')
+
+plot(worst_design$design_matrix[,"chosen"], type = 'l', lwd = 2, col = 'red', xlab = "TR", 
+     ylab = '', ylim = c(min(c(worst_design$design_matrix[,c("chosen","unchosen")])), 1.3),
+     main = "Highest Correlation")
+lines(worst_design$design_matrix[,"unchosen"], lwd = 2, col = 'cyan')
+
+
+```
+
+# final decisions simulation 
+
+```{r}
+
+deliberation_simulation <- simulate_iti_fmri(df = read.csv("../Task_sequences/Deliberation/deliberation_1.csv"), 
+                                             event_column = "choice_type", 
+                                             response_duration = 1.5, 
+                                             n_iti_sims = 10, 
+                                             n_shuffle_trials = 10, 
+                                             n_shuffle_itis = 10,
+                                             n_runs = 4, 
+                                             TR = 1.5, 
+                                             iti_params = iti_params)
+save(list = "final_decisions_simulation",file = "../Task_sequences/Simulation/final_decisions_simulation.RData")
+
+compute_design_matrix <- function(TR, event.column, event.file, current.df){
+  # compute design matrix
+  events <- unique(current.df[,event.column])
+  onsets <- list(); durations <- list(); totaltime <- list();  effectsize <- list()
+  for (e in 1:length(events)){
+    onsets[[e]] <- as.numeric(unlist(event.file %>% subset(event == events[e]) %>% select(onset)))/1000
+    durations[[e]] <- as.numeric(unlist(event.file %>% subset(event == events[e]) %>% select(duration)))/1000
+    totaltime[[e]] <- closest_divider(round((nrow(current.df) * 1.5 + sum(current.df$iti))/1000),TR)
+    effectsize[[e]] <- 1
+  }
+  design = specifydesign(onsets=onsets, durations=durations, totaltime=totaltime[[1]], TR=TR, effectsize=effectsize, conv="double-gamma", cond.names = events)
+  
+  des.mat = cbind(rep(1, nrow(design)), design)
+  con = c(0, 1, -1) # chosen-unchosen -> chosen > unchosen
+  
+  efficiency = 1/(t(con)%*%solve(t(des.mat)%*%des.mat)%*%con)
+
+## Variance Inflation Factor (rule of thumb - should be below 5)
+ VIF = diag(solve(cor(des.mat[,2:3])))
+ 
+ correlation <- as.numeric(cor.test(design[,events[1]], design[,events[2]])$estimate)
+
+  results = list(des.mat, efficiency, VIF, correlation)
+ names(results) = c("design_matrix", "efficiency", "VIF", "correlation")
+ return(results)
+}
+
+best_corr <- final_decisions_simulation$correlation %>% arrange(desc(estimate)) %>% filter(row_number()==1)
+worst_corr <- final_decisions_simulation$correlation %>% arrange(desc(estimate)) %>% filter(row_number()==n())
+
+best_design <- compute_design_matrix(TR = 1.5,
+                                     event.column = "choice_type",
+                                     event.file = final_decisions_simulation$event_file %>% subset(iti_simulation == best_corr$iti_simulation & run == best_corr$run & order_shuffle == best_corr$order_shuffle & iti_shuffle == best_corr$order_shuffle),
+                                     current.df = final_decisions_simulation$full_df %>% subset(iti_simulation == best_corr$iti_simulation & run == best_corr$run & order_shuffle == best_corr$order_shuffle & iti_shuffle == best_corr$order_shuffle))
+
+worst_design <- compute_design_matrix(TR = 1.5,
+                                      event.column = "choice_type",
+                                      event.file = final_decisions_simulation$event_file %>% subset(iti_simulation == worst_corr$iti_simulation & run == worst_corr$run & order_shuffle == worst_corr$order_shuffle & iti_shuffle == worst_corr$order_shuffle),
+                                     current.df = final_decisions_simulation$full_df %>% subset(iti_simulation == worst_corr$iti_simulation & run == worst_corr$run & order_shuffle == worst_corr$order_shuffle & iti_shuffle == worst_corr$order_shuffle))
+
+
+# Plot design matrices with best and worst efficiencies
+par(mfrow = c(2, 1), mar = c(4, 3, 2, 1))
+# best
+plot(curr_design$design_matrix[,"original"], type = 'l', lwd = 2, col = 'red', xlab = "TR", 
+     ylab = '', ylim = c(min(c(curr_design$design_matrix[,c("original","scramble")])), 1.3),
+     main = "Lowest Correlation")
+lines(curr_design$design_matrix[,"scramble"], lwd = 2, col = 'cyan')
+
+plot(worst_design$design_matrix[,"chosen"], type = 'l', lwd = 2, col = 'red', xlab = "TR", 
+     ylab = '', ylim = c(min(c(worst_design$design_matrix[,c("chosen","unchosen")])), 1.3),
+     main = "Highest Correlation")
+lines(worst_design$design_matrix[,"unchosen"], lwd = 2, col = 'cyan')
+
+
+```
+
+```{r}
+deliberation_simulation <- simulate_iti_fmri(df = read.csv("../Task_sequences/Deliberation/deliberation_1.csv"), 
+                                             event_column = "stim_type", 
+                                             response_duration = 3, 
+                                             n_iti_sims = 20, 
+                                             n_shuffle_trials = 20, 
+                                             n_shuffle_itis = 20,
+                                             n_runs = 2, 
+                                             TR = 1.5, 
+                                             iti_params = iti_params)
+save(list = "deliberation_simulation",file = "../Task_sequences/Simulation/deliberation_simulation.RData")
+
+
+# note that we shuffle within a block - i.e., because items are repeated four times, we might see the same item four times in a row, as opposed to shuffling within a block (repetition)
+memory_simulation <- simulate_iti_fmri(df = read.csv("../Task_sequences/Memory/memory_1.csv"), 
+                                             event_column = "pair_type", 
+                                             response_duration = 2, 
+                                             n_iti_sims = 20, 
+                                             n_shuffle_trials = 20, 
+                                             n_shuffle_itis = 20,
+                                             n_runs = 1, 
+                                             TR = 1.5, 
+                                             iti_params = iti_params)
+save(list = "memory_simulation",file = "../Task_sequences/Simulation/memory_simulation.RData")
+
+outcome_estimation_simulation <- simulate_iti_fmri(df = read.csv("../Task_sequences/Outcome_estimation/outcome_estimation_1.csv"), 
+                                             event_column = "choice_type", 
+                                             response_duration = 2, 
+                                             n_iti_sims = 20, 
+                                             n_shuffle_trials = 20, 
+                                             n_shuffle_itis = 20,
+                                             n_runs = 1, 
+                                             TR = 1.5, 
+                                             iti_params = iti_params)
+save(list = "outcome_estimation_simulation",file = "../Task_sequences/Simulation/outcome_estimation_simulation.RData")
+
+
+
+```
+
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+
+# deliberation simulation 
+
+```{r}
+
+# upload deliberation matrix
+deliberation_df1 <- read.csv("../Task_sequences/Deliberation/deliberation_1.csv") %>%
+  subset(practice == 0)
+
+run = 2
+
+curr_df <- deliberation_df1[deliberation_df1$run==run, ] %>%
+  relocate(stim_type, .before="iti") 
+
+# shuffle order of trials such that the trial type doesn't repeat more than two times in a row. because the signal won't go up and down and it will be difficult to differentiate from baseline. 
+keep.looking = 1
+while (keep.looking == 1){
+  curr_df <- curr_df %>%
+    group_by(block) %>%
+    slice(sample(1:n()))
+  # The rle function breaks a sequence into lengths and values
+  length.repeats = rle(curr_df$stim_type)$lengths
+  # Keep going if the max number of repeats is larger than 2
+  keep.looking = max(length.repeats) > 2
+}  #end while
+
+# after checking a few options, we ended up using this iti vector (sampled from a truncated gamma distribution, with parameters from iti_params)
+# this is the chosen vector because it has the required parameters (mean, min, max)
+curr_iti = rtruncgamma(nrow(curr_df), 
+                       shape=iti_params$shape, 
+                       rate=iti_params$rate, 
+                       scale=iti_params$scale, 
+                       a=iti_params$min, 
+                       b=iti_params$max)
+curr_iti = round_any(as.numeric(curr_iti), 0.5)*1000 # convert iti to jumps of 500ms (so length will be divided by TR)
+
+chosen_iti_vector = c(1500, 5500,2000,2500,1000,1500,2500,6000,2000,3000,1500,2000,3500,1000,3500,5500,1000,2000,2000,1500,4500,2500,1000,2500,3500,1500,4500,2500,2500,2000,2500,1000,1500,3500,2000,1000,3000,1000,2000,1500,4500,2000,2000,2000,2000,2500,4500,3500)
+mean(chosen_iti_vector)
+max(chosen_iti_vector)
+min(chosen_iti_vector)
+(sum(chosen_iti_vector) + 48*3000)/60000
+
+# assing chosen iti
+curr_df$iti = chosen_iti_vector
+
+# now we run a simulation where we shuffle the order of itis and check what is the correlation between conditions
+n_sims <- 100
+iti_mat <- matrix(data=NA, nrow=n_sims, ncol=length(chosen_iti_vector))
+corr_mat <- matrix(data=NA, nrow=n_sims, ncol=1)
+for (i in 1:n_sims){
+  iti_mat[i,] <- sample(chosen_iti_vector)
+  curr_df$iti <- iti_mat[i,]
+  curr_design <- compute_design_matrix(TR=1.5, 
+                                     response.duration=3000,
+                                     event.column="stim_type", 
+                                     current.df = curr_df)
+  corr_mat[i] <- curr_design$correlation
+}
+
+best_design <- as.numeric(abs(corr_mat)==min(abs(corr_mat)))
+curr_df$iti <- iti_mat[best_design,]
+curr_df$iti <- iti_mat[77,]
+
+# plot the design matrix - we want to allow the signal to go up and down rather than stay fixed (so we could differentiate it from baseline)
+plot(curr_design$design_matrix[,"original"], type = 'l', lwd = 2, col = 'red', xlab = "TR", 
+     ylab = '', ylim = c(min(c(curr_design$design_matrix[,c("original","scramble")])), 1.3),
+     main = "BEST DESIGN")
+lines(curr_design$design_matrix[,"scramble"], lwd = 2, col = 'green')
+abline(v=curr_design$event_file[curr_design$event_file$event=="original","TR"], lwd = 1, col = 'red', lty=2)
+abline(v=curr_design$event_file[curr_design$event_file$event=="scramble","TR"], lwd = 1, col = 'green', lty=2)
+
+# we manually check the task sequence to assess whether we have same itis on a row, and whther the long itis are spread across the task. if not - we swap itis within a condition 
+curr_df <- swap_itis(curr_df, 1, 2)
+curr_design <- compute_design_matrix(TR=1.5, 
+                                     response.duration=3000,
+                                     event.column="stim_type", 
+                                     current.df = df_list[[1]]$deliberation_run1b$chosen_df)#curr_df)
+curr_design$correlation
+
+# save the chosen design
+curr_df <- curr_df %>% mutate(version="a")
+deliberation_run2a <- list(chosen_iti_vector, corr_mat, iti_mat, curr_df, curr_design)
+names(deliberation_run2a) <- c("chosen_iti_vector", "corr_mat", "iti_mat", "chosen_df", "chosen_design_matrix")
+
+save(deliberation_run1b, file = "../Task_sequences/iti_simulation/Deliberation/deliberation_run1b.RData")
+save(deliberation_run1a, file = "../Task_sequences/iti_simulation/Deliberation/deliberation_run1a.RData")
+save(deliberation_run2b, file = "../Task_sequences/iti_simulation/Deliberation/deliberation_run2b.RData")
+save(deliberation_run2a, file = "../Task_sequences/iti_simulation/Deliberation/deliberation_run2a.RData")
+
+# create new data files
+df_list <- list(import_list("../Task_sequences/iti_simulation/Deliberation/deliberation_run1b.RData"),
+                import_list("../Task_sequences/iti_simulation/Deliberation/deliberation_run1a.RData"),
+                import_list("../Task_sequences/iti_simulation/Deliberation/deliberation_run2b.RData"),
+                import_list("../Task_sequences/iti_simulation/Deliberation/deliberation_run2a.RData"))
+n_runs = 2
+phase = "Deliberation"
+practice_trials = read.csv("../Task_sequences/Deliberation/deliberation_1.csv") %>% subset(practice==1) %>% mutate(version=NaN)
+combine_data_files <- fuction(df_list, n_runs, practice_trials, phase){
+  all_data = c()
+  for (i in 1:length(df_list)){
+    curr_list = df_list[[i]]
+    all_data = rbind(all_data, curr_list[[1]]$chosen_df)
+  }
+  versions <- unique(all_data$version)
+  for (v in 1:length(versions)){
+    n_prac = nrow(practice_trials)
+    curr_version <- all_data %>% subset(version==versions[v]) 
+    curr_version <- curr_version %>% mutate(trial = (1+n_prac):(nrow(curr_version)+n_prac))
+    curr_version <- rbind(practice_trials, curr_version)
+    write.csv(curr_version, sprintf("../Task_sequences/%s/%s_%s.csv", phase, tolower(phase), versions[v]))
+  }
+}
+
+```
+
+
+# functions 
+
+```{r}
+
+compute_design_matrix <- function(TR, event.column, response.duration, current.df){
+  
+  # create an even file
+  onset = 0;
+  event.file = data.frame()      
+  for (i in 1:nrow(current.df)){
+    iti = current.df$iti[i]; 
+    duration = response.duration;
+    event = as.character(current.df[i,event.column])
+    event.file = rbind(event.file, data.frame(event=event, onset=onset, duration=duration, iti=iti));
+    onset = onset + duration + iti;
+  }
+          
+  # compute design matrix
+  events <- unique(unlist(current.df[,event.column]))
+  onsets <- list(); durations <- list(); totaltime <- list();  effectsize <- list()
+  for (e in 1:length(events)){
+    onsets[[e]] <- as.numeric(unlist(event.file %>% subset(event == events[e]) %>% select(onset)))/1000
+    durations[[e]] <- as.numeric(unlist(event.file %>% subset(event == events[e]) %>% select(duration)))/1000
+    totaltime[[e]] <- closest_divider(round((nrow(current.df) * response.duration + sum(current.df$iti))/1000),TR)
+    effectsize[[e]] <- 1
+  }
+  design = specifydesign(onsets=onsets, durations=durations, totaltime=totaltime[[1]], TR=TR, effectsize=effectsize, conv="double-gamma", cond.names = events)
+  
+  des.mat = cbind(rep(1, nrow(design)), design)
+  con = c(0, 1, -1) # chosen-unchosen -> chosen > unchosen
+  efficiency = 1/(t(con)%*%solve(t(des.mat)%*%des.mat)%*%con)
+  VIF = diag(solve(cor(des.mat[,2:3])))
+  correlation <- as.numeric(cor.test(design[,events[1]], design[,events[2]])$estimate)
+  
+ # add TR to event file 
+ event.file = event.file %>% mutate(TR = onset/1000/TR)
+ 
+  results = list(des.mat, event.file, efficiency, VIF, correlation)
+ names(results) = c("design_matrix", "event_file", "efficiency", "VIF", "correlation")
+ return(results)
+}
+
+swap_itis <- function(df, column,ind1, ind2){
+  iti_ind1 <- df[ind1, column]; iti_ind2 <- df[ind2, column]
+  df[ind1,column] <- iti_ind2; df[ind2,column] <- iti_ind1; 
+  return(df)
+}
+
+
+```
+
+# optimize localizer 
+
+```{r}
+
+localizer <- read.csv("../Task_sequences/Localizer/localizer_1.csv")
+categories = c("outdoor_scenes", "objects", "faces", "body_parts")
+stimulus.duration = 300;
+isi.duration = 400;
+n.stims.per.block = 20;
+timing.baseline.block = n.stims.per.block * (stimulus.duration+isi.duration) # 14 secs 
+n.reps.per.category = 3;
+total.exp.time = length(categories)*2*timing.baseline.block*n.reps.per.category/60000
+n.stims.per.cat = n.stims.per.block*n.reps.per.category;
+odd.ball.percent = 0.1 
+event.column = "task"
+TR = 1.5
+
+test_localizer_design <- function(df, stimulus.duration, isi.duration, timing.baseline.block, event.column, TR){
+  
+  df$stimulus_duration = stimulus.duration
+  isis <- sort(unique(df$isi))
+  df$isi[df$isi == isis[1]] = isi.duration
+  df$isi[df$isi == isis[2]] = timing.baseline.block
+
+  # create an even file
+  onset = 0;
+  event.file = data.frame()      
+  for (i in 1:nrow(df)){
+    isi = df$isi[i]
+    duration = df$stimulus_duration[i];
+    event = as.character(df[i,event.column])
+    event.file = rbind(event.file, data.frame(event=event, onset=onset, duration=duration, isi=isi));
+    onset = onset + duration + isi;
+  }
+          
+  # compute design matrix
+  events <- unique(unlist(df[,event.column]))
+  onsets <- list(); durations <- list(); totaltime <- list();  effectsize <- list()
+  for (e in 1:length(events)){
+    onsets[[e]] <- as.numeric(unlist(event.file %>% subset(event == events[e]) %>% select(onset)))/1000
+    durations[[e]] <- as.numeric(unlist(event.file %>% subset(event == events[e]) %>% select(duration)))/1000
+    totaltime[[e]] <- closest_divider(round((nrow(df) * stimulus.duration + sum(df$isi))/1000),TR)
+    effectsize[[e]] <- 1
+  }
+  design = specifydesign(onsets=onsets, durations=durations, totaltime=totaltime[[1]], TR=TR, effectsize=effectsize, conv="double-gamma", cond.names = events)
+  
+  des.mat = cbind(rep(1, nrow(design)), design)
+  contrast1 <- c(0,1,-0.33,-0.33,-0.33)
+  contrast2 <- c(0,-0.33,1,-0.33,-0.33)
+  contrast3 <- c(0,-0.33,-0.33,1,-0.33)
+  contrast4 <- c(0,-0.33,-0.33,-0.33,1)
+
+  efficiency = 4/((t(contrast1)%*%solve(t(des.mat)%*%des.mat)%*%contrast1) + 
+                  (t(contrast2)%*%solve(t(des.mat)%*%des.mat)%*%contrast2) +
+                  (t(contrast3)%*%solve(t(des.mat)%*%des.mat)%*%contrast3) +
+                  (t(contrast4)%*%solve(t(des.mat)%*%des.mat)%*%contrast4))
+
+  ## Variance Inflation Factor (rule of thumb - should be below 5)
+  VIF = diag(solve(cor(des.mat[,2:5])))
+  
+  # compute pair-wise correlations 
+  pairs_categories = as.data.frame(t(combn(categories,2)))
+  all_corrs = c()
+  for (p in 1:nrow(pairs_categories)){
+    all_corrs[p] <- as.numeric(cor.test(des.mat[,pairs_categories$V1[p]], des.mat[,pairs_categories$V2[p]])$estimate)
+  }
+  all_correlations <- all_corrs
+  mean_corr <- mean(all_corrs)
+  
+ # add TR to event file 
+ event.file = event.file %>% mutate(TR = onset/1000/TR)
+ 
+results = list(des.mat, event.file, efficiency, VIF, all_correlations, mean_corr)
+ names(results) = c("design_matrix", "event_file", "efficiency", "VIF", "all_correlations", "mean_correlation")
+ return(results)
+  
+}
+
+curr_design <- test_localizer_design(df=localizer, stimulus.duration=stimulus.duration, isi.duration=isi.duration, timing.baseline.block=timing.baseline.block, event.column="task", TR=1.5)
+curr_design$mean_correlation
+curr_design$efficiency
+curr_design$VIF
+
+# plot the design matrix - we want to allow the signal to go up and down rather than stay fixed (so we could differentiate it from baseline)
+events = unique(unlist(localizer["task"]))
+dev.new(width=15, height=5, unit="in")
+plot(curr_design$design_matrix[,events[1]], type = 'l', lwd = 2, col = 'red', xlab = "TR", 
+     ylab = '', ylim = c(min(c(curr_design$design_matrix[,events])), 1.3))
+lines(curr_design$design_matrix[,events[2]], lwd = 2, col = 'green')
+lines(curr_design$design_matrix[,events[3]], lwd = 2, col = 'blue')
+lines(curr_design$design_matrix[,events[4]], lwd = 2, col = 'grey')
+abline(v=curr_design$event_file[curr_design$event_file$event==events[1],"TR"], lwd = 0.2, col = 'red', lty=1)
+abline(v=curr_design$event_file[curr_design$event_file$event==events[2],"TR"], lwd = 0.2, col = 'green', lty=1)
+abline(v=curr_design$event_file[curr_design$event_file$event==events[3],"TR"], lwd = 0.2, col = 'blue', lty=1)
+abline(v=curr_design$event_file[curr_design$event_file$event==events[4],"TR"], lwd = 0.2, col = 'grey', lty=1)
+
+
+```
+
+# optimize tasks with two conditions and iti only (deliberation, final decisions, memory, outcome estimation)
+
+Here we try to optimize for efficiency for power detection (the ability to detect a difference between conditions).
+We first select a 
+
+for some reason when i use a fixed ITI i get a higher efficiency score (but also a worse VIF) - need to check what is the issue there. 
+1. try to compute efficiency differently. perhaps use jeanette's python code
+2. try to reorder both the trial order and the itis
+
+```{r}
+
+phase = "Final_decisions"
+run = 1
+version = "a"
+event_column = "choice_type"
+stimulus_duration = 1500;
+
+# upload matrix
+all_df <- read.csv(sprintf("../Task_sequences/%s/%s_1.csv",phase, tolower(phase)))
+practice_trials <- all_df %>% subset(practice == 1)
+df <- all_df %>% subset(practice == 0)
+
+# subset the run
+curr_df <- df[df$run==run, ] %>% relocate(c(!!sym(event_column),iti), .after="PID") 
+
+# shuffle order of trials such that the trial type doesn't repeat more than two times in a row. because the signal won't go up and down and it will be difficult to differentiate from baseline. 
+keep.looking = 1
+while (keep.looking == 1){
+  curr_df <- curr_df %>%
+    group_by(block) %>%
+    slice(sample(1:n()))
+  # The rle function breaks a sequence into lengths and values
+  length.repeats = rle(as.vector(unlist(curr_df[event_column])))$lengths
+  # Keep going if the max number of repeats is larger than 2
+  keep.looking = max(length.repeats) > 3
+}  #end while
+
+# after checking a few options, we ended up using this iti vector (sampled from a truncated gamma distribution, with parameters from iti_params)
+# this is the chosen vector because it has the required parameters (mean, min, max)
+curr_iti = rtruncexp(nrow(curr_df), 
+                     rate=iti_params$rate, 
+                     a=iti_params$min, 
+                     b=iti_params$max)
+curr_iti = round_any(as.numeric(curr_iti), 0.5)*1000 # convert iti to jumps of 500ms (so length will be divided by TR)
+mean(curr_iti)
+max(curr_iti)
+min(curr_iti)
+hist(curr_iti)
+
+chosen_iti_vector = curr_iti;
+(sum(chosen_iti_vector) + nrow(curr_df)*1500)/60000
+
+# assing chosen iti
+curr_df$iti = rep(2500, nrow(curr_df))#chosen_iti_vector
+
+# now we run a simulation where we shuffle the order of itis and check what is the correlation between conditions
+n_sims <- 100
+iti_mat <- matrix(data=NA, nrow=n_sims, ncol=length(chosen_iti_vector))
+corr_mat <- matrix(data=NA, nrow=n_sims, ncol=1)
+efficiency_mat <- matrix(data=NA, nrow=n_sims, ncol=1)
+VIF_mat <- matrix(data=NA, nrow=n_sims, ncol=1)
+cns_mat <- matrix(data=NA, nrow=n_sims, ncol=1)
+
+for (i in 1:n_sims){
+  
+  # order trials
+  keep.looking = 1
+  while (keep.looking == 1){
+    curr_df <- curr_df %>%
+      group_by(block) %>%
+      slice(sample(1:n()))
+    # The rle function breaks a sequence into lengths and values
+    length.repeats = rle(as.vector(unlist(curr_df[event_column])))$lengths
+    # Keep going if the max number of repeats is larger than 2
+    keep.looking = max(length.repeats) > 3
+  }  #end while
+  
+  iti_mat[i,] <- sample(chosen_iti_vector)
+  curr_df$iti <- iti_mat[i,]
+  curr_design <- compute_design_matrix(TR=1.5, 
+                                     response.duration=stimulus_duration,
+                                     event.column=event_column, 
+                                     current.df = curr_df)
+  
+  sim_unchosen = curr_design$design_matrix[,"unchosen"] + rnorm(length(curr_design$design_matrix[,"unchosen"]), mean=0, sd=0.1)
+  m = lm(sim_unchosen ~ curr_design$design_matrix[,"unchosen"] + curr_design$design_matrix[,"chosen"])
+  cns_mat[i] <- unlist(m$coefficients[2]) - unlist(m$coefficients[3])
+  corr_mat[i] <- curr_design$correlation
+  efficiency_mat[i] <- curr_design$efficiency
+  VIF_mat[i] <- as.numeric(curr_design$VIF[1])
+}
+
+curr_df$iti <- iti_mat[270,]
+
+# plot the design matrix - we want to allow the signal to go up and down rather than stay fixed (so we could differentiate it from baseline)
+events = unique(unlist(curr_df[event_column]))
+dev.new(width=10, height=5, unit="in")
+plot(curr_design$design_matrix[,events[1]], type = 'l', lwd = 2, col = 'red', xlab = "TR", 
+     ylab = '', ylim = c(min(c(curr_design$design_matrix[,events])), 1.3),
+     main = "BEST DESIGN")
+lines(curr_design$design_matrix[,events[2]], lwd = 2, col = 'green')
+abline(v=curr_design$event_file[curr_design$event_file$event==events[1],"TR"], lwd = 1, col = 'red', lty=2)
+abline(v=curr_design$event_file[curr_design$event_file$event==events[2],"TR"], lwd = 1, col = 'green', lty=2)
+
+# we manually check the task sequence to assess whether we have same itis on a row, and whther the long itis are spread across the task. if not - we swap itis within a condition 
+curr_df <- swap_itis(curr_df, 5, 10)
+curr_design <- compute_design_matrix(TR=1.5, 
+                                     response.duration=stimulus_duration,
+                                     event.column=event_column, 
+                                     current.df = curr_df)
+
+#m <- lm(data=curr_design$design_matrix, chosen ~ unchosen)
+curr_design$VIF
+
+# save the chosen design
+curr_df <- curr_df %>% mutate(version="a")
+deliberation_run2a <- list(chosen_iti_vector, corr_mat, iti_mat, curr_df, curr_design)
+names(deliberation_run2a) <- c("chosen_iti_vector", "corr_mat", "iti_mat", "chosen_df", "chosen_design_matrix")
+
+save(deliberation_run1b, file = "../Task_sequences/iti_simulation/Deliberation/deliberation_run1b.RData")
+save(deliberation_run1a, file = "../Task_sequences/iti_simulation/Deliberation/deliberation_run1a.RData")
+save(deliberation_run2b, file = "../Task_sequences/iti_simulation/Deliberation/deliberation_run2b.RData")
+save(deliberation_run2a, file = "../Task_sequences/iti_simulation/Deliberation/deliberation_run2a.RData")
+
+# create new data files
+df_list <- list(import_list("../Task_sequences/iti_simulation/Deliberation/deliberation_run1b.RData"),
+                import_list("../Task_sequences/iti_simulation/Deliberation/deliberation_run1a.RData"),
+                import_list("../Task_sequences/iti_simulation/Deliberation/deliberation_run2b.RData"),
+                import_list("../Task_sequences/iti_simulation/Deliberation/deliberation_run2a.RData"))
+n_runs = 2
+phase = "Deliberation"
+practice_trials = read.csv("../Task_sequences/Deliberation/deliberation_1.csv") %>% subset(practice==1) %>% mutate(version=NaN)
+combine_data_files <- fuction(df_list, n_runs, practice_trials, phase){
+  all_data = c()
+  for (i in 1:length(df_list)){
+    curr_list = df_list[[i]]
+    all_data = rbind(all_data, curr_list[[1]]$chosen_df)
+  }
+  versions <- unique(all_data$version)
+  for (v in 1:length(versions)){
+    n_prac = nrow(practice_trials)
+    curr_version <- all_data %>% subset(version==versions[v]) 
+    curr_version <- curr_version %>% mutate(trial = (1+n_prac):(nrow(curr_version)+n_prac))
+    curr_version <- rbind(practice_trials, curr_version)
+    write.csv(curr_version, sprintf("../Task_sequences/%s/%s_%s.csv", phase, tolower(phase), versions[v]))
+  }
+}
+
+```
