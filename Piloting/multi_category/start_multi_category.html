@@ -321,8 +321,8 @@ if (is_scanner == "mturk"){
   quiz_qs.localizer[2].options = ["D", "K"];
   quiz_answers.localizer[1] = "K";
   quiz_answers.localizer[2] = "D";
-  quiz_qs.deliberation[3].options = ["D", "K"];
-  quiz_answers.deliberation[3] = "D";
+  quiz_qs.deliberation[4].options = ["D", "K"];
+  quiz_answers.deliberation[4] = "D";
   quiz_qs.reward[3].options = ["Do not press a key","Press the D key to signal a gain outcome"];
   quiz_answers.reward[3] = "Press the D key to signal a gain outcome";
   quiz_qs.reward[4].options = ["Do not press a key","Press the K key to signal a no gain outcome"];
@@ -393,10 +393,10 @@ var get_id_trial = {
     if (is_scanner == "scanner"){
       trial.questions = [{prompt: 'insert subject ID', columns: 10, rows: 1},
                          {prompt: 'insert subject age', columns: 10, rows: 1},
-                         {prompt: 'insert subject gender (MALE/FEMALE/OTHER)', columns: 10, rows: 1}]
+                         {prompt: 'insert subject gender (insert: male, female, or other)', columns: 10, rows: 1}]
     } else {
       trial.questions = [{prompt: 'please insert your age', columns: 10, rows: 1},
-                         {prompt: 'please insert your gender (MALE/FEMALE/OTHER)', columns: 10, rows: 1}]
+                         {prompt: 'please insert your gender (insert: male, female, or other)', columns: 10, rows: 1}]
     }
   },
   on_finish: function(data){
@@ -518,7 +518,7 @@ var missed_instruction_checkup = {
   // For scanned participants, this appears immediately after the quiz end.
   var passed_instructions_practice = {
       type: 'html-keyboard-response',
-      stimulus: "We will now start a few practice trials to get you acquainted with the task.</br></br>{0}",
+      stimulus: "We will now start a few practice trials to get you acquainted with the task and to practice pressing the buttons. <br></br>During this practice, the trial will repeat if you do not respond during the allotted time. During the actual task, trials will not repeat.</br></br>{0}",
       choices: keys_start_block,
       response_ends_trial: true,
       trial_duration:null,
@@ -680,7 +680,7 @@ var localizer_instructions = {
 repeat_localizer_instructions = present_quiz_instructions(localizer_instructions, 'localizer_comprehension_check', quiz_qs.localizer, quiz_answers.localizer)
 
 // push the repeated quiz and also present next screens after they get it correctly.
-localizer_timeline.timeline.push(repeat_localizer_instructions,passed_instructions_no_practice)
+localizer_timeline.timeline.push(repeat_localizer_instructions,passed_instructions_practice)
 
 // --------------------------------- Trial -------------------------------------
 
@@ -1323,7 +1323,7 @@ var deliberation_no_response = {
         // check how many trials the subjects had missed
         missed_trials = Deliberation.map(a=>a.no_response).reduce((partialSum, a) => partialSum + a, 0);
         if (missed_trials > deliberation_missed_trials_cutoff){
-          missed_trials_prompt = "We have noticed you didn't respond on time in a few trials, please make sure to respond on time on every trial"
+          missed_trials_prompt = "We have noticed you didn't respond on time in a few trials, please make sure to respond on time on every trial<br></br>"
         } else {
           missed_trials_prompt = ""
         }
@@ -1646,7 +1646,7 @@ var not_enough_deliberation_choices = {
       jsPsych.data.addProperties({not_enough_deliberation_choices: 1})
       save_server_data(data_folder+'All_data/all_data_sub_'+subID+".csv", jsPsych.data.get().ignore('stimulus').csv());
       save_server_data(int_data_folder+'int_data_sub_'+subID+".csv", jsPsych.data.getInteractionData().csv());
-      jsPsych.endExperiment("The experiment is over")
+      jsPsych.endExperiment("The experiment is over. You may close the window.")
     }
 }
 
