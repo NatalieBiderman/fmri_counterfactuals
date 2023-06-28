@@ -29,6 +29,7 @@
 var is_debug                  = 1;
 var is_scanner                = "mturk";
 var show_no_response          = 1;
+var repeat_no_responses_in_practice = 1;
 var onset                     = 0;
 var duration                  = 0;
 var run_full_exp              = 1;
@@ -120,15 +121,16 @@ var tools_folder            = 'Tools'
 var not_enough_deliberation_choices_logical = 0;
 
 if (is_debug == 1){
-  var timing_max_del_choice    = 1000; // maximum time to make a decision in deliberation phase
-  var timing_max_scramble_prompt = 300;
+  var timing_max_del_choice    = 100; // maximum time to make a decision in deliberation phase
+  var timing_max_scramble_prompt = 100;
   var timing_confirmation      = 0;
   var timing_warning           = 100; // if people are too slow in the deliberation phase they get a warning
-  var timing_show_chosen       = 300; // presentation of chosen item in the outcome learning phase
-  var timing_show_outcome      = 300; // max time of presentation of the outcome in the outcome learning phase
-  var timing_max_final_decisions = 300;
-  var timing_max_memory        = 300;
-  var timing_max_outcome_estimation = 300;
+  var timing_show_chosen       = 100; // presentation of chosen item in the outcome learning phase
+  var timing_show_outcome      = 100; // max time of presentation of the outcome in the outcome learning phase
+  var timing_max_final_decisions = 100;
+  var timing_max_memory        = 100;
+  var timing_max_outcome_estimation = 100;
+  repeat_no_responses_in_practice = 0;
 }
 // =============================================================================
 // PRE LOAD TASK IMAGES
@@ -734,7 +736,7 @@ for (t = 0; t < n_localizer_trials; t++){
           data.no_response = 1;
           data.response = NaN;
           data.rt = NaN;
-          if (Localizer[data.index].practice == 1){
+          if ((Localizer[data.index].practice == 1) & (repeat_no_responses_in_practice == 1)){
             repeat_localizer_practice = 1;
           }
         } else {
@@ -896,7 +898,7 @@ for (t = 0; t < n_localizer_trials; t++){
     var repeat_localizer_trial = {
      timeline: [localizer_trial, iti_localizer_trial, if_localizer_practice_over, if_localizer_run_over_trial, if_end_localizer_phase],
      loop_function: function(){
-       if (repeat_localizer_practice == 1){
+       if ((repeat_localizer_practice == 1) & (repeat_no_responses_in_practice == 1)){
          return true;
        } else {
          return false;
@@ -999,7 +1001,7 @@ for (t = 0; t < n_deliberation_trials; t++) {
       if (!jsPsych.data.get().filter({ttype: 'deliberation'}).last(1).values()[0].key_press){
         Deliberation[data.index].no_response = 1;
         data.no_response = 1;
-        if (Deliberation[data.index].practice == 1){
+        if ((Deliberation[data.index].practice == 1) & (repeat_no_responses_in_practice == 1)){
           repeat_deliberation_practice = 1;
         }
       } else {
@@ -1127,7 +1129,7 @@ var scramble_prompt_trial = {
       if (!data.key_press){
         Deliberation[data.index].no_response = 1;
         data.scramble_no_response = 1;
-        if (Deliberation[data.index].practice == 1){
+        if ((Deliberation[data.index].practice == 1) & (repeat_no_responses_in_practice == 1)){
           repeat_deliberation_practice = 1;
         }
       } else {
@@ -1637,7 +1639,7 @@ var end_deliberation_phase = {
       timeline: [deliberation_trial, if_scramble_prompt, if_deliberation_confirmation, if_deliberation_no_response, deliberation_iti_trial, if_deliberation_practice_over, if_deliberation_run_over_trial, if_end_deliberation_phase],
       loop_function: function(){
         curr_ind = jsPsych.data.get().filter({ttype: 'deliberation'}).last(1).values()[0].index;
-        if (repeat_deliberation_practice == 1){
+        if ((repeat_deliberation_practice == 1) & (repeat_no_responses_in_practice == 1)){
           return true;
         } else {
           return false;
@@ -1800,7 +1802,7 @@ var show_reward_trial = {
       response = NaN;
       response_rt = NaN;
       no_response = 1;
-      if (Outcome_learning[data.index].practice == 1){
+      if ((Outcome_learning[data.index].practice == 1) & (repeat_no_responses_in_practice == 1)){
         repeat_outcome_learning_practice = 1;
       }
     } else {
@@ -1972,7 +1974,7 @@ var repeat_outcome_learning_trial = {
   timeline: [show_chosen_item_trial, isi_outcome_learning_trial, show_reward_trial, iti_outcome_learning_trial, if_outcome_learning_practice_over, if_outcome_learning_run_over_trial, if_end_outcome_learning_phase],
   loop_function: function(){
     curr_ind = jsPsych.data.get().filter({ttype: 'show_reward'}).last(1).values()[0].index;
-    if (repeat_outcome_learning_practice == 1){
+    if ((repeat_outcome_learning_practice == 1 ) & (repeat_no_responses_in_practice == 1)){
       return true;
     } else {
       return false;
@@ -2084,7 +2086,7 @@ var final_decisions_trial = {
       }
     } else {
       duration = timing_max_final_decisions;
-      if (Final_decisions[data.index].practice == 1){
+      if ((Final_decisions[data.index].practice == 1) & (repeat_no_responses_in_practice == 1)){
         repeat_final_decisions_practice = 1;
       }
     }
@@ -2315,7 +2317,7 @@ var if_end_final_decisions_phase = {
 var repeat_final_decisions_trial = {
   timeline: [final_decisions_trial, if_final_decisions_confirmation_trial, if_final_decisions_no_response, iti_final_decisions_trial, if_final_decisions_practice_over, if_final_decisions_run_over_trial, if_end_final_decisions_phase],
   loop_function: function(){
-    if (repeat_final_decisions_practice == 1){
+    if ((repeat_final_decisions_practice == 1) & (repeat_no_responses_in_practice == 1)){
       return true;
     } else {
       return false;
@@ -2391,7 +2393,7 @@ for (t = 0; t < n_memory_trials; t++) {
         data.old_response = NaN;
         data.no_response = 1;
         duration = timing_max_memory/1000;
-        if (data.practice == 1){
+        if ((data.practice == 1) & (repeat_no_responses_in_practice == 1)){
           repeat_memory_practice = 1;
         }
       } else {
@@ -2635,7 +2637,7 @@ for (t = 0; t < n_memory_trials; t++) {
   var repeat_memory_trial = {
    timeline: [memory_trial, if_memory_confirmation_trial, if_memory_no_response, iti_memory_trial, if_memory_practice_over, if_memory_run_over_trial, if_end_memory_phase],
    loop_function: function(){
-     if (repeat_memory_practice == 1){
+     if ((repeat_memory_practice == 1) & (repeat_no_responses_in_practice == 1)){
        return true;
      } else {
        return false;
@@ -2706,7 +2708,7 @@ for (t = 0; t < n_outcome_estimation_trials; t++){
           data.outcome_response = NaN;
           data.outcome_rt = NaN;
           duration = timing_max_outcome_estimation/1000;
-          if (Outcome_estimation[data.index].practice == 1){
+          if ((Outcome_estimation[data.index].practice == 1) & (repeat_no_responses_in_practice == 1)){
             repeat_outcome_estimation_practice = 1;
           }
         } else {
@@ -2952,7 +2954,7 @@ for (t = 0; t < n_outcome_estimation_trials; t++){
     var repeat_outcome_estimation_trial = {
      timeline: [outcome_estimation_trial, if_outcome_estimation_confirmation_trial, if_outcome_estimation_no_response, iti_outcome_estimation_trial, if_outcome_estimation_practice_over, if_outcome_estimation_run_over_trial, if_end_outcome_estimation_phase],
      loop_function: function(){
-       if (repeat_outcome_estimation_practice == 1){
+       if ((repeat_outcome_estimation_practice == 1) & (repeat_no_responses_in_practice == 1)){
          return true;
        } else {
          return false;
