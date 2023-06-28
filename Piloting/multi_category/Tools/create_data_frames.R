@@ -48,8 +48,8 @@ practice_stims <- read.csv("../Stimuli/Stim_csv/practice_stimuli.csv")
 # ==============================================================================
 
 n_stims_per_block = 20;
-stim_duration = 300;
-iti_duration = 400;
+stim_duration = 400;
+iti_duration = 300;
 timing_baseline_block = n_stims_per_block * (stim_duration+iti_duration) # 14 secs 
 n_reps_per_category = 3;
 total_exp_time = length(categories)*2*timing_baseline_block*n_reps_per_category/60000

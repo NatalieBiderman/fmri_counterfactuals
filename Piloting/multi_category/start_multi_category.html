@@ -26,7 +26,7 @@
 // SET PARAMETERS
 // =============================================================================
 
-var is_debug                  = 0;
+var is_debug                  = 1;
 var is_scanner                = "mturk";
 var show_no_response          = 1;
 var onset                     = 0;
@@ -46,7 +46,7 @@ var n_outcome_learning_trials = 72 + 4 ; // 12 items, repeated 6 times + 4 pract
 var n_final_decisions_trials  = 288 + 4; // 36 unique chosen pairs, 36 unique unchosen pairs, repeated 4 times + 4 times
 var n_memory_trials           = 24*4 + 3; // 12 old and 12 recombined, 3 practice
 var n_outcome_estimation_trials = 24*4 + 3; // 12 chosen and 12 unchosen items. repeated 4 times.
-var n_final_ratings_trials    = 96; // all 49 images and 48 scrambled images as well
+var n_final_ratings_trials    = 72; // all 48 images (deliberated and not) and 24 deliberated scrambled images as well
 
 var n_localizer_runs          = 1;
 var n_deliberation_runs       = 2;
@@ -63,7 +63,7 @@ var memory_missed_trials_cutoff             = 10;
 var outcome_estimation_missed_trials_cutoff = 10;
 
 var deliberation_bonus       = 1.5;
-var max_bonus_final_decisions = 2;
+var max_bonus_final_decisions = 3.5;
 if (is_scanner=="scanner"){deliberation_bonus = 2.5; max_bonus_final_decisions = 10;}
 var reward_per_correct_reponse = max_bonus_final_decisions/((n_final_decisions_trials-4)/2); // we only reward for chosen trials
 
@@ -74,7 +74,6 @@ var timing_confirmation      = 500;
 var timing_warning           = 300; // if people are too slow in the deliberation phase they get a warning
 var timing_show_chosen       = 1500; // presentation of chosen item in the outcome learning phase
 var timing_show_outcome      = 1500; // max time of presentation of the outcome in the outcome learning phase
-var timing_feedback          = 1000;
 var timing_max_final_decisions = 1500;
 var timing_max_memory        = 1500;
 var timing_max_outcome_estimation = 1500;
@@ -120,6 +119,17 @@ var tools_folder            = 'Tools'
 
 var not_enough_deliberation_choices_logical = 0;
 
+if (is_debug == 1){
+  var timing_max_del_choice    = 1000; // maximum time to make a decision in deliberation phase
+  var timing_max_scramble_prompt = 300;
+  var timing_confirmation      = 0;
+  var timing_warning           = 100; // if people are too slow in the deliberation phase they get a warning
+  var timing_show_chosen       = 300; // presentation of chosen item in the outcome learning phase
+  var timing_show_outcome      = 300; // max time of presentation of the outcome in the outcome learning phase
+  var timing_max_final_decisions = 300;
+  var timing_max_memory        = 300;
+  var timing_max_outcome_estimation = 300;
+}
 // =============================================================================
 // PRE LOAD TASK IMAGES
 // =============================================================================
@@ -774,7 +784,7 @@ for (t = 0; t < n_localizer_trials; t++){
           // assign trial duration
           trial_duration = Localizer[trial.data.index].iti;
           trial.trial_duration = trial_duration;
-
+          if (is_debug==1){ trial.trial_duration = 300}
           // add run info
           trial.data.run = Localizer[trial.data.index].run;
 
@@ -1547,13 +1557,17 @@ var end_deliberation_phase = {
       }
       if (chosen_stims.includes(Final_ratings[i].path)){
         Final_ratings[i].choice = "chosen"
-      } else {
+      } else if ((!chosen_stims.includes(Final_ratings[i].path)) & (deliberated_stims.includes(Final_ratings[i].path))){
         Final_ratings[i].choice = "unchosen"
+      } else {
+        Final_ratings[i].choice = NaN
       }
       if (rewarded_stims.includes(Final_ratings[i].path)){
         Final_ratings[i].outcome = "gain"
-      } else {
+      } else if ((!rewarded_stims.includes(Final_ratings[i].path)) & (deliberated_stims.includes(Final_ratings[i].path))){
         Final_ratings[i].outcome = "no_gain"
+      } else {
+        Final_ratings[i].outcome = NaN
       }
       if (Final_ratings[i].stim_type == "original"){
         Final_ratings[i].old_rating = Ratings.filter(a => a.stimulus == Final_ratings[i].stimulus)[0].rating;
