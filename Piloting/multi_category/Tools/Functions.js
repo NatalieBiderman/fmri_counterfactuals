@@ -111,7 +111,7 @@ function transpose(a) {
 
 // Save data to file functions
 function save_server_data(name, data) {
-  console.log(data);
+  //console.log(data);
   var xhr = new XMLHttpRequest();
   //xhr.addEventListener("load", onComplete);
   xhr.open('POST', 'Tools/write_data.php'); // 'write_data.php' is the path to the php file described above.
