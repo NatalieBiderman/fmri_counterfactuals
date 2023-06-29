@@ -138,7 +138,11 @@ if (is_debug == 1){
 
 // Functions for loading the CSV files that contained optimized jitter durations
 function csvJSON(csv) {
-   var lines = csv.split('\n');
+  if (csv.includes("\r")){ // added this lines because there was a bug that included \r for some reason to every row, so we want to remove this.
+    var lines = csv.split('\r\n');
+  } else {
+    var lines = csv.split('\n');
+  }
    lines.pop(); //remove last line
    var result = [];
    var headers = lines[0].split(',');
@@ -166,12 +170,27 @@ function csvJSON(csv) {
      rawFile.send(null);
   }
 
+/*
 function convertToCSV(arr) {
   const array = [Object.keys(arr[0])].concat(arr)
 
   return array.map(it => {
     return Object.values(it).toString()
   }).join('\n')
+}
+*/
+
+function convertToCSV(arr) {
+  const array = [Object.keys(arr[0])].concat(arr)
+
+  return array.map(it => {
+    return Object.keys(it).map(key => {
+      if (key === '"version "') {
+        return it[key].replace('\r', ''); // Remove '\r' from the value
+      }
+      return it[key];
+    }).toString();
+  }).join('\n');
 }
 
 function convert_cols_to_number(array, num_cols){
@@ -188,7 +207,7 @@ function convert_cols_to_nan(array, nan_cols){
   return array;
 }
 
-function load_df(phase_folder, phase_csv, num_cols, nan_cols, subID){
+function load_df(phase_folder, phase_csv, num_cols, nan_cols, subID, counterbalanced_df){
   var df_csv; readTextFile('Task_sequences/'+phase_folder+'/'+phase_csv+'_v'+counterbalanced_df+'.csv', function(text){df_csv = text;});
   var df = csvJSON(df_csv);
   df = convert_cols_to_number(df, num_cols);
@@ -435,14 +454,14 @@ var get_id_trial = {
 
       counterbalanced_df = (subID % 4) + 1; // we use the subject id to assign the relevant df
       //if (subID % 2 == 1) {counterbalanced_df = "a"} else {counterbalanced_df = "b"}; // we use the subject id to assign the relevant df
-      Ratings = load_df("Ratings", "ratings", ["iti", "trial", "stimulus_index"], [], subID);
-      Deliberation = load_df("Deliberation", "deliberation", ["iti","long_iti","simulation","version","practice", "block", "run", "no_response", "trial", "scramble_screen_time"], ["chosen_category", "chosen_stimulus", "scramble_acc", "unchosen_category", "unchosen_stimulus","left_chosen","rt","chosen_path","unchosen_path"], subID);
-      Outcome_learning = load_df("Outcome_learning", "outcome_learning", ["iti", "isi","block","long_iti","simulation","version","trial","practice", "run"], ["response", "response_acc", "response_rt", "stimulus"], subID);
-      Final_decisions = load_df("Final_decisions", "final_decisions", ["block", "long_iti","simulation","version", "iti", "gain_left", "trial","practice", "run", "no_response"], ["higher_outcome_chosen", "left_chosen", "rt"], subID);
-      Memory = load_df("Memory", "memory", ["run","trial","block", "long_iti","simulation","version", "iti", "practice", "old_pair","chosen_left"], ["pair_acc", "pair_response", "pair_rt"], subID);
-      Final_ratings = load_df("Final_ratings", "final_ratings", ["iti", "trial", "stimulus_index"], ["new_rating", "rt"], subID);
-      Outcome_estimation = load_df("Outcome_estimation", "outcome_estimation", ["trial","run","block","iti","long_iti","simulation","version","practice"], ["confidence_response", "confidence_rt", "outcome_response", "outcome_rt","outcome_acc"], subID);
-      Localizer = load_df("Localizer", "localizer", ["trial","run","long_iti","simulation","version","iti","is_odd_ball","practice","stimulus_duration"], ["response", "rt"], subID);
+      Ratings = load_df("Ratings", "ratings", ["iti", "trial", "stimulus_index"], [], subID, counterbalanced_df);
+      Deliberation = load_df("Deliberation", "deliberation", ["iti","long_iti","simulation","version","practice", "block", "run", "no_response", "trial", "scramble_screen_time"], ["chosen_category", "chosen_stimulus", "scramble_acc", "unchosen_category", "unchosen_stimulus","left_chosen","rt","chosen_path","unchosen_path"], subID, counterbalanced_df);
+      Outcome_learning = load_df("Outcome_learning", "outcome_learning", ["iti", "isi","block","long_iti","simulation","version","trial","practice", "run"], ["response", "response_acc", "response_rt", "stimulus"], subID, counterbalanced_df);
+      Final_decisions = load_df("Final_decisions", "final_decisions", ["block", "long_iti","simulation","version", "iti", "gain_left", "trial","practice", "run", "no_response"], ["higher_outcome_chosen", "left_chosen", "rt"], subID, counterbalanced_df);
+      Memory = load_df("Memory", "memory", ["run","trial","block", "long_iti","simulation","version", "iti", "practice", "old_pair","chosen_left"], ["pair_acc", "pair_response", "pair_rt"], subID, counterbalanced_df);
+      Final_ratings = load_df("Final_ratings", "final_ratings", ["iti", "trial", "stimulus_index"], ["new_rating", "rt"], subID, counterbalanced_df);
+      Outcome_estimation = load_df("Outcome_estimation", "outcome_estimation", ["trial","run","block","iti","long_iti","simulation","version","practice"], ["outcome_response", "outcome_rt","outcome_acc"], subID, counterbalanced_df);
+      Localizer = load_df("Localizer", "localizer", ["trial","run","long_iti","simulation","version","iti","is_odd_ball","practice","stimulus_duration"], ["response", "rt"], subID, counterbalanced_df);
     }
 
     run_change_deliberation = find_run_change(Deliberation)
@@ -2194,7 +2213,7 @@ var iti_final_decisions_trial = {
     on_start: function(trial){
       // assign trial duration
       trial_duration = Final_decisions[trial.data.index].iti;
-      if (Final_decisions[trial.data.index].no_response==1){
+      if ((Final_decisions[trial.data.index].no_response==1) & (is_debug==0)){
         trial_duration = trial_duration - timing_warning; // we add the remaining time from the outcome presentation
       } else if (is_debug==1){
         trial_duration = 100;
@@ -2515,7 +2534,7 @@ for (t = 0; t < n_memory_trials; t++) {
       on_start: function(trial){
         // assign trial duration
         trial_duration = Memory[trial.data.index].iti;
-        if (Memory[trial.data.index].no_response==1){
+        if ((Memory[trial.data.index].no_response==1) & (is_debug==0)){
           trial_duration = trial_duration - timing_warning; // we add the remaining time from the outcome presentation
         } else if (is_debug==1){
           trial_duration = 100;
@@ -2832,7 +2851,7 @@ for (t = 0; t < n_outcome_estimation_trials; t++){
         on_start: function(trial){
           // assign trial duration
           trial_duration = Outcome_estimation[trial.data.index].iti;
-          if (Outcome_estimation[trial.data.index].no_response==1){
+          if ((Outcome_estimation[trial.data.index].no_response==1) & (is_debug==0)){
             trial_duration = trial_duration - timing_warning; // we add the remaining time from the outcome presentation
           } else if (is_debug==1){
             trial_duration = 100;
