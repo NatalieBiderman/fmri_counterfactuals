@@ -170,27 +170,12 @@ function csvJSON(csv) {
      rawFile.send(null);
   }
 
-/*
 function convertToCSV(arr) {
   const array = [Object.keys(arr[0])].concat(arr)
 
   return array.map(it => {
     return Object.values(it).toString()
   }).join('\n')
-}
-*/
-
-function convertToCSV(arr) {
-  const array = [Object.keys(arr[0])].concat(arr)
-
-  return array.map(it => {
-    return Object.keys(it).map(key => {
-      if (key === '"version "') {
-        return it[key].replace('\r', ''); // Remove '\r' from the value
-      }
-      return it[key];
-    }).toString();
-  }).join('\n');
 }
 
 function convert_cols_to_number(array, num_cols){
@@ -442,8 +427,8 @@ var get_id_trial = {
       var subID = Math.floor(Math.random() * 90000) + 10000;
     }
     data.PID = subID;
-    data.age = Number(jsPsych.data.get().filter({ttype: 'get_id'}).last(1).values()[0].responses.split('"')[7]);
-    data.gender = jsPsych.data.get().filter({ttype: 'get_id'}).last(1).values()[0].responses.split('"')[11];
+    data.age = Number(jsPsych.data.get().filter({ttype: 'get_id'}).last(1).values()[0].responses.split('"')[3]);
+    data.gender = jsPsych.data.get().filter({ttype: 'get_id'}).last(1).values()[0].responses.split('"')[7];
     jsPsych.data.addProperties({age: data.age, PID: data.PID, gender: data.gender})
 
     // =========================================================================

@@ -92,13 +92,19 @@ for (i in 1:n_not_scanned_designs){
   task_order = c(); timing = c(); is_odd_ball = c(); iti = c();
   for (c in 1:length(all_blocks)){
     curr_task <- c(rep(all_blocks[c],n_stims_per_block))
-    curr_odd_ball <- c(sample(c(rep(1,odd_ball_percent*n_stims_per_block),rep(0,(1-odd_ball_percent)*n_stims_per_block)))) 
     curr_timing <- c(rep(stim_duration,n_stims_per_block))
     curr_iti <- c(rep(iti_duration, n_stims_per_block-1),timing_baseline_block)
     task_order = c(task_order, curr_task)
     timing = c(timing, curr_timing)
-    is_odd_ball = c(is_odd_ball, curr_odd_ball)
     iti = c(iti,curr_iti)
+    
+    # sample odd ball event - we make sure there is at least 5 trials between the appearance of the odd ball. so we keep 5 trials without an odd ball in the middle of the vector
+    n_odd_balls = odd_ball_percent*n_stims_per_block
+    interval_odd_ball = 6;
+    curr_odd_ball <- c(sample(c(rep(1,n_odd_balls/2),rep(0,(n_stims_per_block/2)-(n_odd_balls/2)-(interval_odd_ball/2)))),
+                       rep(0,interval_odd_ball),
+                       sample(c(rep(1,n_odd_balls/2),rep(0,(n_stims_per_block/2)-(n_odd_balls/2)-(interval_odd_ball/2)))))
+    is_odd_ball = c(is_odd_ball, curr_odd_ball)
   }
   
   stim_path <- c()
