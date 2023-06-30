@@ -987,7 +987,17 @@ for (t = 0; t < n_deliberation_trials; t++) {
           data.unchosen_rating = Deliberation[data.index].left_rating;
           data.chosen_path = Deliberation[data.index].right_path;
           data.unchosen_path = Deliberation[data.index].left_path;
-        } // else
+        } else {
+          data.left_chosen = NaN;
+          data.chosen_stimulus = NaN;
+          data.unchosen_stimulus = NaN;
+          data.chosen_category = NaN;
+          data.unchosen_category = NaN;
+          data.chosen_rating = NaN;
+          data.unchosen_rating = NaN;
+          data.chosen_path = NaN;
+          data.unchosen_path = NaN;
+        }// else
 
         Deliberation[data.index].left_chosen = data.left_chosen;
         Deliberation[data.index].chosen_stimulus = data.chosen_stimulus;
@@ -1096,13 +1106,8 @@ var scramble_prompt_trial = {
         data.unchosen_stimulus = Deliberation[data.index].right_stimulus;
         data.chosen_category = Deliberation[data.index].left_category;
         data.unchosen_category = Deliberation[data.index].right_category;
-        Deliberation[data.index].left_chosen = 1;
-        Deliberation[data.index].chosen_stimulus = Deliberation[data.index].left_stimulus;
-        Deliberation[data.index].unchosen_stimulus = Deliberation[data.index].right_stimulus;
-        Deliberation[data.index].chosen_category = Deliberation[data.index].left_category;
-        Deliberation[data.index].unchosen_category = Deliberation[data.index].right_category;
-        Deliberation[data.index].chosen_path = Deliberation[data.index].left_path;
-        Deliberation[data.index].unchosen_path = Deliberation[data.index].right_path;
+        data.chosen_path = Deliberation[data.index].left_path;
+        data.unchosen_path = Deliberation[data.index].right_path;
       } else if (data.key_press == jsPsych.pluginAPI.convertKeyCharacterToKeyCode(keys_task[1])){
         curr_choice = "right";
         data.left_chosen = 0;
@@ -1110,14 +1115,25 @@ var scramble_prompt_trial = {
         data.unchosen_stimulus = Deliberation[data.index].left_stimulus;
         data.chosen_category = Deliberation[data.index].right_category;
         data.unchosen_category = Deliberation[data.index].left_category;
-        Deliberation[data.index].left_chosen = 0;
-        Deliberation[data.index].chosen_stimulus = Deliberation[data.index].right_stimulus;
-        Deliberation[data.index].unchosen_stimulus = Deliberation[data.index].left_stimulus;
-        Deliberation[data.index].chosen_category = Deliberation[data.index].right_category;
-        Deliberation[data.index].unchosen_category = Deliberation[data.index].left_category;
-        Deliberation[data.index].chosen_path = Deliberation[data.index].right_path;
-        Deliberation[data.index].unchosen_path = Deliberation[data.index].left_path;
-      } // else
+        data.chosen_path = Deliberation[data.index].right_path;
+        data.unchosen_path = Deliberation[data.index].left_path;
+      } else {
+        data.left_chosen = NaN;
+        data.chosen_stimulus = NaN;
+        data.unchosen_stimulus = NaN;
+        data.chosen_category = NaN;
+        data.unchosen_category = NaN;
+        data.chosen_path = NaN;
+        data.unchosen_path = NaN;
+      }// else
+
+      Deliberation[data.index].left_chosen = data.left_chosen;
+      Deliberation[data.index].chosen_stimulus = data.chosen_stimulus;
+      Deliberation[data.index].unchosen_stimulus = data.unchosen_stimulus;
+      Deliberation[data.index].chosen_category = data.chosen_category;
+      Deliberation[data.index].unchosen_category = data.unchosen_category;
+      Deliberation[data.index].chosen_path = data.chosen_path;
+      Deliberation[data.index].unchosen_path = data.unchosen_path;
 
       // compute accuracy for scramble choice
       if (curr_choice == Deliberation[data.index].scramble_instructed_side){
@@ -2030,21 +2046,21 @@ var final_decisions_trial = {
       data.chosen_stimulus = Final_decisions[data.index].left_stimulus;
       data.unchosen_stimulus = Final_decisions[data.index].right_stimulus;
       data.chosen_category = Final_decisions[data.index].left_category;
-      data.unchosen_stimulus = Final_decisions[data.index].right_category;
+      data.unchosen_category = Final_decisions[data.index].right_category;
       data.no_response = 0;
     }  else if (data.key_press == jsPsych.pluginAPI.convertKeyCharacterToKeyCode(keys_task[1])){
       data.left_chosen = 0;
       data.chosen_stimulus = Final_decisions[data.index].right_stimulus;
       data.unchosen_stimulus = Final_decisions[data.index].left_stimulus;
       data.chosen_category = Final_decisions[data.index].right_category;
-      data.unchosen_stimulus = Final_decisions[data.index].left_category;
+      data.unchosen_category = Final_decisions[data.index].left_category;
       data.no_response = 0;
     } else {
       data.left_chosen = NaN;
       data.chosen_stimulus = NaN;
       data.unchosen_stimulus = NaN;
       data.chosen_category = NaN;
-      data.unchosen_stimulus = NaN;
+      data.unchosen_category = NaN;
       data.no_response = 1;
     }// else
 
@@ -2053,7 +2069,7 @@ var final_decisions_trial = {
     Final_decisions[data.index].chosen_stimulus = data.chosen_stimulus;
     Final_decisions[data.index].unchosen_stimulus = data.unchosen_stimulus;
     Final_decisions[data.index].chosen_category = data.chosen_category;
-    Final_decisions[data.index].unchosen_stimulus = data.unchosen_stimulus;
+    Final_decisions[data.index].unchosen_category = data.unchosen_category;
     Final_decisions[data.index].no_response = data.no_response;
 
     // update data matrix per trial
