@@ -443,7 +443,7 @@ var get_id_trial = {
       Deliberation = load_df("Deliberation", "deliberation", ["iti","long_iti","simulation","version","practice", "block", "run", "no_response", "trial", "scramble_screen_time"], ["chosen_category", "chosen_stimulus", "scramble_acc", "unchosen_category", "unchosen_stimulus","left_chosen","rt","chosen_path","unchosen_path"], subID, counterbalanced_df);
       Outcome_learning = load_df("Outcome_learning", "outcome_learning", ["iti", "isi","block","long_iti","simulation","version","trial","practice", "run"], ["response", "response_acc", "response_rt", "stimulus"], subID, counterbalanced_df);
       Final_decisions = load_df("Final_decisions", "final_decisions", ["block", "long_iti","simulation","version", "iti", "gain_left", "trial","practice", "run", "no_response"], ["higher_outcome_chosen", "left_chosen", "rt"], subID, counterbalanced_df);
-      Memory = load_df("Memory", "memory", ["run","trial","block", "long_iti","simulation","version", "iti", "practice", "old_pair","chosen_left"], ["pair_acc", "pair_response", "pair_rt"], subID, counterbalanced_df);
+      Memory = load_df("Memory", "memory", ["run","trial","block", "long_iti","simulation","version", "iti", "practice", "old_pair","chosen_left"], ["pair_acc", "old_response", "pair_rt"], subID, counterbalanced_df);
       Final_ratings = load_df("Final_ratings", "final_ratings", ["iti", "trial", "stimulus_index"], ["new_rating", "rt"], subID, counterbalanced_df);
       Outcome_estimation = load_df("Outcome_estimation", "outcome_estimation", ["trial","run","block","iti","long_iti","simulation","version","practice"], ["outcome_response", "outcome_rt","outcome_acc"], subID, counterbalanced_df);
       Localizer = load_df("Localizer", "localizer", ["trial","run","long_iti","simulation","version","iti","is_odd_ball","practice","stimulus_duration"], ["response", "rt"], subID, counterbalanced_df);
@@ -2720,11 +2720,12 @@ for (t = 0; t < n_outcome_estimation_trials; t++){
           data.outcome_response = "gain";
         } else if (data.key_press == jsPsych.pluginAPI.convertKeyCharacterToKeyCode(keys_task[1])){ // 'down' (no gain) was chosen
           data.outcome_response = "no_gain";
+        } else {
+          data.outcome_response = "no_response"
         }
 
         if (data.key_press == null){
           data.no_response = 1;
-          data.outcome_response = NaN;
           data.outcome_rt = NaN;
           duration = timing_max_outcome_estimation/1000;
           if ((Outcome_estimation[data.index].practice == 1) & (repeat_no_responses_in_practice == 1)){

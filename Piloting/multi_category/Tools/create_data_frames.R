@@ -340,6 +340,8 @@ all_trials <- data.frame(
   right_stimulus = NaN,
   left_category = NaN,
   right_category = NaN,
+  left_rating = NaN,
+  right_rating = NaN,
   left_path = NaN,
   right_path = NaN,
   no_response = 0,
@@ -348,7 +350,11 @@ all_trials <- data.frame(
   higher_outcome_chosen = NaN,
   gain = rep(pairs$gains, n_fd_blocks*2),
   no_gain = rep(pairs$no_gains, n_fd_blocks*2),
-  choice_type = rep(rep(c("chosen","unchosen"),each=nrow(pairs)),n_fd_blocks)
+  choice_type = rep(rep(c("chosen","unchosen"),each=nrow(pairs)),n_fd_blocks),
+  chosen_stimulus = NaN,
+  unchosen_stimulus = NaN,
+  chosen_category = NaN,
+  unchosen_category = NaN
 )
 
 prac_stims_fd <- practice_stims %>% subset(phase == "Final_decisions") 
@@ -391,6 +397,8 @@ for (i in 1:n_scanned_designs){
     right_stimulus = NaN,
     left_category = NaN,
     right_category = NaN,
+    left_rating = NaN,
+    right_rating = NaN,
     left_path = c(prac_stims_fd$path[1], prac_stims_fd$path[2], prac_stims_fd$path[1], prac_stims_fd$path[4]),
     right_path = c(prac_stims_fd$path[4], prac_stims_fd$path[3], prac_stims_fd$path[2], prac_stims_fd$path[1]),
     no_response = 0,
@@ -398,11 +406,15 @@ for (i in 1:n_scanned_designs){
     rt = NaN,
     higher_outcome_chosen = NaN,
     choice_type = NaN,
-    iti = c(3000, 1500, 2000, 1000)
+    iti = c(3000, 1500, 2000, 1000),
+    chosen_stimulus = NaN,
+    unchosen_stimulus = NaN,
+    chosen_category = NaN,
+    unchosen_category = NaN
   )
   
   final_decisions_trials <- rbind(practice_fd_trials, final_decisions_trials) %>%
-    mutate(trial = 1:n())
+    dplyr::mutate(trial = 1:n())
   
   # save the current design 
   write.csv(final_decisions_trials, "../Task_sequences/Final_decisions/final_decisions.csv", row.names = FALSE)
@@ -432,7 +444,7 @@ memory_practice_trials = data.frame(
   right_stimulus = NaN,
   left_path = c(memory_prac_stims$path[1], memory_prac_stims$path[2], memory_prac_stims$path[3]),
   right_path = c(memory_prac_stims$path[2], memory_prac_stims$path[3], memory_prac_stims$path[1]),
-  pair_response = NaN,
+  old_response = NaN,
   pair_acc = NaN,
   pair_rt = NaN
 )
@@ -459,7 +471,7 @@ for (i in 1:n_scanned_designs){
         right_stimulus = NaN,
         left_path = NaN,
         right_path = NaN,
-        pair_response = NaN,
+        old_response = NaN,
         pair_acc = NaN,
         pair_rt = NaN) %>%
         slice(sample(1:n())) # shuffle order
@@ -516,9 +528,7 @@ outcome_estimation_practice_trials = data.frame(
   path = c(outcome_etimation_prac_stims$path[1], outcome_etimation_prac_stims$path[2], outcome_etimation_prac_stims$path[3]),
   outcome_response = NaN,
   outcome_rt = NaN,
-  outcome_acc = NaN,
-  confidence_response = NaN,
-  confidence_rt = NaN)
+  outcome_acc = NaN)
 
 for (i in 1:n_scanned_designs){
   
@@ -540,9 +550,7 @@ for (i in 1:n_scanned_designs){
         path = NaN,
         outcome_response = NaN,
         outcome_rt = NaN,
-        outcome_acc = NaN,
-        confidence_response = NaN,
-        confidence_rt = NaN) %>%
+        outcome_acc = NaN) %>%
         slice(sample(1:n())) # shuffle order
       outcome_estimation_trials_tmp <- rbind(outcome_estimation_trials_tmp, curr_outcome_estimation_trials)
     }
