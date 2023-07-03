@@ -191,6 +191,8 @@ trials <- trials %>% mutate(PID = NaN,
                             unchosen_stimulus = NaN,
                             chosen_category = NaN,
                             unchosen_category = NaN,
+                            chosen_rating = NaN,
+                            unchosen_rating = NaN,
                             chosen_path = NaN,
                             unchosen_path = NaN)
 
@@ -224,6 +226,8 @@ practice_trials = data.frame(
   unchosen_stimulus = NaN,
   chosen_category = NaN,
   unchosen_category = NaN,
+  chosen_rating = NaN,
+  unchosen_rating = NaN,
   chosen_path = NaN,
   unchosen_path = NaN,
   stim_type = c("original", "scramble", "scramble", "original"),

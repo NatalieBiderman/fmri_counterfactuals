@@ -26,7 +26,7 @@
 // SET PARAMETERS
 // =============================================================================
 
-var is_debug                  = 1;
+var is_debug                  = 0;
 var is_scanner                = "mturk";
 var show_no_response          = 1;
 var repeat_no_responses_in_practice = 1;
@@ -991,8 +991,8 @@ for (t = 0; t < n_deliberation_trials; t++) {
           data.left_chosen = NaN;
           data.chosen_stimulus = NaN;
           data.unchosen_stimulus = NaN;
-          data.chosen_category = NaN;
-          data.unchosen_category = NaN;
+          data.chosen_category = "NaN";
+          data.unchosen_category = "NaN";
           data.chosen_rating = NaN;
           data.unchosen_rating = NaN;
           data.chosen_path = NaN;
@@ -1121,8 +1121,8 @@ var scramble_prompt_trial = {
         data.left_chosen = NaN;
         data.chosen_stimulus = NaN;
         data.unchosen_stimulus = NaN;
-        data.chosen_category = NaN;
-        data.unchosen_category = NaN;
+        data.chosen_category = "NaN";
+        data.unchosen_category = "NaN";
         data.chosen_path = NaN;
         data.unchosen_path = NaN;
       }// else
@@ -1817,7 +1817,7 @@ var show_reward_trial = {
 
     // register no response and check whether the trial should be repeated
     if (!data.key_press){
-      response = NaN;
+      response = "no_response";
       response_rt = NaN;
       no_response = 1;
       if ((Outcome_learning[data.index].practice == 1) & (repeat_no_responses_in_practice == 1)){
@@ -2059,8 +2059,8 @@ var final_decisions_trial = {
       data.left_chosen = NaN;
       data.chosen_stimulus = NaN;
       data.unchosen_stimulus = NaN;
-      data.chosen_category = NaN;
-      data.unchosen_category = NaN;
+      data.chosen_category = "NaN";
+      data.unchosen_category = "NaN";
       data.no_response = 1;
 
     }// else
