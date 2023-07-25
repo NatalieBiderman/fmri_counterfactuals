@@ -127,7 +127,9 @@ for (i in 1:n_not_scanned_designs){
                        is_odd_ball = is_odd_ball,
                        path = stim_path,
                        response = NaN,
-                       rt = NaN))
+                       rt = NaN)) %>%
+    dplyr::mutate(trial = 1:n(),
+                  version = i)
   
   write.csv(localizer, sprintf("../Task_sequences/Localizer/localizer_v%d.csv",i), row.names = FALSE)
   
