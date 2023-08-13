@@ -31,6 +31,7 @@ var is_scanner                = "mturk";
 var show_no_response          = 1;
 var repeat_no_responses_in_practice = 1;
 var onset                     = 0;
+var onset_time_elapsed        = 0;
 var duration                  = 0;
 var run_full_exp              = 1;
 var fixed_confirmation        = 0;
@@ -132,6 +133,10 @@ if (is_debug == 1){
   var timing_max_outcome_estimation = 100;
   repeat_no_responses_in_practice = 0;
 }
+
+// create a random 4-digit number to add to data file
+const rand_data_file = Math.floor(Math.random() * 9000) + 1000
+
 // =============================================================================
 // PRE LOAD TASK IMAGES
 // =============================================================================
@@ -491,6 +496,7 @@ var start_run = {
     },
     on_finish: function(data){
       onset = 0; // restart onset in the beginning of every run
+      onset_time_elapsed = 0;
       // add columns to data})
     }
 }
@@ -618,8 +624,8 @@ var rating_trial = {
       // save Ratings data set
       subID = Ratings[0].PID;
       if (is_scanner == "scanner"){
-        save_local_data(data_folder+'Ratings/ratings_sub_'+subID+".csv", convertToCSV(Ratings));
-        save_local_data(data_folder+'All_data/all_data_sub_'+subID+".csv", jsPsych.data.get().ignore('stimulus').csv());
+        save_local_data(data_folder+'Ratings/ratings_sub'+subID+"_"+rand_data_file+".csv", convertToCSV(Ratings));
+        save_local_data(data_folder+'All_data/all_data_sub'+subID+"_"+rand_data_file+".csv", jsPsych.data.get().ignore('stimulus').csv());
         } else {
         save_server_data(data_folder+'All_data/all_data_sub_'+subID, jsPsych.data.get().ignore('stimulus').csv());
         save_server_data(data_folder+'Ratings/ratings_sub_'+subID, convertToCSV(Ratings));
@@ -664,8 +670,8 @@ var rating_trial = {
       // save Deliberation data set
       subID = Deliberation[0].PID;
       if (is_scanner == "scanner"){
-        save_local_data(data_folder+'Deliberation/deliberation_sub_'+subID+".csv", convertToCSV(Deliberation));
-        save_local_data(data_folder+'All_data/all_data_sub_'+subID+".csv", jsPsych.data.get().ignore('stimulus').csv());
+        save_local_data(data_folder+'Deliberation/deliberation_sub'+subID+"_"+rand_data_file+".csv", convertToCSV(Deliberation));
+        save_local_data(data_folder+'All_data/all_data_sub'+subID+"_"+rand_data_file+".csv", jsPsych.data.get().ignore('stimulus').csv());
         } else {
         save_server_data(data_folder+'All_data/all_data_sub_'+subID, jsPsych.data.get().ignore('stimulus').csv());
         save_server_data(data_folder+'Deliberation/deliberation_sub_'+subID, convertToCSV(Deliberation));
@@ -721,6 +727,7 @@ for (t = 0; t < n_localizer_trials; t++){
         left_position = shuffle([10,20,30,40,50,60,70,80,90])[1];
         trial.stimulus = String.format(trial.stimulus, Localizer[trial.data.index].path, id, top_position, left_position); // full path
         trial.trial_duration = Localizer[trial.data.index].stimulus_duration;
+        trial.data.start_time_elapsed = jsPsych.data.get().last(1).values()[0].time_elapsed;
       },
       on_finish: function(data){
 
@@ -762,13 +769,19 @@ for (t = 0; t < n_localizer_trials; t++){
         Localizer[data.index].acc = data.acc;
 
         // assign trial duration to onset and duration
-        duration = Localizer[data.index].stimulus_duration/1000;
-
+        duration = Localizer[data.index].stimulus_duration;
         data.duration = duration;
         data.onset = onset;
-        curr_event = {PID: jsPsych.data.get().filter({ttype: 'get_id'}).last(1).values()[0].PID, phase: "localizer", run: Localizer[data.index].run, trial: data.index, event: "stimulus", onset: data.onset, duration: data.duration}
+
+        duration_time_elapsed = data.time_elapsed - data.start_time_elapsed;
+        data.duration_time_elapsed = duration_time_elapsed;
+        data.onset_time_elapsed = onset_time_elapsed;
+
+        curr_event = {PID: jsPsych.data.get().filter({ttype: 'get_id'}).last(1).values()[0].PID, phase: "localizer", run: Localizer[data.index].run, trial: data.index, event: "stimulus", onset: data.onset, duration: data.duration, onset_time_elapsed: data.onset_time_elapsed, duration_time_elapsed: data.duration_time_elapsed}
         events.push(curr_event);
+
         onset = onset + duration;
+        onset_time_elapsed = onset_time_elapsed + duration_time_elapsed;
 
       } // on_finish
     } // outcome_estimation_trial
@@ -791,17 +804,30 @@ for (t = 0; t < n_localizer_trials; t++){
           trial_duration = Localizer[trial.data.index].iti;
           trial.trial_duration = trial_duration;
           if (is_debug==1){ trial.trial_duration = 300}
+          trial.data.trial_duration = trial.trial_duration;
           // add run info
           trial.data.run = Localizer[trial.data.index].run;
 
+          trial.data.start_time_elapsed = jsPsych.data.get().last(1).values()[0].time_elapsed;
+
+        }, // on_start
+        on_finish: function(data){
+
           // assign trial duration to onset and duration
-          duration = trial_duration/1000;
-          trial.data.duration = duration;
-          trial.data.onset = onset;
-          curr_event = {PID: jsPsych.data.get().filter({ttype: 'get_id'}).last(1).values()[0].PID, phase: "localizer", run: Localizer[trial.data.index].run, trial: trial.data.index, event: "iti", onset: trial.data.onset, duration: trial.data.duration}
+          duration = data.trial_duration;
+          data.duration = duration;
+          data.onset = onset;
+
+          duration_time_elapsed = data.time_elapsed - data.start_time_elapsed;
+          data.duration_time_elapsed = duration_time_elapsed;
+          data.onset_time_elapsed = onset_time_elapsed;
+
+          curr_event = {PID: jsPsych.data.get().filter({ttype: 'get_id'}).last(1).values()[0].PID, phase: "localizer", run: Localizer[data.index].run, trial: data.index, event: "iti", onset: data.onset, duration: data.duration, onset_time_elapsed: data.onset_time_elapsed, duration_time_elapsed: data.duration_time_elapsed}
           events.push(curr_event);
           onset = onset + duration;
-        } // on_start
+          onset_time_elapsed = onset_time_elapsed + duration_time_elapsed;
+
+        }
       } //
 
 // ------------------------- practice block over -------------------------------
@@ -876,9 +902,9 @@ for (t = 0; t < n_localizer_trials; t++){
         trial.stimulus = String.format(trial.stimulus, start_prompt);
         subID = Deliberation[0].PID;
         if (is_scanner == "scanner"){
-          save_local_data(data_folder+'Localizer/localizer_sub_'+subID+".csv", convertToCSV(Localizer));
-          save_local_data(data_folder+'Events/events_sub_'+subID+".csv", convertToCSV(events));
-          save_local_data(data_folder+'All_data/all_data_sub_'+subID+".csv", jsPsych.data.get().ignore('stimulus').csv());
+          save_local_data(data_folder+'Localizer/localizer_sub'+subID+"_"+rand_data_file+".csv", convertToCSV(Localizer));
+          save_local_data(data_folder+'Events/events_sub'+subID+"_"+rand_data_file+".csv", convertToCSV(events));
+          save_local_data(data_folder+'All_data/all_data_sub'+subID+"_"+rand_data_file+".csv", jsPsych.data.get().ignore('stimulus').csv());
           } else {
           save_server_data(data_folder+'All_data/all_data_sub_'+subID, jsPsych.data.get().ignore('stimulus').csv());
           save_server_data(data_folder+'Localizer/localizer_sub_'+subID, convertToCSV(Localizer));
@@ -913,7 +939,6 @@ for (t = 0; t < n_localizer_trials; t++){
     localizer_timeline.timeline.push(repeat_localizer_trial)
 
   } // outcome_estimation test loop
-
 
 // =============================================================================
 //                               DELIBERATION
@@ -959,9 +984,10 @@ for (t = 0; t < n_deliberation_trials; t++) {
       // decide which stimuli to present
       trial.stimulus = String.format(trial.stimulus ,Deliberation[trial.data.index].left_path, "" ,Deliberation[trial.data.index].right_path);
       if (Deliberation[trial.data.index].stim_type == "scramble"){
-        trial.data.response_ends_trial = false;
-        trial.data.trial_duration = (Deliberation[trial.data.index].scramble_screen_time)
+        trial.response_ends_trial = false;
+        trial.trial_duration = Deliberation[trial.data.index].scramble_screen_time;
       }
+      trial.data.start_time_elapsed = jsPsych.data.get().last(1).values()[0].time_elapsed;
     },
     on_finish: function(data){
 
@@ -1046,25 +1072,26 @@ for (t = 0; t < n_deliberation_trials; t++) {
       // save onset and duration
       if (Deliberation[data.index].stim_type == "original"){
         if (data.key_press === null){
-          duration = timing_max_del_choice/1000;
+          duration = timing_max_del_choice;
         } else {
-          duration = data.rt/1000;
+          duration = data.rt;
         }
         event = "choice"
       } else if (Deliberation[data.index].stim_type == "scramble"){
-        duration = Deliberation[data.index].scramble_screen_time/1000;
+        duration = Deliberation[data.index].scramble_screen_time;
         event = "scramble"
       }
 
       // add events info
-      data.onset = onset;
       data.duration = duration;
-      curr_event = {PID: jsPsych.data.get().filter({ttype: 'get_id'}).last(1).values()[0].PID, phase: "deliberation", run: Deliberation[data.index].run, trial: data.index, event: event, onset: data.onset, duration: data.duration}
+      data.onset = onset;
+      duration_time_elapsed = data.time_elapsed - data.start_time_elapsed;
+      data.duration_time_elapsed = duration_time_elapsed;
+      data.onset_time_elapsed = onset_time_elapsed;
+      curr_event = {PID: jsPsych.data.get().filter({ttype: 'get_id'}).last(1).values()[0].PID, phase: "deliberation", run: Deliberation[data.index].run, trial: data.index, event: event, onset: data.onset, duration: data.duration, onset_time_elapsed: data.onset_time_elapsed, duration_time_elapsed: data.duration_time_elapsed}
       events.push(curr_event);
       onset = onset + duration;
-
-      // update block info
-      block = data.block;
+      onset_time_elapsed = onset_time_elapsed + duration_time_elapsed;
 
     } // on_finish
   } // deliberation_trial
@@ -1086,6 +1113,7 @@ var scramble_prompt_trial = {
 
       // trial duration
       trial.trial_duration = timing_max_del_choice - Deliberation[trial.data.index].scramble_screen_time; // total scramble time should be 3 (including scramble + prompt + confirmation)
+      trial.data.trial_duration = trial.trial_duration;
 
       // build stim
       if (Deliberation[trial.data.index].scramble_instructed_side == "left"){
@@ -1094,6 +1122,8 @@ var scramble_prompt_trial = {
         scramble_img = "=>";
       }
       trial.stimulus = String.format(trial.stimulus ,Deliberation[trial.data.index].left_path, scramble_img ,Deliberation[trial.data.index].right_path);
+
+      trial.data.start_time_elapsed = jsPsych.data.get().last(1).values()[0].time_elapsed;
     },
     on_finish: function(data){
 
@@ -1161,15 +1191,21 @@ var scramble_prompt_trial = {
 
       // assign trial duration to onset and duration
       if (data.key_press){
-        duration = data.rt/1000;
+        duration = data.rt;
       } else {
-        duration = (timing_max_del_choice - Deliberation[data.index].scramble_screen_time)/1000;
+        duration = (timing_max_del_choice - Deliberation[data.index].scramble_screen_time);
       }
+
       data.duration = duration;
       data.onset = onset;
-      curr_event = {PID: jsPsych.data.get().filter({ttype: 'get_id'}).last(1).values()[0].PID, phase: "deliberation", run: Deliberation[data.index].run, trial: data.index, event: "scramble_prompt", onset: data.onset, duration: data.duration}
+      duration_time_elapsed = data.time_elapsed - data.start_time_elapsed;
+      data.duration_time_elapsed = duration_time_elapsed;
+      data.onset_time_elapsed = onset_time_elapsed;
+      curr_event = {PID: jsPsych.data.get().filter({ttype: 'get_id'}).last(1).values()[0].PID, phase: "deliberation", run: Deliberation[data.index].run, trial: data.index, event: "scramble_prompt", onset: data.onset, duration: data.duration, onset_time_elapsed: data.onset_time_elapsed, duration_time_elapsed: data.duration_time_elapsed}
       events.push(curr_event);
       onset = onset + duration;
+      onset_time_elapsed = onset_time_elapsed + duration_time_elapsed;
+
     }
   } // scramble_prompt_trial
 
@@ -1206,17 +1242,11 @@ var scramble_prompt_trial = {
         event = "scramble_confirmation"
       }
       trial.trial_duration = trial_duration;
+      trial.data.trial_duration = trial.trial_duration;
+      trial.data.start_time_elapsed = jsPsych.data.get().last(1).values()[0].time_elapsed;
 
       // add block info
       trial.data.block = jsPsych.data.get().filter({ttype: 'deliberation'}).last(1).values()[0].block;
-
-      // assign trial duration to onset and duration
-      duration = trial_duration/1000;
-      trial.data.duration = duration;
-      trial.data.onset = onset;
-      curr_event = {PID: jsPsych.data.get().filter({ttype: 'get_id'}).last(1).values()[0].PID, phase: "deliberation", run: Deliberation[trial.data.index].run, trial: trial.data.index, event: event, onset: trial.data.onset, duration: trial.data.duration}
-      events.push(curr_event);
-      onset = onset + duration;
 
       // decide on which stimulus recieves a confirmation rectangle
       if (Deliberation[trial.data.index].left_chosen==1){
@@ -1224,7 +1254,22 @@ var scramble_prompt_trial = {
       } else {
         trial.stimulus = String.format(trial.stimulus, "object" ,Deliberation[trial.data.index].left_path, "object confirm", Deliberation[trial.data.index].right_path);
       }
+    },
+    on_finish: function(data){
+
+      // assign trial duration to onset and duration
+      duration = data.trial_duration;
+      data.duration = duration;
+      data.onset = onset;
+      duration_time_elapsed = data.time_elapsed - data.start_time_elapsed;
+      data.duration_time_elapsed = duration_time_elapsed;
+      data.onset_time_elapsed = onset_time_elapsed;
+      curr_event = {PID: jsPsych.data.get().filter({ttype: 'get_id'}).last(1).values()[0].PID, phase: "deliberation", run: Deliberation[data.index].run, trial: data.index, event: event, onset: data.onset, duration: data.duration, onset_time_elapsed: data.onset_time_elapsed, duration_time_elapsed: data.duration_time_elapsed}
+      events.push(curr_event);
+      onset = onset + duration;
+      onset_time_elapsed = onset_time_elapsed + duration_time_elapsed;
     }
+
   } // confirmation trial
 
   // present confirmation only if there was a response
@@ -1253,17 +1298,24 @@ var deliberation_no_response = {
     stimulus: '<div style="font-size: 200%">TOO SLOW</div>',
     choices: jsPsych.NO_KEYS,
     trial_duration: timing_warning,
+    on_start: function(trial){
+      trial.data.start_time_elapsed = jsPsych.data.get().last(1).values()[0].time_elapsed;
+    },
     on_finish: function(data){
       data.warning = 1;
       data.no_response = 1;
       data.block = jsPsych.data.get().filter({ttype: 'deliberation'}).last(1).values()[0].block;
       // assign trial duration to onset and duration
-      duration = timing_warning/1000;
+      duration = timing_warning;
       data.duration = duration;
       data.onset = onset;
-      curr_event = {PID: jsPsych.data.get().filter({ttype: 'get_id'}).last(1).values()[0].PID, phase: "deliberation", run: Deliberation[data.index].run, trial: data.index, event: "no_response", onset: data.onset, duration: data.duration}
+      duration_time_elapsed = data.time_elapsed - data.start_time_elapsed;
+      data.duration_time_elapsed = duration_time_elapsed;
+      data.onset_time_elapsed = onset_time_elapsed;
+      curr_event = {PID: jsPsych.data.get().filter({ttype: 'get_id'}).last(1).values()[0].PID, phase: "deliberation", run: Deliberation[data.index].run, trial: data.index, event: "no_response", onset: data.onset, duration: data.duration, onset_time_elapsed: data.onset_time_elapsed, duration_time_elapsed: data.duration_time_elapsed}
       events.push(curr_event);
       onset = onset + duration;
+      onset_time_elapsed = onset_time_elapsed + duration_time_elapsed;
 
     } // on_finish
   } // deliberation_too_slow
@@ -1306,19 +1358,27 @@ var deliberation_no_response = {
           } else {
             trial.trial_duration = curr_iti;
           }
-          //console.log("curr trial iti:"+curr_iti)
+          trial.data.trial_duration = trial.trial_duration;
+          trial.data.start_time_elapsed = jsPsych.data.get().last(1).values()[0].time_elapsed;
 
           // add block info
           trial.data.block = jsPsych.data.get().filter({ttype: 'deliberation'}).last(1).values()[0].block;
 
+        }, // on_start
+        on_finish: function(data){
+
           // assign trial duration to onset and duration
-          duration = curr_iti/1000;
-          trial.data.duration = duration;
-          trial.data.onset = onset;
-          curr_event = {PID: jsPsych.data.get().filter({ttype: 'get_id'}).last(1).values()[0].PID, phase: "deliberation", run: Deliberation[trial.data.index].run, trial: trial.data.index, event: "iti", onset: trial.data.onset, duration: trial.data.duration}
+          duration = data.trial_duration;
+          data.duration = duration;
+          data.onset = onset;
+          duration_time_elapsed = data.time_elapsed - data.start_time_elapsed;
+          data.duration_time_elapsed = duration_time_elapsed;
+          data.onset_time_elapsed = onset_time_elapsed;
+          curr_event = {PID: jsPsych.data.get().filter({ttype: 'get_id'}).last(1).values()[0].PID, phase: "deliberation", run: Deliberation[data.index].run, trial: data.index, event: "iti", onset: data.onset, duration: data.duration, onset_time_elapsed: data.onset_time_elapsed, duration_time_elapsed: data.duration_time_elapsed}
           events.push(curr_event);
           onset = onset + duration;
-        } // on_start
+          onset_time_elapsed = onset_time_elapsed + duration_time_elapsed;
+        }
       } // deliberation_iti_trial
 
 
@@ -1617,15 +1677,15 @@ var end_deliberation_phase = {
     // save all data frames
     subID = Deliberation[0].PID;
     if (is_scanner == "scanner"){
-      save_local_data(data_folder+'Deliberation/deliberation_sub_'+subID+".csv", convertToCSV(Deliberation));
-      save_local_data(data_folder+'clean_Deliberation/clean_deliberation_sub_'+subID+".csv", convertToCSV(clean_Deliberation));
-      save_local_data(data_folder+'Events/events_sub_'+subID+".csv", convertToCSV(events));
-      save_local_data(data_folder+'Outcome_learning/outcome_learning_sub_'+subID+".csv", convertToCSV(Outcome_learning));
-      save_local_data(data_folder+'Final_decisions/final_decisions_sub_'+subID+".csv", convertToCSV(Final_decisions));
-      save_local_data(data_folder+'Memory/memory_sub_'+subID+".csv", convertToCSV(Memory));
-      save_local_data(data_folder+'Final_ratings/final_ratings_sub_'+subID+".csv", convertToCSV(Final_ratings));
-      save_local_data(data_folder+'Outcome_estimation/outcome_estimation_sub_'+subID+".csv", convertToCSV(Outcome_estimation));
-      save_local_data(data_folder+'All_data/all_data_sub_'+subID+".csv", jsPsych.data.get().ignore('stimulus').csv());
+      save_local_data(data_folder+'Deliberation/deliberation_sub'+subID+"_"+rand_data_file+".csv", convertToCSV(Deliberation));
+      save_local_data(data_folder+'clean_Deliberation/clean_deliberation_sub'+subID+"_"+rand_data_file+".csv", convertToCSV(clean_Deliberation));
+      save_local_data(data_folder+'Events/events_sub'+subID+"_"+rand_data_file+".csv", convertToCSV(events));
+      save_local_data(data_folder+'Outcome_learning/outcome_learning_sub'+subID+"_"+rand_data_file+".csv", convertToCSV(Outcome_learning));
+      save_local_data(data_folder+'Final_decisions/final_decisions_sub'+subID+"_"+rand_data_file+".csv", convertToCSV(Final_decisions));
+      save_local_data(data_folder+'Memory/memory_sub'+subID+"_"+rand_data_file+".csv", convertToCSV(Memory));
+      save_local_data(data_folder+'Final_ratings/final_ratings_sub'+subID+"_"+rand_data_file+".csv", convertToCSV(Final_ratings));
+      save_local_data(data_folder+'Outcome_estimation/outcome_estimation_sub'+subID+"_"+rand_data_file+".csv", convertToCSV(Outcome_estimation));
+      save_local_data(data_folder+'All_data/all_data_sub'+subID+"_"+rand_data_file+".csv", jsPsych.data.get().ignore('stimulus').csv());
       } else {
       save_server_data(data_folder+'All_data/all_data_sub_'+subID, jsPsych.data.get().ignore('stimulus').csv());
       save_server_data(data_folder+'Deliberation/deliberation_sub_'+subID, convertToCSV(Deliberation));
@@ -1700,7 +1760,6 @@ var if_not_enough_deliberation_choices = {
 
 } // for deliberation trials
 
-
 // =============================================================================
 //                              OUTCOME LEARNING
 // =============================================================================
@@ -1739,6 +1798,7 @@ var show_chosen_item_trial = {
     on_start: function(trial){
       trial.data.stimulus_id = Outcome_learning[trial.data.index].stimulus;
       trial.stimulus = String.format(trial.stimulus,Outcome_learning[trial.data.index].path); // full path
+      trial.data.start_time_elapsed = jsPsych.data.get().last(1).values()[0].time_elapsed;
     },
     on_finish: function(data){
 
@@ -1751,11 +1811,16 @@ var show_chosen_item_trial = {
       data.run = Outcome_learning[data.index].run;
 
       // assign trial duration to onset and duration
-      data.duration = timing_show_chosen/1000;
+      data.duration = timing_show_chosen;
       data.onset = onset;
-      curr_event = {PID: jsPsych.data.get().filter({ttype: 'get_id'}).last(1).values()[0].PID, phase: "outcome_learning", run: Outcome_learning[data.index].run, trial: data.index, event: data.outcome, onset: data.onset, duration: data.duration}
+      duration_time_elapsed = data.time_elapsed - data.start_time_elapsed;
+      data.duration_time_elapsed = duration_time_elapsed;
+      data.onset_time_elapsed = onset_time_elapsed;
+      curr_event = {PID: jsPsych.data.get().filter({ttype: 'get_id'}).last(1).values()[0].PID, phase: "outcome_learning", run: Outcome_learning[data.index].run, trial: data.index, event: data.outcome, onset: data.onset, duration: data.duration, onset_time_elapsed: data.onset_time_elapsed, duration_time_elapsed: data.duration_time_elapsed}
       events.push(curr_event);
       onset = onset + data.duration;
+      onset_time_elapsed = onset_time_elapsed + duration_time_elapsed;
+
     } // on_finish
   } // show_chosen_item_trial
 
@@ -1773,19 +1838,28 @@ var isi_outcome_learning_trial = {
       } else {
         trial.trial_duration = Outcome_learning[trial.data.index].isi;
       }
+      trial.data.trial_duration = trial.trial_duration;
+      trial.data.start_time_elapsed = jsPsych.data.get().last(1).values()[0].time_elapsed;
       //console.log("curr trial iti:"+curr_iti)
 
       // add run info
       trial.data.run = jsPsych.data.get().filter({ttype: 'show_chosen_item'}).last(1).values()[0].run;
+    }, // on_start
+    on_finish: function(data){
 
       // assign trial duration to onset and duration
-      duration = trial.trial_duration/1000;
-      trial.data.duration = duration;
-      trial.data.onset = onset;
-      curr_event = {PID: jsPsych.data.get().filter({ttype: 'get_id'}).last(1).values()[0].PID, phase: "outcome_learning", run: Outcome_learning[trial.data.index].run, trial: trial.data.index, event: "isi", onset: trial.data.onset, duration: trial.data.duration}
+      duration = data.trial_duration;
+      data.duration = duration;
+      data.onset = onset;
+      duration_time_elapsed = data.time_elapsed - data.start_time_elapsed;
+      data.duration_time_elapsed = duration_time_elapsed;
+      data.onset_time_elapsed = onset_time_elapsed;
+      curr_event = {PID: jsPsych.data.get().filter({ttype: 'get_id'}).last(1).values()[0].PID, phase: "outcome_learning", run: Outcome_learning[data.index].run, trial: data.index, event: "isi", onset: data.onset, duration: data.duration, onset_time_elapsed: data.onset_time_elapsed, duration_time_elapsed: data.duration_time_elapsed}
       events.push(curr_event);
       onset = onset + duration;
-    } // on_start
+      onset_time_elapsed = onset_time_elapsed + duration_time_elapsed;
+
+    }
   } //
 
 // ------------------------------ show reward ----------------------------------
@@ -1805,6 +1879,8 @@ var show_reward_trial = {
       outcome_path = 'Stimuli/Reward_stim/scrambled_100bill.jpeg';
     }
     trial.stimulus = String.format(trial.stimulus,outcome_path); // full path
+    trial.data.start_time_elapsed = jsPsych.data.get().last(1).values()[0].time_elapsed;
+
   },
   on_finish: function(data){
 
@@ -1845,16 +1921,16 @@ var show_reward_trial = {
       Outcome_learning[data.index].response_acc = 0;
     }
 
-    /*if (no_response==1){
-      duration = timing_show_outcome/1000;
-    } else {
-      duration = data.rt/1000;
-    }*/
     data.onset = onset;
-    data.duration = timing_show_outcome/1000;
-    curr_event = {PID: jsPsych.data.get().filter({ttype: 'get_id'}).last(1).values()[0].PID, phase: "outcome_learning", run: Outcome_learning[data.index].run, trial: data.index, event: "outcome", onset: data.onset, duration: data.duration}
+    data.duration = timing_show_outcome;
+    duration_time_elapsed = data.time_elapsed - data.start_time_elapsed;
+    data.duration_time_elapsed = duration_time_elapsed;
+    data.onset_time_elapsed = onset_time_elapsed;
+    curr_event = {PID: jsPsych.data.get().filter({ttype: 'get_id'}).last(1).values()[0].PID, phase: "outcome_learning", run: Outcome_learning[data.index].run, trial: data.index, event: "outcome", onset: data.onset, duration: data.duration, onset_time_elapsed: data.onset_time_elapsed, duration_time_elapsed: data.duration_time_elapsed}
     events.push(curr_event);
     onset = onset + duration;
+    onset_time_elapsed = onset_time_elapsed + duration_time_elapsed;
+
   } // on_finish
 } // show_chosen_item_trial
 
@@ -1875,18 +1951,27 @@ var iti_outcome_learning_trial = {
           trial_duration = 100;
         }
         trial.trial_duration = trial_duration;
+        trial.data.trial_duration = trial.trial_duration;
+        trial.data.start_time_elapsed = jsPsych.data.get().last(1).values()[0].time_elapsed;
 
         // add run info
         trial.data.run = Outcome_learning[trial.data.index].run;
 
+      }, // on_start
+      on_finish: function(data){
+
         // assign trial duration to onset and duration
-        duration = trial_duration/1000;
-        trial.data.duration = duration;
-        trial.data.onset = onset;
-        curr_event = {PID: jsPsych.data.get().filter({ttype: 'get_id'}).last(1).values()[0].PID, phase: "outcome_learning", run: Outcome_learning[trial.data.index].run, trial: trial.data.index, event: "iti", onset: trial.data.onset, duration: trial.data.duration}
+        duration = data.trial_duration;
+        data.duration = duration;
+        data.onset = onset;
+        duration_time_elapsed = data.time_elapsed - data.start_time_elapsed;
+        data.duration_time_elapsed = duration_time_elapsed;
+        data.onset_time_elapsed = onset_time_elapsed;
+        curr_event = {PID: jsPsych.data.get().filter({ttype: 'get_id'}).last(1).values()[0].PID, phase: "outcome_learning", run: Outcome_learning[data.index].run, trial: data.index, event: "iti", onset: data.onset, duration: data.duration, onset_time_elapsed: data.onset_time_elapsed, duration_time_elapsed: data.duration_time_elapsed}
         events.push(curr_event);
         onset = onset + duration;
-      } // on_start
+        onset_time_elapsed = onset_time_elapsed + duration_time_elapsed;
+      }
     } //
 
 // ---------------------------- practice over ----------------------------------
@@ -1965,9 +2050,9 @@ var end_outcome_learning_phase = {
      subID = Deliberation[0].PID;
      // save data
      if (is_scanner == "scanner"){
-       save_local_data(data_folder+'Outcome_learning/outcome_learning_sub_'+subID+".csv", convertToCSV(Outcome_learning));
-       save_local_data(data_folder+'Events/events_sub_'+subID+".csv", convertToCSV(events));
-       save_local_data(data_folder+'All_data/all_data_sub_'+subID+".csv", jsPsych.data.get().ignore('stimulus').csv());
+       save_local_data(data_folder+'Outcome_learning/outcome_learning_sub'+subID+"_"+rand_data_file+".csv", convertToCSV(Outcome_learning));
+       save_local_data(data_folder+'Events/events_sub'+subID+"_"+rand_data_file+".csv", convertToCSV(events));
+       save_local_data(data_folder+'All_data/all_data_sub'+subID+"_"+rand_data_file+".csv", jsPsych.data.get().ignore('stimulus').csv());
        } else {
        save_server_data(data_folder+'All_data/all_data_sub_'+subID, jsPsych.data.get().ignore('stimulus').csv());
        save_server_data(data_folder+'Outcome_learning/outcome_learning_sub_'+subID, convertToCSV(Outcome_learning));
@@ -2037,6 +2122,7 @@ var final_decisions_trial = {
   response_ends_trial: true,
   on_start: function(trial){
     trial.stimulus = String.format(trial.stimulus, Final_decisions[trial.data.index].left_path, "",Final_decisions[trial.data.index].right_path);
+    trial.data.start_time_elapsed = jsPsych.data.get().last(1).values()[0].time_elapsed;
   },
   on_finish: function(data){
 
@@ -2112,10 +2198,15 @@ var final_decisions_trial = {
 
     // add events info
     data.onset = onset;
-    data.duration = duration/1000;
-    curr_event = {PID: jsPsych.data.get().filter({ttype: 'get_id'}).last(1).values()[0].PID, phase: "final_decisions", run: Final_decisions[data.index].run, trial: data.index, event: "choice", onset: data.onset, duration: data.duration}
+    data.duration = duration;
+    duration_time_elapsed = data.time_elapsed - data.start_time_elapsed;
+    data.duration_time_elapsed = duration_time_elapsed;
+    data.onset_time_elapsed = onset_time_elapsed;
+    curr_event = {PID: jsPsych.data.get().filter({ttype: 'get_id'}).last(1).values()[0].PID, phase: "final_decisions", run: Final_decisions[data.index].run, trial: data.index, event: "choice", onset: data.onset, duration: data.duration, onset_time_elapsed: data.onset_time_elapsed, duration_time_elapsed: data.duration_time_elapsed}
     events.push(curr_event);
     onset = onset + data.duration;
+    onset_time_elapsed = onset_time_elapsed + duration_time_elapsed;
+
 
   } // on_finish
 } // trial final decisions
@@ -2144,18 +2235,28 @@ var final_decisions_confirmation_trial = {
       trial_duration = timing_confirmation;
     }
     trial.trial_duration = trial_duration;
+    trial.data.trial_duration = trial.trial_duration;
+    trial.data.start_time_elapsed = jsPsych.data.get().last(1).values()[0].time_elapsed;
 
     // add block info
     trial.data.run = Final_decisions[trial.data.index].run;
 
+  }, // on_start
+  on_finish: function(data){
+
     // assign trial duration to onset and duration
-    duration = trial_duration/1000;
-    trial.data.duration = duration;
-    trial.data.onset = onset;
-    curr_event = {PID: jsPsych.data.get().filter({ttype: 'get_id'}).last(1).values()[0].PID, phase: "final_decisions", run: Final_decisions[trial.data.index].run, trial: trial.data.index, event: "confirmation", onset: trial.data.onset, duration: trial.data.duration}
+    duration = data.trial_duration;
+    data.duration = duration;
+    data.onset = onset;
+    duration_time_elapsed = data.time_elapsed - data.start_time_elapsed;
+    data.duration_time_elapsed = duration_time_elapsed;
+    data.onset_time_elapsed = onset_time_elapsed;
+    curr_event = {PID: jsPsych.data.get().filter({ttype: 'get_id'}).last(1).values()[0].PID, phase: "final_decisions", run: Final_decisions[data.index].run, trial: data.index, event: "confirmation", onset: data.onset, duration: data.duration, onset_time_elapsed: data.onset_time_elapsed, duration_time_elapsed: data.duration_time_elapsed}
     events.push(curr_event);
     onset = onset + duration;
-  } // on_start
+    onset_time_elapsed = onset_time_elapsed + duration_time_elapsed;
+
+  }
 } // confirmation_trial
 
 
@@ -2180,17 +2281,25 @@ var final_decisions_no_response = {
   stimulus: '<div style="font-size: 200%">TOO SLOW</div>',
   choices: jsPsych.NO_KEYS,
   trial_duration: timing_warning,
+  on_start: function(trial){
+    trial.data.start_time_elapsed = jsPsych.data.get().last(1).values()[0].time_elapsed;
+  },
   on_finish: function(data){
     data.warning = 1;
     data.no_response = 1;
     data.run = jsPsych.data.get().filter({ttype: 'final_decisions'}).last(1).values()[0].run;
     // assign trial duration to onset and duration
-    duration = timing_warning/1000;
+    duration = timing_warning;
     data.duration = duration;
     data.onset = onset;
-    curr_event = {PID: jsPsych.data.get().filter({ttype: 'get_id'}).last(1).values()[0].PID, phase: "final_decisions", run: Final_decisions[data.index].run, trial: data.index, event: "no_response", onset: data.onset, duration: data.duration}
+    duration_time_elapsed = data.time_elapsed - data.start_time_elapsed;
+    data.duration_time_elapsed = duration_time_elapsed;
+    data.onset_time_elapsed = onset_time_elapsed;
+    curr_event = {PID: jsPsych.data.get().filter({ttype: 'get_id'}).last(1).values()[0].PID, phase: "final_decisions", run: Final_decisions[data.index].run, trial: data.index, event: "no_response", onset: data.onset, duration: data.duration, onset_time_elapsed: data.onset_time_elapsed, duration_time_elapsed: data.duration_time_elapsed}
     events.push(curr_event);
     onset = onset + duration;
+    onset_time_elapsed = onset_time_elapsed + duration_time_elapsed;
+
   } // on_finish
 } // deliberation_too_slow
 
@@ -2224,18 +2333,27 @@ var iti_final_decisions_trial = {
         trial_duration = Final_decisions[trial.data.index].iti + (timing_max_final_decisions - Final_decisions[trial.data.index].rt - timing_confirmation);
       }
       trial.trial_duration = trial_duration;
-
+      trial.data.trial_duration = trial.trial_duration;
+      trial.data.start_time_elapsed = jsPsych.data.get().last(1).values()[0].time_elapsed;
       // add run info
       trial.data.run = Final_decisions[trial.data.index].run;
 
+    }, // on_start
+    on_finish: function(data){
+
       // assign trial duration to onset and duration
-      duration = trial_duration/1000;
-      trial.data.duration = duration;
-      trial.data.onset = onset;
-      curr_event = {PID: jsPsych.data.get().filter({ttype: 'get_id'}).last(1).values()[0].PID, phase: "final_decisions", run: Final_decisions[trial.data.index].run, trial: trial.data.index, event: "iti", onset: trial.data.onset, duration: trial.data.duration}
+      duration = data.trial_duration;
+      data.duration = duration;
+      data.onset = onset;
+      duration_time_elapsed = data.time_elapsed - data.start_time_elapsed;
+      data.duration_time_elapsed = duration_time_elapsed;
+      data.onset_time_elapsed = onset_time_elapsed;
+      curr_event = {PID: jsPsych.data.get().filter({ttype: 'get_id'}).last(1).values()[0].PID, phase: "final_decisions", run: Final_decisions[data.index].run, trial: data.index, event: "iti", onset: data.onset, duration: data.duration, onset_time_elapsed: data.onset_time_elapsed, duration_time_elapsed: data.duration_time_elapsed}
       events.push(curr_event);
       onset = onset + duration;
-    } // on_start
+      onset_time_elapsed = onset_time_elapsed + duration_time_elapsed;
+
+    }
   } //
 
 // ------------------------- practice block over -------------------------------
@@ -2310,9 +2428,9 @@ var end_final_decisions_phase = {
     trial.stimulus = String.format(trial.stimulus, start_prompt);
     subID = Deliberation[0].PID;
     if (is_scanner == "scanner"){
-      save_local_data(data_folder+'Final_decisions/final_decisions_sub_'+subID+".csv", convertToCSV(Final_decisions));
-      save_local_data(data_folder+'Events/events_sub_'+subID+".csv", convertToCSV(events));
-      save_local_data(data_folder+'All_data/all_data_sub_'+subID+".csv", jsPsych.data.get().ignore('stimulus').csv());
+      save_local_data(data_folder+'Final_decisions/final_decisions_sub'+subID+"_"+rand_data_file+".csv", convertToCSV(Final_decisions));
+      save_local_data(data_folder+'Events/events_sub'+subID+"_"+rand_data_file+".csv", convertToCSV(events));
+      save_local_data(data_folder+'All_data/all_data_sub'+subID+"_"+rand_data_file+".csv", jsPsych.data.get().ignore('stimulus').csv());
       } else {
       save_server_data(data_folder+'All_data/all_data_sub_'+subID, jsPsych.data.get().ignore('stimulus').csv());
       save_server_data(data_folder+'Final_decisions/final_decisions_sub_'+subID, convertToCSV(Final_decisions));
@@ -2348,7 +2466,6 @@ final_decisions_timeline.timeline.push(repeat_final_decisions_trial)
 
 } // final decisions loop
 
-
 // =============================================================================
 //                                    MEMORY
 // =============================================================================
@@ -2383,6 +2500,7 @@ for (t = 0; t < n_memory_trials; t++) {
     response_ends_trial: true,
     on_start: function(trial){
       trial.stimulus = String.format(trial.stimulus, Memory[trial.data.index].left_path, "", Memory[trial.data.index].right_path);
+      trial.data.start_time_elapsed = jsPsych.data.get().last(1).values()[0].time_elapsed;
     },
     on_finish: function(data){
       // update data matrix per trial
@@ -2411,13 +2529,13 @@ for (t = 0; t < n_memory_trials; t++) {
       if (data.key_press == null){
         data.old_response = NaN;
         data.no_response = 1;
-        duration = timing_max_memory/1000;
+        duration = timing_max_memory;
         if ((data.practice == 1) & (repeat_no_responses_in_practice == 1)){
           repeat_memory_practice = 1;
         }
       } else {
         data.no_response = 0;
-        duration = data.rt/1000;
+        duration = data.rt;
         if (data.practice == 1){
           repeat_memory_practice = 0;
         }
@@ -2436,9 +2554,13 @@ for (t = 0; t < n_memory_trials; t++) {
       // assign trial duration to onset and duration
       data.duration = duration;
       data.onset = onset;
-      curr_event = {PID: jsPsych.data.get().filter({ttype: 'get_id'}).last(1).values()[0].PID, phase: "memory", run: Memory[data.index].run, trial: data.index, event: "choice", onset: data.onset, duration: data.duration}
+      duration_time_elapsed = data.time_elapsed - data.start_time_elapsed;
+      data.duration_time_elapsed = duration_time_elapsed;
+      data.onset_time_elapsed = onset_time_elapsed;
+      curr_event = {PID: jsPsych.data.get().filter({ttype: 'get_id'}).last(1).values()[0].PID, phase: "memory", run: Memory[data.index].run, trial: data.index, event: "choice", onset: data.onset, duration: data.duration, onset_time_elapsed: data.onset_time_elapsed, duration_time_elapsed: data.duration_time_elapsed}
       events.push(curr_event);
       onset = onset + duration;
+      onset_time_elapsed = onset_time_elapsed + duration_time_elapsed;
 
     } // on_finish
   } // memory_test_trial
@@ -2467,18 +2589,26 @@ for (t = 0; t < n_memory_trials; t++) {
      }
 
       trial.trial_duration = trial_duration;
+      trial.data.trial_duration = trial.trial_duration;
+      trial.data.start_time_elapsed = jsPsych.data.get().last(1).values()[0].time_elapsed;
 
       // add block info
       trial.data.run = Memory[trial.data.index].run;
 
+    }, // on_start
+    on_finish: function(data){
       // assign trial duration to onset and duration
-      duration = trial_duration/1000;
-      trial.data.duration = duration;
-      trial.data.onset = onset;
-      curr_event = {PID: jsPsych.data.get().filter({ttype: 'get_id'}).last(1).values()[0].PID, phase: "memory", run: Memory[trial.data.index].run, trial: trial.data.index, event: "confirmation", onset: trial.data.onset, duration: trial.data.duration}
+      duration = data.trial_duration;
+      data.duration = duration;
+      data.onset = onset;
+      duration_time_elapsed = data.time_elapsed - data.start_time_elapsed;
+      data.duration_time_elapsed = duration_time_elapsed;
+      data.onset_time_elapsed = onset_time_elapsed;
+      curr_event = {PID: jsPsych.data.get().filter({ttype: 'get_id'}).last(1).values()[0].PID, phase: "memory", run: Memory[data.index].run, trial: data.index, event: "confirmation", onset: data.onset, duration: data.duration, onset_time_elapsed: data.onset_time_elapsed, duration_time_elapsed: data.duration_time_elapsed}
       events.push(curr_event);
       onset = onset + duration;
-    } // on_start
+      onset_time_elapsed = onset_time_elapsed + duration_time_elapsed;
+    }
   } // memory_test_confirmation_trial
 
   // present confirmation only if there was a response
@@ -2501,17 +2631,24 @@ for (t = 0; t < n_memory_trials; t++) {
     stimulus: '<div style="font-size: 200%">TOO SLOW</div>',
     choices: jsPsych.NO_KEYS,
     trial_duration: timing_warning,
+    on_start: function(trial){
+      trial.data.start_time_elapsed = jsPsych.data.get().last(1).values()[0].time_elapsed;
+    },
     on_finish: function(data){
       data.warning = 1;
       data.no_response = 1;
       data.run = Memory[data.index].run;
       // assign trial duration to onset and duration
-      duration = timing_warning/1000;
+      duration = timing_warning;
       data.duration = duration;
       data.onset = onset;
-      curr_event = {PID: jsPsych.data.get().filter({ttype: 'get_id'}).last(1).values()[0].PID, phase: "memory", run: Memory[data.index].run, trial: data.index, event: "no_response", onset: data.onset, duration: data.duration}
+      duration_time_elapsed = data.time_elapsed - data.start_time_elapsed;
+      data.duration_time_elapsed = duration_time_elapsed;
+      data.onset_time_elapsed = onset_time_elapsed;
+      curr_event = {PID: jsPsych.data.get().filter({ttype: 'get_id'}).last(1).values()[0].PID, phase: "memory", run: Memory[data.index].run, trial: data.index, event: "no_response", onset: data.onset, duration: data.duration, onset_time_elapsed: data.onset_time_elapsed, duration_time_elapsed: data.duration_time_elapsed}
       events.push(curr_event);
       onset = onset + duration;
+      onset_time_elapsed = onset_time_elapsed + duration_time_elapsed;
     } // on_finish
   } //
 
@@ -2544,18 +2681,26 @@ for (t = 0; t < n_memory_trials; t++) {
           trial_duration = trial_duration + (timing_max_memory - Memory[trial.data.index].pairs_rt - timing_confirmation)
         }
         trial.trial_duration = trial_duration;
+        trial.data.trial_duration = trial.trial_duration;
+        trial.data.start_time_elapsed = jsPsych.data.get().last(1).values()[0].time_elapsed;
 
         // add run info
         trial.data.run = Memory[trial.data.index].run;
 
+      }, // on_start
+      on_finish: function(data){
         // assign trial duration to onset and duration
-        duration = trial_duration/1000;
-        trial.data.duration = duration;
-        trial.data.onset = onset;
-        curr_event = {PID: jsPsych.data.get().filter({ttype: 'get_id'}).last(1).values()[0].PID, phase: "memory", run: Memory[trial.data.index].run, trial: trial.data.index, event: "iti", onset: trial.data.onset, duration: trial.data.duration}
+        duration = data.trial_duration;
+        data.duration = duration;
+        data.onset = onset;
+        duration_time_elapsed = data.time_elapsed - data.start_time_elapsed;
+        data.duration_time_elapsed = duration_time_elapsed;
+        data.onset_time_elapsed = onset_time_elapsed;
+        curr_event = {PID: jsPsych.data.get().filter({ttype: 'get_id'}).last(1).values()[0].PID, phase: "memory", run: Memory[data.index].run, trial: data.index, event: "iti", onset: data.onset, duration: data.duration, onset_time_elapsed: data.onset_time_elapsed, duration_time_elapsed: data.duration_time_elapsed}
         events.push(curr_event);
         onset = onset + duration;
-      } // on_start
+        onset_time_elapsed = onset_time_elapsed + duration_time_elapsed;
+      }
     } //
 
   // ------------------------- practice block over -------------------------------
@@ -2630,9 +2775,9 @@ for (t = 0; t < n_memory_trials; t++) {
       trial.stimulus = String.format(trial.stimulus, start_prompt);
       subID = Deliberation[0].PID;
       if (is_scanner == "scanner"){
-        save_local_data(data_folder+'Memory/memory_sub_'+subID+".csv", convertToCSV(Memory));
-        save_local_data(data_folder+'Events/events_sub_'+subID+".csv", convertToCSV(events));
-        save_local_data(data_folder+'All_data/all_data_sub_'+subID+".csv", jsPsych.data.get().ignore('stimulus').csv());
+        save_local_data(data_folder+'Memory/memory_sub'+subID+"_"+rand_data_file+".csv", convertToCSV(Memory));
+        save_local_data(data_folder+'Events/events_sub'+subID+"_"+rand_data_file+".csv", convertToCSV(events));
+        save_local_data(data_folder+'All_data/all_data_sub'+subID+"_"+rand_data_file+".csv", jsPsych.data.get().ignore('stimulus').csv());
         } else {
         save_server_data(data_folder+'All_data/all_data_sub_'+subID, jsPsych.data.get().ignore('stimulus').csv());
         save_server_data(data_folder+'Memory/memory_sub_'+subID, convertToCSV(Memory));
@@ -2703,9 +2848,9 @@ for (t = 0; t < n_outcome_estimation_trials; t++){
       response_ends_trial: true,
       on_start: function(trial){
         trial.stimulus = String.format(trial.stimulus, Outcome_estimation[trial.data.index].path); // full path
+        trial.data.start_time_elapsed = jsPsych.data.get().last(1).values()[0].time_elapsed;
       },
       on_finish: function(data){
-
         data.run = Outcome_estimation[data.index].run;
         data.block = Outcome_estimation[data.index].block;
         data.choice_type = Outcome_estimation[data.index].choice_type;
@@ -2727,14 +2872,14 @@ for (t = 0; t < n_outcome_estimation_trials; t++){
         if (data.key_press == null){
           data.no_response = 1;
           data.outcome_rt = NaN;
-          duration = timing_max_outcome_estimation/1000;
+          duration = timing_max_outcome_estimation;
           if ((Outcome_estimation[data.index].practice == 1) & (repeat_no_responses_in_practice == 1)){
             repeat_outcome_estimation_practice = 1;
           }
         } else {
           data.no_response = 0;
           data.outcome_rt = data.rt;
-          duration = data.rt/1000;
+          duration = data.rt;
           if (Outcome_estimation[data.index].practice == 1){
             repeat_outcome_estimation_practice = 0;
           }
@@ -2755,9 +2900,13 @@ for (t = 0; t < n_outcome_estimation_trials; t++){
         // assign trial duration to onset and duration
         data.duration = duration;
         data.onset = onset;
-        curr_event = {PID: jsPsych.data.get().filter({ttype: 'get_id'}).last(1).values()[0].PID, phase: "outcome_estimation", run: Outcome_estimation[data.index].run, trial: data.index, event: "choice", onset: data.onset, duration: data.duration}
+        duration_time_elapsed = data.time_elapsed - data.start_time_elapsed;
+        data.duration_time_elapsed = duration_time_elapsed;
+        data.onset_time_elapsed = onset_time_elapsed;
+        curr_event = {PID: jsPsych.data.get().filter({ttype: 'get_id'}).last(1).values()[0].PID, phase: "outcome_estimation", run: Outcome_estimation[data.index].run, trial: data.index, event: "choice", onset: data.onset, duration: data.duration, onset_time_elapsed: data.onset_time_elapsed, duration_time_elapsed: data.duration_time_elapsed}
         events.push(curr_event);
         onset = onset + duration;
+        onset_time_elapsed = onset_time_elapsed + duration_time_elapsed;
 
       } // on_finish
     } // outcome_estimation_trial
@@ -2786,18 +2935,26 @@ for (t = 0; t < n_outcome_estimation_trials; t++){
           trial_duration = timing_max_outcome_estimation - decision_rt + timing_confirmation;
         }
         trial.trial_duration = trial_duration;
+        trial.data.trial_duration = trial.trial_duration;
+        trial.data.start_time_elapsed = jsPsych.data.get().last(1).values()[0].time_elapsed;
 
         // add block info
         trial.data.run = Outcome_estimation[trial.data.index].run;
 
+      }, // on_start
+      on_finish: function(data){
         // assign trial duration to onset and duration
-        duration = trial_duration/1000;
-        trial.data.duration = duration;
-        trial.data.onset = onset;
-        curr_event = {PID: jsPsych.data.get().filter({ttype: 'get_id'}).last(1).values()[0].PID, phase: "outcome_estimation", run: Outcome_estimation[trial.data.index].run, trial: trial.data.index, event: "confirmation", onset: trial.data.onset, duration: trial.data.duration}
+        duration = data.trial_duration;
+        data.duration = duration;
+        data.onset = onset;
+        duration_time_elapsed = data.time_elapsed - data.start_time_elapsed;
+        data.duration_time_elapsed = duration_time_elapsed;
+        data.onset_time_elapsed = onset_time_elapsed;
+        curr_event = {PID: jsPsych.data.get().filter({ttype: 'get_id'}).last(1).values()[0].PID, phase: "outcome_estimation", run: Outcome_estimation[data.index].run, trial: data.index, event: "confirmation", onset: data.onset, duration: data.duration,  onset_time_elapsed: data.onset_time_elapsed, duration_time_elapsed: data.duration_time_elapsed}
         events.push(curr_event);
         onset = onset + duration;
-      } // on_start
+        onset_time_elapsed = onset_time_elapsed + duration_time_elapsed;
+      }
     } // memory_test_confirmation_trial
 
     // present confirmation only if there was a response
@@ -2820,16 +2977,24 @@ for (t = 0; t < n_outcome_estimation_trials; t++){
       stimulus: '<div style="font-size: 200%">TOO SLOW</div>',
       choices: jsPsych.NO_KEYS,
       trial_duration: timing_warning,
+      on_start: function(trial){
+        trial.data.start_time_elapsed = jsPsych.data.get().last(1).values()[0].time_elapsed;
+      },
       on_finish: function(data){
         data.warning = 1;
         data.run = Outcome_estimation[data.index].run;
         // assign trial duration to onset and duration
-        duration = timing_warning/1000;
+        duration = timing_warning;
         data.duration = duration;
         data.onset = onset;
-        curr_event = {PID: jsPsych.data.get().filter({ttype: 'get_id'}).last(1).values()[0].PID, phase: "outcome_estimation", run: Outcome_estimation[data.index].run, trial: data.index, event: "no_response", onset: data.onset, duration: data.duration}
+        duration_time_elapsed = data.time_elapsed - data.start_time_elapsed;
+        data.duration_time_elapsed = duration_time_elapsed;
+        data.onset_time_elapsed = onset_time_elapsed;
+        curr_event = {PID: jsPsych.data.get().filter({ttype: 'get_id'}).last(1).values()[0].PID, phase: "outcome_estimation", run: Outcome_estimation[data.index].run, trial: data.index, event: "no_response", onset: data.onset, duration: data.duration, onset_time_elapsed: data.onset_time_elapsed, duration_time_elapsed: data.duration_time_elapsed}
         events.push(curr_event);
         onset = onset + duration;
+        onset_time_elapsed = onset_time_elapsed + duration_time_elapsed;
+
       } // on_finish
     } //
 
@@ -2862,18 +3027,26 @@ for (t = 0; t < n_outcome_estimation_trials; t++){
             trial_duration = trial_duration + (timing_max_outcome_estimation - Outcome_estimation[trial.data.index].rt - timing_confirmation)
           };
           trial.trial_duration = trial_duration;
+          trial.data.trial_duration = trial.trial_duration;
+          trial.data.start_time_elapsed = jsPsych.data.get().last(1).values()[0].time_elapsed;
 
           // add run info
           trial.data.run = Outcome_estimation[trial.data.index].run;
 
+        }, // on_start
+        on_finish: function(data){
           // assign trial duration to onset and duration
-          duration = trial_duration/1000;
-          trial.data.duration = duration;
-          trial.data.onset = onset;
-          curr_event = {PID: jsPsych.data.get().filter({ttype: 'get_id'}).last(1).values()[0].PID, phase: "outcome_estimation", run: Outcome_estimation[trial.data.index].run, trial: trial.data.index, event: "iti", onset: trial.data.onset, duration: trial.data.duration}
+          duration = data.trial_duration;
+          data.duration = duration;
+          data.onset = onset;
+          duration_time_elapsed = data.time_elapsed - data.start_time_elapsed;
+          data.duration_time_elapsed = duration_time_elapsed;
+          data.onset_time_elapsed = onset_time_elapsed;
+          curr_event = {PID: jsPsych.data.get().filter({ttype: 'get_id'}).last(1).values()[0].PID, phase: "outcome_estimation", run: Outcome_estimation[data.index].run, trial: data.index, event: "iti", onset: data.onset, duration: data.duration, onset_time_elapsed: data.onset_time_elapsed, duration_time_elapsed: data.duration_time_elapsed}
           events.push(curr_event);
           onset = onset + duration;
-        } // on_start
+          onset_time_elapsed = onset_time_elapsed + duration_time_elapsed;
+        }
       } //
 
 // ------------------------- practice block over -------------------------------
@@ -2948,9 +3121,9 @@ for (t = 0; t < n_outcome_estimation_trials; t++){
         trial.stimulus = String.format(trial.stimulus, start_prompt);
         subID = Deliberation[0].PID;
         if (is_scanner == "scanner"){
-          save_local_data(data_folder+'Outcome_estimation/outcome_estimation_sub_'+subID+".csv", convertToCSV(Outcome_estimation));
-          save_local_data(data_folder+'Events/events_sub_'+subID+".csv", convertToCSV(events));
-          save_local_data(data_folder+'All_data/all_data_sub_'+subID+".csv", jsPsych.data.get().ignore('stimulus').csv());
+          save_local_data(data_folder+'Outcome_estimation/outcome_estimation_sub'+subID+"_"+rand_data_file+".csv", convertToCSV(Outcome_estimation));
+          save_local_data(data_folder+'Events/events_sub'+subID+"_"+rand_data_file+".csv", convertToCSV(events));
+          save_local_data(data_folder+'All_data/all_data_sub'+subID+"_"+rand_data_file+".csv", jsPsych.data.get().ignore('stimulus').csv());
           } else {
           save_server_data(data_folder+'All_data/all_data_sub_'+subID, jsPsych.data.get().ignore('stimulus').csv());
           save_server_data(data_folder+'Outcome_estimation/outcome_estimation_sub_'+subID, convertToCSV(Outcome_estimation));
@@ -3066,8 +3239,8 @@ for (t = 0; t < n_final_ratings_trials; t++){
       subID = Final_ratings[0].PID;
       if (data.index == n_final_ratings_trials-1){
         if (is_scanner == "scanner"){
-          save_local_data(data_folder+'Final_ratings/final_ratings_sub_'+subID+".csv", convertToCSV(Final_ratings));
-          save_local_data(data_folder+'All_data/all_data_sub_'+subID+".csv", jsPsych.data.get().ignore('stimulus').csv());
+          save_local_data(data_folder+'Final_ratings/final_ratings_sub'+subID+"_"+rand_data_file+".csv", convertToCSV(Final_ratings));
+          save_local_data(data_folder+'All_data/all_data_sub'+subID+"_"+rand_data_file+".csv", jsPsych.data.get().ignore('stimulus').csv());
           } else {
           save_server_data(data_folder+'All_data/all_data_sub_'+subID, jsPsych.data.get().ignore('stimulus').csv());
           save_server_data(data_folder+'Final_ratings/final_ratings_sub_'+subID, convertToCSV(Final_ratings));
@@ -3204,9 +3377,9 @@ jsPsych.init({
   on_finish: function() {
     subID = jsPsych.data.get().last(1).values()[0].PID;
     if (is_scanner == "scanner"){
-      save_local_data(data_folder+'All_data/all_data_sub_'+subID+".csv", jsPsych.data.get().ignore('stimulus').csv());
-      save_local_data(int_data_folder+'int_data_sub_'+subID+".csv", jsPsych.data.getInteractionData().csv());
-      save_local_data(data_folder+'Events/events_sub_'+subID+".csv", convertToCSV(events));
+      save_local_data(data_folder+'All_data/all_data_sub'+subID+"_"+rand_data_file+".csv", jsPsych.data.get().ignore('stimulus').csv());
+      save_local_data(int_data_folder+'int_data_sub'+subID+"_"+rand_data_file+".csv", jsPsych.data.getInteractionData().csv());
+      save_local_data(data_folder+'Events/events_sub'+subID+"_"+rand_data_file+".csv", convertToCSV(events));
       } else {
       save_server_data(data_folder+'All_data/all_data_sub_'+subID, jsPsych.data.get().ignore('stimulus').csv());
       save_server_data(int_data_folder+'int_data_sub_'+subID, jsPsych.data.getInteractionData().csv());
