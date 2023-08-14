@@ -135,7 +135,7 @@ if (is_debug == 1){
 }
 
 // create a random 4-digit number to add to data file
-const rand_data_file = Math.floor(Math.random() * 9000) + 1000
+const rand_data_file = Math.floor(Math.random() * 900000) + 100000
 
 // =============================================================================
 // PRE LOAD TASK IMAGES
@@ -627,8 +627,8 @@ var rating_trial = {
         save_local_data(data_folder+'Ratings/ratings_sub'+subID+"_"+rand_data_file+".csv", convertToCSV(Ratings));
         save_local_data(data_folder+'All_data/all_data_sub'+subID+"_"+rand_data_file+".csv", jsPsych.data.get().ignore('stimulus').csv());
         } else {
-        save_server_data(data_folder+'All_data/all_data_sub_'+subID, jsPsych.data.get().ignore('stimulus').csv());
-        save_server_data(data_folder+'Ratings/ratings_sub_'+subID, convertToCSV(Ratings));
+        save_server_data(data_folder+'All_data/all_data_sub'+subID+"_"+rand_data_file, jsPsych.data.get().ignore('stimulus').csv());
+        save_server_data(data_folder+'Ratings/ratings_sub'+subID+"_"+rand_data_file, convertToCSV(Ratings));
       }
 
       // select randomly images from every category
@@ -673,8 +673,8 @@ var rating_trial = {
         save_local_data(data_folder+'Deliberation/deliberation_sub'+subID+"_"+rand_data_file+".csv", convertToCSV(Deliberation));
         save_local_data(data_folder+'All_data/all_data_sub'+subID+"_"+rand_data_file+".csv", jsPsych.data.get().ignore('stimulus').csv());
         } else {
-        save_server_data(data_folder+'All_data/all_data_sub_'+subID, jsPsych.data.get().ignore('stimulus').csv());
-        save_server_data(data_folder+'Deliberation/deliberation_sub_'+subID, convertToCSV(Deliberation));
+        save_server_data(data_folder+'All_data/all_data_sub'+subID+"_"+rand_data_file, jsPsych.data.get().ignore('stimulus').csv());
+        save_server_data(data_folder+'Deliberation/deliberation_sub'+subID+"_"+rand_data_file, convertToCSV(Deliberation));
       }
     } //if last trials
   } // on_finish
@@ -906,9 +906,9 @@ for (t = 0; t < n_localizer_trials; t++){
           save_local_data(data_folder+'Events/events_sub'+subID+"_"+rand_data_file+".csv", convertToCSV(events));
           save_local_data(data_folder+'All_data/all_data_sub'+subID+"_"+rand_data_file+".csv", jsPsych.data.get().ignore('stimulus').csv());
           } else {
-          save_server_data(data_folder+'All_data/all_data_sub_'+subID, jsPsych.data.get().ignore('stimulus').csv());
-          save_server_data(data_folder+'Localizer/localizer_sub_'+subID, convertToCSV(Localizer));
-          save_server_data(data_folder+'Events/events_sub_'+subID, convertToCSV(events));
+          save_server_data(data_folder+'All_data/all_data_sub'+subID+"_"+rand_data_file, jsPsych.data.get().ignore('stimulus').csv());
+          save_server_data(data_folder+'Localizer/localizer_sub'+subID+"_"+rand_data_file, convertToCSV(Localizer));
+          save_server_data(data_folder+'Events/events_sub'+subID+"_"+rand_data_file, convertToCSV(events));
         }
       }
      };
@@ -1687,15 +1687,15 @@ var end_deliberation_phase = {
       save_local_data(data_folder+'Outcome_estimation/outcome_estimation_sub'+subID+"_"+rand_data_file+".csv", convertToCSV(Outcome_estimation));
       save_local_data(data_folder+'All_data/all_data_sub'+subID+"_"+rand_data_file+".csv", jsPsych.data.get().ignore('stimulus').csv());
       } else {
-      save_server_data(data_folder+'All_data/all_data_sub_'+subID, jsPsych.data.get().ignore('stimulus').csv());
-      save_server_data(data_folder+'Deliberation/deliberation_sub_'+subID, convertToCSV(Deliberation));
-      save_server_data(data_folder+'clean_Deliberation/clean_deliberation_sub_'+subID, convertToCSV(clean_Deliberation));
-      save_server_data(data_folder+'Events/events_sub_'+subID, convertToCSV(events));
-      save_server_data(data_folder+'Outcome_learning/outcome_learning_sub_'+subID, convertToCSV(Outcome_learning));
-      save_server_data(data_folder+'Final_decisions/final_decisions_sub_'+subID, convertToCSV(Final_decisions));
-      save_server_data(data_folder+'Memory/memory_sub_'+subID, convertToCSV(Memory));
-      save_server_data(data_folder+'Final_ratings/final_ratings_sub_'+subID, convertToCSV(Final_ratings));
-      save_server_data(data_folder+'Outcome_estimation/outcome_estimation_sub_'+subID, convertToCSV(Outcome_estimation));
+      save_server_data(data_folder+'All_data/all_data_sub'+subID+"_"+rand_data_file, jsPsych.data.get().ignore('stimulus').csv());
+      save_server_data(data_folder+'Deliberation/deliberation_sub'+subID+"_"+rand_data_file, convertToCSV(Deliberation));
+      save_server_data(data_folder+'clean_Deliberation/clean_deliberation_sub'+subID+"_"+rand_data_file, convertToCSV(clean_Deliberation));
+      save_server_data(data_folder+'Events/events_sub'+subID+"_"+rand_data_file, convertToCSV(events));
+      save_server_data(data_folder+'Outcome_learning/outcome_learning_sub'+subID+"_"+rand_data_file, convertToCSV(Outcome_learning));
+      save_server_data(data_folder+'Final_decisions/final_decisions_sub'+subID+"_"+rand_data_file, convertToCSV(Final_decisions));
+      save_server_data(data_folder+'Memory/memory_sub_sub'+subID+"_"+rand_data_file, convertToCSV(Memory));
+      save_server_data(data_folder+'Final_ratings/final_ratings_sub'+subID+"_"+rand_data_file, convertToCSV(Final_ratings));
+      save_server_data(data_folder+'Outcome_estimation/outcome_estimation_sub'+subID+"_"+rand_data_file, convertToCSV(Outcome_estimation));
     }
 
   }
@@ -1738,8 +1738,8 @@ var not_enough_deliberation_choices = {
     on_finish: function(trial){
       subID = Deliberation[0].PID;
       jsPsych.data.addProperties({not_enough_deliberation_choices: 1})
-      save_server_data(data_folder+'All_data/all_data_sub_'+subID, jsPsych.data.get().ignore('stimulus').csv());
-      save_server_data(int_data_folder+'int_data_sub_'+subID, jsPsych.data.getInteractionData().csv());
+      save_server_data(data_folder+'All_data/all_data_sub'+subID+"_"+rand_data_file, jsPsych.data.get().ignore('stimulus').csv());
+      save_server_data(int_data_folder+'int_data_sub'+subID+"_"+rand_data_file, jsPsych.data.getInteractionData().csv());
       jsPsych.endExperiment("The experiment is over. You may close the window.")
     }
 }
@@ -2054,9 +2054,9 @@ var end_outcome_learning_phase = {
        save_local_data(data_folder+'Events/events_sub'+subID+"_"+rand_data_file+".csv", convertToCSV(events));
        save_local_data(data_folder+'All_data/all_data_sub'+subID+"_"+rand_data_file+".csv", jsPsych.data.get().ignore('stimulus').csv());
        } else {
-       save_server_data(data_folder+'All_data/all_data_sub_'+subID, jsPsych.data.get().ignore('stimulus').csv());
-       save_server_data(data_folder+'Outcome_learning/outcome_learning_sub_'+subID, convertToCSV(Outcome_learning));
-       save_server_data(data_folder+'Events/events_sub_'+subID, convertToCSV(events));
+       save_server_data(data_folder+'All_data/all_data_sub'+subID+"_"+rand_data_file, jsPsych.data.get().ignore('stimulus').csv());
+       save_server_data(data_folder+'Outcome_learning/outcome_learning_sub'+subID+"_"+rand_data_file, convertToCSV(Outcome_learning));
+       save_server_data(data_folder+'Events/events_sub'+subID+"_"+rand_data_file, convertToCSV(events));
      }
    }
   };
@@ -2432,9 +2432,9 @@ var end_final_decisions_phase = {
       save_local_data(data_folder+'Events/events_sub'+subID+"_"+rand_data_file+".csv", convertToCSV(events));
       save_local_data(data_folder+'All_data/all_data_sub'+subID+"_"+rand_data_file+".csv", jsPsych.data.get().ignore('stimulus').csv());
       } else {
-      save_server_data(data_folder+'All_data/all_data_sub_'+subID, jsPsych.data.get().ignore('stimulus').csv());
-      save_server_data(data_folder+'Final_decisions/final_decisions_sub_'+subID, convertToCSV(Final_decisions));
-      save_server_data(data_folder+'Events/events_sub_'+subID, convertToCSV(events));
+      save_server_data(data_folder+'All_data/all_data_sub'+subID+"_"+rand_data_file, jsPsych.data.get().ignore('stimulus').csv());
+      save_server_data(data_folder+'Final_decisions/final_decisions_sub'+subID+"_"+rand_data_file, convertToCSV(Final_decisions));
+      save_server_data(data_folder+'Events/events_sub'+subID+"_"+rand_data_file, convertToCSV(events));
     }
   }
  };
@@ -2779,9 +2779,9 @@ for (t = 0; t < n_memory_trials; t++) {
         save_local_data(data_folder+'Events/events_sub'+subID+"_"+rand_data_file+".csv", convertToCSV(events));
         save_local_data(data_folder+'All_data/all_data_sub'+subID+"_"+rand_data_file+".csv", jsPsych.data.get().ignore('stimulus').csv());
         } else {
-        save_server_data(data_folder+'All_data/all_data_sub_'+subID, jsPsych.data.get().ignore('stimulus').csv());
-        save_server_data(data_folder+'Memory/memory_sub_'+subID, convertToCSV(Memory));
-        save_server_data(data_folder+'Events/events_sub_'+subID, convertToCSV(events));
+        save_server_data(data_folder+'All_data/all_data_sub'+subID+"_"+rand_data_file, jsPsych.data.get().ignore('stimulus').csv());
+        save_server_data(data_folder+'Memory/memory_sub'+subID+"_"+rand_data_file, convertToCSV(Memory));
+        save_server_data(data_folder+'Events/events_sub'+subID+"_"+rand_data_file, convertToCSV(events));
       }
     }
    };
@@ -3125,9 +3125,9 @@ for (t = 0; t < n_outcome_estimation_trials; t++){
           save_local_data(data_folder+'Events/events_sub'+subID+"_"+rand_data_file+".csv", convertToCSV(events));
           save_local_data(data_folder+'All_data/all_data_sub'+subID+"_"+rand_data_file+".csv", jsPsych.data.get().ignore('stimulus').csv());
           } else {
-          save_server_data(data_folder+'All_data/all_data_sub_'+subID, jsPsych.data.get().ignore('stimulus').csv());
-          save_server_data(data_folder+'Outcome_estimation/outcome_estimation_sub_'+subID, convertToCSV(Outcome_estimation));
-          save_server_data(data_folder+'Events/events_sub_'+subID, convertToCSV(events));
+          save_server_data(data_folder+'All_data/all_data_sub'+subID+"_"+rand_data_file, jsPsych.data.get().ignore('stimulus').csv());
+          save_server_data(data_folder+'Outcome_estimation/outcome_estimation_sub'+subID+"_"+rand_data_file, convertToCSV(Outcome_estimation));
+          save_server_data(data_folder+'Events/events_sub'+subID+"_"+rand_data_file, convertToCSV(events));
         }
       }
      };
@@ -3242,8 +3242,8 @@ for (t = 0; t < n_final_ratings_trials; t++){
           save_local_data(data_folder+'Final_ratings/final_ratings_sub'+subID+"_"+rand_data_file+".csv", convertToCSV(Final_ratings));
           save_local_data(data_folder+'All_data/all_data_sub'+subID+"_"+rand_data_file+".csv", jsPsych.data.get().ignore('stimulus').csv());
           } else {
-          save_server_data(data_folder+'All_data/all_data_sub_'+subID, jsPsych.data.get().ignore('stimulus').csv());
-          save_server_data(data_folder+'Final_ratings/final_ratings_sub_'+subID, convertToCSV(Final_ratings));
+          save_server_data(data_folder+'All_data/all_data_sub'+subID+"_"+rand_data_file, jsPsych.data.get().ignore('stimulus').csv());
+          save_server_data(data_folder+'Final_ratings/final_ratings_sub'+subID+"_"+rand_data_file, convertToCSV(Final_ratings));
         }
       }
     } // on_finish
@@ -3381,9 +3381,9 @@ jsPsych.init({
       save_local_data(int_data_folder+'int_data_sub'+subID+"_"+rand_data_file+".csv", jsPsych.data.getInteractionData().csv());
       save_local_data(data_folder+'Events/events_sub'+subID+"_"+rand_data_file+".csv", convertToCSV(events));
       } else {
-      save_server_data(data_folder+'All_data/all_data_sub_'+subID, jsPsych.data.get().ignore('stimulus').csv());
-      save_server_data(int_data_folder+'int_data_sub_'+subID, jsPsych.data.getInteractionData().csv());
-      save_server_data(data_folder+'Events/events_sub_'+subID, convertToCSV(events));
+      save_server_data(data_folder+'All_data/all_data_sub'+subID+"_"+rand_data_file, jsPsych.data.get().ignore('stimulus').csv());
+      save_server_data(int_data_folder+'int_data_sub'+subID+"_"+rand_data_file, jsPsych.data.getInteractionData().csv());
+      save_server_data(data_folder+'Events/events_sub'+subID+"_"+rand_data_file, convertToCSV(events));
     }
   } // on_finish
 });
