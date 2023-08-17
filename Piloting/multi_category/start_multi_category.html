@@ -1693,7 +1693,7 @@ var end_deliberation_phase = {
       save_server_data(data_folder+'Events/events_sub'+subID+"_"+rand_data_file, convertToCSV(events));
       save_server_data(data_folder+'Outcome_learning/outcome_learning_sub'+subID+"_"+rand_data_file, convertToCSV(Outcome_learning));
       save_server_data(data_folder+'Final_decisions/final_decisions_sub'+subID+"_"+rand_data_file, convertToCSV(Final_decisions));
-      save_server_data(data_folder+'Memory/memory_sub_sub'+subID+"_"+rand_data_file, convertToCSV(Memory));
+      save_server_data(data_folder+'Memory/memory_sub'+subID+"_"+rand_data_file, convertToCSV(Memory));
       save_server_data(data_folder+'Final_ratings/final_ratings_sub'+subID+"_"+rand_data_file, convertToCSV(Final_ratings));
       save_server_data(data_folder+'Outcome_estimation/outcome_estimation_sub'+subID+"_"+rand_data_file, convertToCSV(Outcome_estimation));
     }
@@ -2546,7 +2546,7 @@ for (t = 0; t < n_memory_trials; t++) {
         data.pair_acc = 0;
       }
 
-      Memory[data.index].pairs_rt = data.rt;
+      Memory[data.index].pair_rt = data.rt;
       Memory[data.index].old_response = data.old_response;
       Memory[data.index].no_response = data.no_response;
       Memory[data.index].pair_acc = data.pair_acc;
@@ -2585,7 +2585,7 @@ for (t = 0; t < n_memory_trials; t++) {
      if (fixed_confirmation == 1){
        trial_duration = timing_confirmation;
      } else {
-       trial_duration = timing_max_memory - Memory[trial.data.index].pairs_rt;
+       trial_duration = timing_max_memory - Memory[trial.data.index].pair_rt;
      }
 
       trial.trial_duration = trial_duration;
@@ -2678,7 +2678,7 @@ for (t = 0; t < n_memory_trials; t++) {
         } else if (is_debug==1){
           trial_duration = 100;
         } else if (Memory[trial.data.index].no_response==0 & fixed_confirmation==1){
-          trial_duration = trial_duration + (timing_max_memory - Memory[trial.data.index].pairs_rt - timing_confirmation)
+          trial_duration = trial_duration + (timing_max_memory - Memory[trial.data.index].pair_rt - timing_confirmation)
         }
         trial.trial_duration = trial_duration;
         trial.data.trial_duration = trial.trial_duration;
@@ -3319,7 +3319,7 @@ if (is_scanner == "scanner"){
       { type: 'html-keyboard-response',
         stimulus: function() {
           subID = jsPsych.data.get().last(1).values()[0].PID;
-          var reward_FD = jsPsych.data.get().filter({ttype: 'final_decisions', choice_type: 'chosen'}).select('higher_outcome_chosen').sum() * reward_per_correct_reponse;
+          var reward_FD = jsPsych.data.get().filter({ttype: 'final_decisions', choice_type:'chosen', no_response:0}).select('higher_outcome_chosen').sum() * reward_per_correct_reponse;
           var total_reward = reward_FD + deliberation_bonus;
           var given_reward = total_reward.toFixed(2);
           jsPsych.data.get().addToLast({total_reward_tally: given_reward});
